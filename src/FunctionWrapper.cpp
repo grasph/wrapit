@@ -1,6 +1,7 @@
 // Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch> 
 #include "FunctionWrapper.h"
 #include "utils.h"
+#include "libclang-ext.h"
 #include <sstream>
 #include <regex>
 
@@ -15,7 +16,166 @@ FunctionWrapper::gen_ctor(std::ostream& o) const{
 
   indent(o, nindents) << varname << "." << (templated_ ? "template " : "")
 		      <<    "constructor<"
-		      << short_arg_list_cxx << ">();";
+		      << short_arg_list_cxx << ">();\n";
+  return o;
+}
+
+std::ostream&
+FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
+  //Code to generate for non-static field ns::A::x of type T
+  // T& and const T& replaced by T if T is a POD.
+  //
+  //tA.method("x", [](const ns::A&  a) -> const T& { return a.x; });
+  //tA.method("x", [](ns::A&  a) -> T& { return a.x; }); //for a non-POD only
+  //tA.method("x!", [](ns::A&  a, int val) -> T&  { return a.x = val; });
+  // and their equivalents for a passed as a pointer instead of a reference
+  //
+  //For a static field or a global variable (ns::A::x becomes then ns::x)
+  //
+  //types.method("ns!A!x", []() -> T& { return ns::A::x; });
+  //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
+
+  auto kind = clang_getCursorKind(cursor);
+
+  //target: variable or field accessors must be generated for
+  auto target_name = str(clang_getCursorSpelling(cursor));
+  auto target_name_jl = jl_type_name(target_name);
+  auto target_type = clang_getCursorType(cursor);
+  auto target_type_name = str(clang_getTypeSpelling(target_type));
+  auto target_type_jl = jl_type_name(target_type_name);
+  auto pod_target =  clang_isPODType(target_type);
+  auto target_pointee = clang_getPointeeType(target_type);
+  auto pointer_target =  target_pointee.kind != CXType_Invalid;
+
+  bool is_const;
+  if(pointer_target) is_const = clang_isConstQualifiedType(target_pointee);
+  else is_const = clang_isConstQualifiedType(target_type);
+
+  if(clang_getArraySize(target_type) >=0){
+    //a c-array
+    if(verbose > 0){
+      std::cerr << "Warning: no accessor created for the c-array type variable "
+		<< class_prefix << target_name << "\n";
+    }
+    return o;
+  }
+  
+  auto const_type = [](CXType type){
+    if(clang_isPODType(type)){
+      bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
+      std::string r(str(clang_getTypeSpelling(type)));
+      if(not_a_pointer){
+	return remove_cv(r);
+      } else{
+	return r;
+      }
+    } else{
+      std::regex r("^(const)?\\s*(.*[^&])\\s*&?");
+      return std::regex_replace(str(clang_getTypeSpelling(type)), r, "const $2&");
+    }
+  };
+
+  auto non_const_type_or_pod = [](CXType type){
+    if(clang_isPODType(type)){
+      bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
+      std::string r(str(clang_getTypeSpelling(type)));
+      if(not_a_pointer) return remove_cv(r);
+      else return r;
+    } else{
+      std::regex r("(.*[^&])\\s*&?");
+      return std::regex_replace(str(clang_getTypeSpelling(type)), r, "$1&");
+      }
+  };
+
+  auto gen_setters = !is_const && !getter_only;
+  
+  if(kind == CXCursor_FieldDecl){
+
+    const char* ref_types[] = { "&", "*" };
+    const char* ops[] = { ".", "->"};
+
+    bool non_const_getter = !is_const;
+        
+    for(unsigned iref = 0; iref < 2; ++iref){
+      auto ref = ref_types[iref];
+      auto op = ops[iref];
+
+      indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << " methods "
+	       << " to provide read access to the field " << target_name
+	       << " (\" __HERE__ \")\");\n"
+	       << "// defined in "     << clang_getCursorLocation(cursor)
+	       << "// signature to be used in the veto list: " << fully_qualified_name(cursor) << "\n";
+      
+      //tA.method("x", [](const ns::A&  a) -> const T& { return a.x; });
+      indent(o, 1) << varname << ".method(\"" << target_name_jl << "\", []("
+		   << "const " << classname << ref << " a) -> " << const_type(target_type)
+		   << " { return a" << op << target_name << "; });\n";
+
+      if(non_const_getter){
+	if(verbose > 0){
+	  std::cout << "Info: Generating non-const getter for " << classname << "::" << target_name << "\n";
+	}
+	indent(o, 1) << varname << ".method(\"" << target_name_jl << "\", []("
+		     <<  classname << ref << " a) -> " << non_const_type_or_pod(target_type)
+		     << " { return a" << op << target_name << "; });\n";
+      }
+    }
+    
+      
+    if(gen_setters){
+      for(unsigned iref = 0; iref < 2; ++iref){
+	auto ref = ref_types[iref];
+	auto op = ops[iref];
+	indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << "! methods "
+		 << " to provide write access to the field " << target_name
+		 << " (\" __HERE__ \")\");\n"
+		 << "// defined in "     << clang_getCursorLocation(cursor)
+		 << "// signature to be used in the veto list: " << fully_qualified_name(cursor) << "\n"
+		 << "// with ! suffix to veto the setter only\n";
+	
+	//tA.method("x!", [](ns::A&  a, int val) -> T&  { return a.x = val; });
+	indent(o, 1) << varname << ".method(\"" << target_name_jl << "!\", []("
+		     << classname << ref << " a, " << const_type(target_type) << " val) -> "
+		     << non_const_type_or_pod(target_type)
+		     << " { return a" << op << target_name << " = val; });\n";
+      }
+    }
+    wrapper_generated_ = true;
+  } else if(kind == CXCursor_VarDecl){
+    auto fqn = fully_qualified_name(cursor);
+    auto fqn_jl = jl_type_name(fqn);
+
+    indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << fqn_jl << " methods "
+	     << " to provide access to the global variable " << fqn
+	     << " (\" __HERE__ \")\");\n"
+	     << "// defined in "     << clang_getCursorLocation(cursor) << "\n";
+
+    auto rtype = gen_setters ? non_const_type_or_pod(target_type) : const_type(target_type);
+    //types.method("ns!A!x", []() -> T& { return ns::A::x; });
+    indent(o, 1) << "types.method(\"" << fqn_jl << "\", []()"
+		 << "-> " << rtype
+		 << " { return " << fqn << "; });\n";
+
+    if(gen_setters){
+      //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
+      indent(o, 1) << "types.method(\"" << fqn_jl << "!\", []("
+		   << const_type(target_type) << " val)"
+		   << "-> " << rtype
+		   << " { return " << fqn << " = val; });\n";
+    }
+    wrapper_generated_ = true;
+  } else{
+    std::cerr << "Bug found at " << __FILE__ << ":" << __LINE__ << "\n";
+  }
+
+  if(wrapper_generated_){
+    generated_jl_functions_.insert(target_name_jl);
+  }
+
+  if(wrapper_generated_ && gen_setters){
+    generated_jl_functions_.insert(target_name_jl + "!");
+  }
+
   return o;
 }
   
@@ -133,6 +293,8 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
     << "(" << short_arg_list_cxx << (is_variadic ? ",..." : "" ) << ") " << cv
     << ">(&" << class_prefix << name_cxx << "));\n";
 
+  generated_jl_functions_.insert(name_jl_);
+  
   wrapper_generated_ = true;
   
   return o;
@@ -194,7 +356,7 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
       o << "); });\n";
     }
   }
-
+  generated_jl_functions_.insert(name_jl_);
   wrapper_generated_ = true;
   return o;
 }
@@ -237,10 +399,20 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
   rvalueref_arg(false),
   templated_(templated),
   wrapper_generated_(false){
+
   cursor = method.cursor;
   method_type = clang_getCursorType(cursor);
   is_variadic = clang_isFunctionTypeVariadic(method_type);
 
+
+//  std::cerr << __FUNCTION__
+//	    << "\n"
+//	    << "\tmethod.cursor: " <<  method.cursor << "\n"
+//	    << "\tpTypeRcd->cursor: " << pTypeRcd->cursor << "\n"
+//    	    << "\tpTypeRcd->type_name: " << pTypeRcd->type_name << "\n"
+//	    << "\tfully_qualified_name(pTypeRcd->cursor): " << fully_qualified_name(pTypeRcd->cursor) << "\n"
+//	    << "\tclassname " << classname << "\n";
+  
   if(pTypeRcd && classname.size() == 0){
     this->classname = pTypeRcd->type_name;
   }
@@ -281,11 +453,33 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
   }
 
   //FIXME: check that julia = operator is not already mapped to c++ operator=
-  //by CxxWrep. In that case we won't need to define an assign function
+  //by CxxWrap. In that case we won't need to define an assign function
   if(name_jl_suffix == "="){
     name_jl_suffix = "assign";
     override_base_ = false;
   }
+
+  std::vector<std::pair<std::string, std::string>> op_map = {
+    {"()", "paren"},
+    {"+=", "add!"},
+    {"-=", "sub!"},
+    {"*=", "mult!"},
+    {"/=", "fdiv!"},
+    {"%=", "mod!"},
+    {">>=", "rshift!"},
+    {"<<=", "lshift!"},
+    {"^=", "bwxor!"},
+    {"|=", "bwor!"},
+    {"&=", "bwand!"},
+  };
+  
+  for(const auto& m: op_map){
+    if(name_jl_suffix == m.first){
+      name_jl_suffix = m.second;
+      override_base_ = false;
+    }
+  }  
+  
   
   setindex_ = getindex_ = false;
   

@@ -133,6 +133,7 @@ int main(int argc, char* argv[]){
 
     auto macro_definitions = read_vstring("macro_definitions");
     auto clang_features = read_vstring("clang_features");
+    auto clang_opts     = read_vstring("clang_opts");
 
     auto lib_basename     = std::string("jl") + module_name;
     auto out_cpp_fname    = std::string("jl") + module_name + ".cxx";
@@ -151,6 +152,8 @@ int main(int argc, char* argv[]){
     auto build_nmax = toml_config["build_nmax"].value_or(-1);
     auto build_every = toml_config["build_every"].value_or(1);
 
+    auto fields_and_variables = toml_config["fields_an_variables"].value_or(true);
+    
     auto verbosity = options["verbosity"].as<int>();
       //toml_config["verbosity"].value_or(0);
 
@@ -172,7 +175,7 @@ int main(int argc, char* argv[]){
        && export_mode != "all"){
       std::cerr << "Warning: value '" << export_mode
 		<< "' for configurable export is not valid. "
-	"Valid values: types, methods.\n";
+	"Valid values: none, all_functions, all.\n";
       export_mode = "member_functions";
     }
 
@@ -234,7 +237,7 @@ int main(int argc, char* argv[]){
 //      std::cerr << "File " << out_report_fname << " is on way, please move it or use the --force option to force its deletion.\n";
 //      in_err = true;
 //    }
-    auto out_report = open_file(out_report_fname);
+//    auto out_report = open_file(out_report_fname);
 
     if(in_err) return -1;
 
@@ -250,7 +253,8 @@ int main(int argc, char* argv[]){
     tree.build_every(build_every);
     tree.build_cmd(std::string(build_cmd));
     tree.inheritances(inheritances);
-
+    tree.accessor_generation_enabled(fields_and_variables);
+    
     if(propagation_mode == "types"){
       tree.propagation_mode(propagation_mode_t::types);
     } else if(propagation_mode == "methods"){
@@ -281,6 +285,12 @@ int main(int argc, char* argv[]){
       }
     }
 
+    for (const auto& name: clang_opts){
+      if(name.size() > 0){
+	tree.add_clang_opt(name);
+      }
+    }
+    
     for(const auto& s: extra_headers){
       tree.add_forced_header(s);
     }

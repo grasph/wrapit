@@ -11,6 +11,7 @@ struct TypeRcd {
   CXCursor cursor;
   std::string type_name;
   std::vector<MethodRcd> methods;
+  std::vector<CXCursor> fields;
   std::vector<std::string> template_parameters;
   std::vector<std::vector<std::string> > template_parameter_combinations;
   bool to_wrap;

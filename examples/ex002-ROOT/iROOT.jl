@@ -3,7 +3,7 @@ module iROOT
 using ROOT
 
 function _event_loop()
-system = ROOT.GetSystem()
+system = ROOT.gSystem()
 while true
     ProcessEvents(system)
     yield()

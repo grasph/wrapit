@@ -39,7 +39,7 @@ namespace codetree{
 		unit_(nullptr), index_(nullptr),
 		build_cmd_("echo Build command not defined."),  test_build_(false),
 		ibuild_(0), build_nskips_(0), build_nmax_(-1), build_every_(1),
-		visiting_a_templated_class_(false)
+		visiting_a_templated_class_(false), accessor_generation_enabled_(false)
     {
       opts_.push_back("-x");
       opts_.push_back("c++-header");
@@ -67,6 +67,10 @@ namespace codetree{
     int build_nskips_;
     int build_nmax_;
     int build_every_;
+
+    bool accessor_generation_enabled() const { return accessor_generation_enabled_;}
+
+    void accessor_generation_enabled(bool val) { accessor_generation_enabled_ = val;}
     
     void export_mode(export_mode_t mode){ export_mode_ = mode; }
 
@@ -115,7 +119,7 @@ namespace codetree{
     
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
-
+    
     //To be called before the generate_xx functions.
     //Sorts the types such that a parent type appears in the list
     //before its children
@@ -156,6 +160,10 @@ namespace codetree{
       opts_.push_back(x);
     }
 
+    void add_clang_opt(const std::string& x){
+      opts_.push_back(x);
+    }
+
     void propagation_mode(propagation_mode_t val){
       propagation_mode_ = val;
     }
@@ -179,9 +187,19 @@ namespace codetree{
     void build_every(int val){ build_every_ = val;}
 
     void add_export_veto_word(const std::string& s) { export_blacklist_.insert(s); }
-    
+
+
   protected:
 
+    enum class accessor_mode_t {none, getter, both };
+
+    bool in_veto_list(const std::string signature) const;
+    
+    //Check is a field or variable is veto status for accessor generation
+    // acccessor_mode_t::none -> both accessors vetoed
+    accessor_mode_t
+    check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_var) const;
+    
     //Look for a file in the include dirs and returns the path
     std::string resolve_include_path(const std::string& fname);
     
@@ -221,6 +239,10 @@ namespace codetree{
 
     std::ostream& generate_type_cxx(std::ostream& o, const TypeRcd& cursor);
 
+    std::ostream&
+    generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd, const CXCursor& cursor, bool getter_only);
+
+    
     std::string type_name(CXCursor cursor) const{
       if(clang_Cursor_isNull(cursor)) return std::string();
 
@@ -340,6 +362,7 @@ namespace codetree{
 
     std::set<std::string> export_blacklist_;
 
+    bool accessor_generation_enabled_;
   };
 }
 #endif //CODETREE_H not defined

@@ -1,37 +1,17 @@
-#
-# Warning: file generated automatically from config_ROOT.toml.in
-#
 module_name         = "ROOT"
 export_jl_fname     = "ROOT-export.jl"
 module_jl_fname     = "ROOT-generated.jl"
 
-extra_headers       = [ "stddef.h", "TVectorT.h" ]
+extra_headers       = [ "TVectorT.h" ] #"stddef.h", 
 
-include_dirs        = [ "/home/pgras/git.d/root_install/include",
- "/usr/include", "." ]
+include_dirs        = [ "%ROOT_INC_DIR%", "." ]
 
-input               = [ "x86_64-linux-gnu/bits/types/struct_FILE.h", "TSystem.h", "Extra.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",    "TFile.h", "TNamed.h", "TObject.h" ] 
+input               = [ "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",    "TFile.h", "TNamed.h", "TObject.h" ] 
 
 veto_list           = "jlROOT-veto.h"
 
 cxx-std             = "c++17"
 
-macro_definitions   = [ ]
-
-macro_undefinitions = [ ]
-
-clang_features      = [ "" ]
-
-propagation_mode    = "types"
-
-export              = "methods"
-
 inheritances        = [ "TROOT:" ]
-
-build_cmd    	    = "make -f make.wrapper"
-test_build   	    = false
-build_every         = 20
-build_nskips 	    = 0
-build_nmax   	    = -1
 
 export_blacklist    = [ "Integer", "Set", "Timer", "cd", "mkdir", "pwd" ]

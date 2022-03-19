@@ -46,6 +46,9 @@ veto_list           = ""
 #              and its member functions 
 propagation_mode    = "types"
 
+# Switch for the genration of field and variable accessors
+fields_and_variables = true
+
 # List of class inheritance mapping specification, to be used for classes
 # with multinheritance to specify the inheritance to be mapped to Julia,
 # as only single inheritance is supported.
@@ -98,6 +101,11 @@ macro_definitions   = [ ]
 # List of clang features to enable. See the -x option
 # of clang
 clang_features      = [ ]
+```
+
+# List of options to pass to clang when use to parse the header files.
+# See the clang command line documentation
+clang_opts      = [ ]
 ```
 
 ### Debugging mode options

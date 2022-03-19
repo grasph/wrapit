@@ -9,7 +9,6 @@ using CxxWrap
 function __init__()
     @initcxx
     global gROOT = ROOT!GetROOT()
-    global gSystem = GetSystem()
 end
 
 export gROOT, gSystem

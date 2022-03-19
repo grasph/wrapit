@@ -19,6 +19,7 @@ LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 CC_FILES=jlROOT.cxx
 
 .PHONY: all clean run_demo check_root
+
 .PRECIOUS: $(CC_FILES)
 
 PRODUCTS=jlROOT.so jlROOT.cxx jlROOT.h ROOT-export.jl ROOT-generated.jl ROOT-generated.wit
@@ -27,7 +28,8 @@ all: $(PRODUCTS)
 clean:
 	-$(RM) $(PRODUCTS) jlROOT-report.txt jlROOT.o jlROOT.d
 
-ROOT-generated.wit: ROOT.wit check_root
+ROOT-generated.wit: ROOT.wit
+	$(MAKE) check_root
 	$(shell echo "#\n# Warning: file generated automatically from $<\n#" > $@)
 	$(shell sed "s@%ROOT_INC_DIR%@$(ROOT_INC_DIR)@" $< >> $@ || rm $@)
 
@@ -39,7 +41,7 @@ endif
 run_demo: all
 	  LD_LIBRARY_PATH=. JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i TDemo1.jl
 
-jlROOT.cxx: ROOT-generated.wit jlROOT-veto.h
+jlROOT.cxx: ROOT-generated.wit jlROOT-veto.h Extra.h
 	wrapit --force $<
 
 %.o: %.cxx

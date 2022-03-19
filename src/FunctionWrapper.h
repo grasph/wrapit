@@ -5,6 +5,7 @@
 #include "MethodRcd.h"
 #include "TypeRcd.h"
 #include <iostream>
+#include <set>
 
 // Helper class to generate CxxWrap.jl wrapper
 // code for a global or class function.
@@ -22,6 +23,7 @@ public:
 		  std::string classname = std::string(),
 		  int nindents = 0,
 		  bool templated = false);
+
 
   /// Returns the method signature. 
   /// Used by CodeTree to support method
@@ -48,7 +50,11 @@ public:
 
   bool wrapper_generated() const { return wrapper_generated_; }
 
+  std::ostream&
+  gen_accessors(std::ostream& o, bool getter_only = false);
 
+  std::set<std::string> generated_jl_functions(){ return generated_jl_functions_; }
+  
   
 protected:
 
@@ -96,7 +102,7 @@ protected:
   validate();
 
   bool isAccessible(CXType type) const;
-
+  
 private:
   std::string arg_decl(int iarg) const;
 
@@ -119,6 +125,7 @@ private:
 
   std::string name_cxx;
   std::string name_jl_;
+  std::set<std::string> generated_jl_functions_;
   
   bool is_static;
   bool inaccessible_type;
