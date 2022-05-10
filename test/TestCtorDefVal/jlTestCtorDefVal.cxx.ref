@@ -1,0 +1,74 @@
+#include <type_traits>
+#include "jlcxx/jlcxx.hpp"
+#include "jlcxx/functions.hpp"
+#include "jlcxx/stl.hpp"
+
+#include "jlTestCtorDefVal.h"
+
+#ifdef VERBOSE_IMPORT
+#  define DEBUG_MSG(a) std::cerr << a << "\n"
+#else
+#  define DEBUG_MSG(a)
+#endif
+#define __HERE__  __FILE__ ":" QUOTE2(__LINE__)
+#define QUOTE(arg) #arg
+#define QUOTE2(arg) QUOTE(arg)
+
+template<typename, typename = void>
+constexpr bool is_type_complete_v = false;
+
+template<typename T>
+constexpr bool is_type_complete_v<T, std::void_t<decltype(sizeof(T))>> = true;
+
+
+namespace jlcxx {
+  template<> struct IsMirroredType<A> : std::false_type { };
+}
+
+JLCXX_MODULE define_julia_module(jlcxx::Module& types){
+
+  DEBUG_MSG("Adding wrapper for type A (" __HERE__ ")");
+  // defined in ./A.h:1:8
+  auto t0 = types.add_type<A>("A");
+  /**********************************************************************
+   * Wrappers for typedefs
+   */
+  /* End of typedefs wrappers
+   **********************************************************************/
+
+
+  /**********************************************************************/
+  /* Wrapper for the methods of class A
+   */
+
+
+  DEBUG_MSG("Adding wrapper for void A::A(int) (" __HERE__ ")");
+  // defined in ./A.h:2:3
+  t0.constructor<>();
+  t0.constructor<int>();
+
+  DEBUG_MSG("Adding i_ methods  to provide read access to the field i_ (" __HERE__ ")");
+  // defined in ./A.h:3:7// signature to be used in the veto list: A::i_
+  t0.method("i_", [](const A& a) -> int { return a.i_; });
+  t0.method("i_", [](A& a) -> int { return a.i_; });
+
+  DEBUG_MSG("Adding i_ methods  to provide read access to the field i_ (" __HERE__ ")");
+  // defined in ./A.h:3:7// signature to be used in the veto list: A::i_
+  t0.method("i_", [](const A* a) -> int { return a->i_; });
+  t0.method("i_", [](A* a) -> int { return a->i_; });
+
+  DEBUG_MSG("Adding i_! methods  to provide write access to the field i_ (" __HERE__ ")");
+  // defined in ./A.h:3:7// signature to be used in the veto list: A::i_
+  // with ! suffix to veto the setter only
+  t0.method("i_!", [](A& a, int val) -> int { return a.i_ = val; });
+
+  DEBUG_MSG("Adding i_! methods  to provide write access to the field i_ (" __HERE__ ")");
+  // defined in ./A.h:3:7// signature to be used in the veto list: A::i_
+  // with ! suffix to veto the setter only
+  t0.method("i_!", [](A* a, int val) -> int { return a->i_ = val; });
+  /* End of A class method wrappers
+   **********************************************************************/
+
+  DEBUG_MSG("End of wrapper definitions");
+
+}

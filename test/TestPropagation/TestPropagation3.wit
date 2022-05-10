@@ -1,0 +1,12 @@
+module_name="TestPropagation3"
+
+propagation_mode = "methods"
+
+input = [ "B2.h" ]
+
+include_dirs = [ "." ]
+
+extra_headers = [  ]
+		  
+cxx-std = "c++17"
+

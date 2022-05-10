@@ -34,12 +34,14 @@ namespace codetree{
   
   class CodeTree{
   public:
-    CodeTree(): include_depth_(1), mainFileOnly_(true), override_base_(false),
+    CodeTree(): auto_veto_(true), include_depth_(1), mainFileOnly_(true), override_base_(false),
 		propagation_mode_(propagation_mode_t::types), export_mode_(export_mode_t::member_functions),
 		unit_(nullptr), index_(nullptr),
 		build_cmd_("echo Build command not defined."),  test_build_(false),
 		ibuild_(0), build_nskips_(0), build_nmax_(-1), build_every_(1),
-		visiting_a_templated_class_(false), accessor_generation_enabled_(false)
+		visiting_a_templated_class_(false), accessor_generation_enabled_(false),
+		import_getindex_(false),
+		import_setindex_(false)
     {
       opts_.push_back("-x");
       opts_.push_back("c++-header");
@@ -68,6 +70,9 @@ namespace codetree{
     int build_nmax_;
     int build_every_;
 
+    void auto_veto(bool val){ auto_veto_ = val; };
+    bool auto_veto() { return auto_veto_; }
+    
     bool accessor_generation_enabled() const { return accessor_generation_enabled_;}
 
     void accessor_generation_enabled(bool val) { accessor_generation_enabled_ = val;}
@@ -193,6 +198,10 @@ namespace codetree{
 
     enum class accessor_mode_t {none, getter, both };
 
+    /// Adds a type to the list of types/classes to wrap.
+    /// Returns the index of the added type in the vector types_
+    int add_type(const CXCursor& cursor, bool check = true);
+    
     bool in_veto_list(const std::string signature) const;
     
     //Check is a field or variable is veto status for accessor generation
@@ -213,8 +222,8 @@ namespace codetree{
     
     bool add_type_specialization(TypeRcd* pTypeRcd,  const CXType& type);
     
-    //Finds the definition of a type of the underlying type in case
-    //of a pointer or reference. In case of a templated type,
+    //Finds the definition of a type or the underlying type in case
+    //of a pointer or reference. For a templated type,
     //it retrieves also the types of the template parameters.
     std::tuple<bool, std::vector<CXCursor>>
     find_type_definition(const CXType& type) const;
@@ -240,7 +249,8 @@ namespace codetree{
     std::ostream& generate_type_cxx(std::ostream& o, const TypeRcd& cursor);
 
     std::ostream&
-    generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd, const CXCursor& cursor, bool getter_only);
+    generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
+			  const CXCursor& cursor, bool getter_only, int nindents);
 
     
     std::string type_name(CXCursor cursor) const{
@@ -263,7 +273,7 @@ namespace codetree{
     TypeRcd* find_class_of_method(const CXCursor& method);
 
     void
-    visit_class(CXCursor cursor, std::string type_name = std::string());
+    visit_class(CXCursor cursor);
 
     void
     visit_member_function(CXCursor cursor);
@@ -363,6 +373,11 @@ namespace codetree{
     std::set<std::string> export_blacklist_;
 
     bool accessor_generation_enabled_;
+
+    bool import_getindex_;
+    
+    bool import_setindex_;
+    
   };
 }
 #endif //CODETREE_H not defined

@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch> 
+// Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
 #include "FunctionWrapper.h"
 #include "utils.h"
 #include "libclang-ext.h"
@@ -7,6 +7,8 @@
 
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o) const{
+  int nargsmin =  method.min_args;
+  int nargsmax = clang_getNumArgTypes(method_type);
 
   indent(o << "\n", nindents)
     << "DEBUG_MSG(\"Adding wrapper for "
@@ -14,9 +16,11 @@ FunctionWrapper::gen_ctor(std::ostream& o) const{
     << " (\" __HERE__ \")\");""\n";
   indent(o, nindents) << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
 
-  indent(o, nindents) << varname << "." << (templated_ ? "template " : "")
-		      <<    "constructor<"
-		      << short_arg_list_cxx << ">();\n";
+  for(int nargs = nargsmin; nargs <= nargsmax; ++nargs){
+    indent(o, nindents) << varname << "." << (templated_ ? "template " : "")
+			<< "constructor<";
+    gen_arg_list(o, nargs, "", /*argtypes_only = */ true) << ">();\n";
+  }
   return o;
 }
 
@@ -59,7 +63,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
     }
     return o;
   }
-  
+
   auto const_type = [](CXType type){
     if(clang_isPODType(type)){
       bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
@@ -88,53 +92,56 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
   };
 
   auto gen_setters = !is_const && !getter_only;
-  
+
   if(kind == CXCursor_FieldDecl){
 
     const char* ref_types[] = { "&", "*" };
     const char* ops[] = { ".", "->"};
 
     bool non_const_getter = !is_const;
-        
+
     for(unsigned iref = 0; iref < 2; ++iref){
       auto ref = ref_types[iref];
       auto op = ops[iref];
 
       indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << " methods "
 	       << " to provide read access to the field " << target_name
-	       << " (\" __HERE__ \")\");\n"
+	       << " (\" __HERE__ \")\");\n";
+      indent(o, nindents)
 	       << "// defined in "     << clang_getCursorLocation(cursor)
-	       << "// signature to be used in the veto list: " << fully_qualified_name(cursor) << "\n";
-      
+	       << "// signature to use in the veto list: " << fully_qualified_name(cursor) << "\n";
+
       //tA.method("x", [](const ns::A&  a) -> const T& { return a.x; });
-      indent(o, 1) << varname << ".method(\"" << target_name_jl << "\", []("
-		   << "const " << classname << ref << " a) -> " << const_type(target_type)
-		   << " { return a" << op << target_name << "; });\n";
+      indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []("
+			  << "const " << classname << ref << " a) -> " << const_type(target_type)
+			  << " { return a" << op << target_name << "; });\n";
 
       if(non_const_getter){
 	if(verbose > 0){
 	  std::cout << "Info: Generating non-const getter for " << classname << "::" << target_name << "\n";
 	}
-	indent(o, 1) << varname << ".method(\"" << target_name_jl << "\", []("
-		     <<  classname << ref << " a) -> " << non_const_type_or_pod(target_type)
-		     << " { return a" << op << target_name << "; });\n";
+	indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []("
+			    <<  classname << ref << " a) -> " << non_const_type_or_pod(target_type)
+			    << " { return a" << op << target_name << "; });\n";
       }
     }
-    
-      
+
+
     if(gen_setters){
       for(unsigned iref = 0; iref < 2; ++iref){
 	auto ref = ref_types[iref];
 	auto op = ops[iref];
 	indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << "! methods "
 		 << " to provide write access to the field " << target_name
-		 << " (\" __HERE__ \")\");\n"
-		 << "// defined in "     << clang_getCursorLocation(cursor)
-		 << "// signature to be used in the veto list: " << fully_qualified_name(cursor) << "\n"
-		 << "// with ! suffix to veto the setter only\n";
-	
+		 << " (\" __HERE__ \")\");\n";
+	indent(o, nindents)
+	  << "// defined in "     << clang_getCursorLocation(cursor)
+	  << "// signature to use in the veto list: " << fully_qualified_name(cursor) << "\n";
+	indent(o, nindents)
+	  << "// with ! suffix to veto the setter only\n";
+
 	//tA.method("x!", [](ns::A&  a, int val) -> T&  { return a.x = val; });
-	indent(o, 1) << varname << ".method(\"" << target_name_jl << "!\", []("
+	indent(o, nindents) << varname << ".method(\"" << target_name_jl << "!\", []("
 		     << classname << ref << " a, " << const_type(target_type) << " val) -> "
 		     << non_const_type_or_pod(target_type)
 		     << " { return a" << op << target_name << " = val; });\n";
@@ -147,18 +154,18 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
 
     indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << fqn_jl << " methods "
 	     << " to provide access to the global variable " << fqn
-	     << " (\" __HERE__ \")\");\n"
-	     << "// defined in "     << clang_getCursorLocation(cursor) << "\n";
+	     << " (\" __HERE__ \")\");\n";
+    indent(o, nindents) << "// defined in "     << clang_getCursorLocation(cursor) << "\n";
 
     auto rtype = gen_setters ? non_const_type_or_pod(target_type) : const_type(target_type);
     //types.method("ns!A!x", []() -> T& { return ns::A::x; });
-    indent(o, 1) << "types.method(\"" << fqn_jl << "\", []()"
+    indent(o, nindents) << "types.method(\"" << fqn_jl << "\", []()"
 		 << "-> " << rtype
 		 << " { return " << fqn << "; });\n";
 
     if(gen_setters){
       //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
-      indent(o, 1) << "types.method(\"" << fqn_jl << "!\", []("
+      indent(o, nindents) << "types.method(\"" << fqn_jl << "!\", []("
 		   << const_type(target_type) << " val)"
 		   << "-> " << rtype
 		   << " { return " << fqn << " = val; });\n";
@@ -178,7 +185,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
 
   return o;
 }
-  
+
 std::ostream&
 FunctionWrapper::gen_setindex(std::ostream& o) const{
   indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding setindex! method "
@@ -186,13 +193,13 @@ FunctionWrapper::gen_setindex(std::ostream& o) const{
 	   << " (\" __HERE__ \")\");\n"
 	   << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
 
-  indent(o, 1) <<  varname << ".method(\"setindex!\",\n";
-  indent(o, 2) << "[](" << classname
-	       << "& a, " << short_arg_list_cxx << " i, "
-	       << std::regex_replace(fully_qualified_name(return_type_), std::regex("\\s*&\\s*$"), " const &")
+  indent(o, nindents) <<  varname << ".method(\"setindex!\",\n";
+  indent(o, nindents+1) << "[](" << classname
+			<< "& a, " << fix_template_type(short_arg_list_cxx) << " i, "
+			<< std::regex_replace(fix_template_type(fully_qualified_name(return_type_)), std::regex("\\s*&\\s*$"), " const &")
 	       << " val" << "){\n";
-  indent(o, 2) << "return a[i] = val;\n";
-  indent(o, 1) << "});\n";
+  indent(o, nindents+1) << "return a[i] = val;\n";
+  indent(o, nindents) << "});\n";
   return o;
 }
 
@@ -207,42 +214,38 @@ FunctionWrapper::gen_getindex(std::ostream& o,
   buf << "getindex(::" << classname << ", ::" << clang_getArgType(method_type, 0) << ")";
   std::string getindex_signature = buf.str();
   if(has(get_index_register, getindex_signature)) return o;
-  
+
   indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding getindex method to wrap "
 	   << signature()
 	   << " (\" __HERE__ \")\");\n";
   indent(o, nindents) << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
-  
+
   indent(o, nindents) <<  varname << ".method(\"getindex\",\n";
   indent(o, nindents + 1) << "[](" << classname
-			  << "& a, " << short_arg_list_cxx << " i){\n";
+			  << "& a, " << fix_template_type(short_arg_list_cxx) << " i){\n";
   indent(o, nindents + 1) << "return a[i];\n";
   indent(o, nindents) << "});\n";
-  
+
   get_index_register.push_back(getindex_signature);
 
   return o;
 }
 
 void FunctionWrapper::build_arg_lists(){
-  
+
   std::stringstream arg_list_buf_1;
   //  std::stringstream arg_list_buf_2;
   std::stringstream arg_list_buf_3;
   std::string sep;
-  
+
   rvalueref_arg = false;
   for(int i = 0; i < clang_getNumArgTypes(method_type); ++i){
     auto argtype = clang_getArgType(method_type, i);
     auto argtype_fqn = fully_qualified_name(argtype);
-    
+
     inaccessible_type = inaccessible_type || !isAccessible(argtype);
     if(argtype.kind == CXType_RValueReference) rvalueref_arg = true;
     arg_list_buf_1 << sep <<  argtype_fqn;
-    //void (*) -> void(*argN)
-    //    std::regex e("(.*\\(\\*)(\\).*)");
-    //    std::cmatch cm;
-    //    arg_list_buf_2 << sep <<  arg_decl(i);
     arg_list_buf_3 << sep <<  "::" << jl_type_name(argtype_fqn);
     sep = ", ";
   }
@@ -254,9 +257,9 @@ void FunctionWrapper::build_arg_lists(){
 // Generates a wrapper for a c++ global or class member function.
 // Uses a static cast to select the proper c++ functions
 // if the function is overloaded.
-// Do not generates wrapper to call the function with
-// default parameter values. use gen_func_with_lambdas
-// for this.
+// This method does not generate wrappers to call functions
+// with default parameter values. Use gen_func_with_lambdas
+// to generate their wrapper.
 std::ostream&
 FunctionWrapper::gen_func_with_cast(std::ostream& o){
   std::string msg1;
@@ -269,17 +272,9 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
     msg1 = "method ";
     msg2 = std::string("of class ") + classname;
   }
-  
-  indent(o << "\n", nindents)
-    << "DEBUG_MSG(\"Adding wrapper for "
-    << signature()
-    << " (\" __HERE__ \")\");\n";
-  indent(o, nindents) << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
- 
 
-  
   indent(o, nindents) << varname << ".method(";
-  
+
   if(name_jl_.size() > 0){
     //note: operator() is a special case
     //      and requires to omit the method
@@ -287,19 +282,28 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
     o <<  "\"" << name_jl_
       << "\", ";
   }
-  
+
   o << "static_cast<"
-    << fully_qualified_name(return_type_) << " (" << (is_static ? "" : class_prefix) << "*)"
-    << "(" << short_arg_list_cxx << (is_variadic ? ",..." : "" ) << ") " << cv
+    << fix_template_type(fully_qualified_name(return_type_)) << " (" << (is_static ? "" : class_prefix) << "*)"
+    << "(" << fix_template_type(short_arg_list_cxx) << (is_variadic ? ",..." : "" ) << ") " << cv
     << ">(&" << class_prefix << name_cxx << "));\n";
 
   generated_jl_functions_.insert(name_jl_);
-  
+
   wrapper_generated_ = true;
-  
+
   return o;
 }
-  
+
+std::ostream&
+FunctionWrapper::gen_arg_list(std::ostream& o, int nargs, std::string sep, bool argtype_only) const{
+  for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
+    o << sep << fix_template_type(arg_decl(iarg, argtype_only));
+    sep = ", ";
+  }
+  return o;
+}
+
 
 // Generates wrappers for a c++ global or class member function.
 // Uses a lambda function indirection to handle
@@ -332,19 +336,14 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
       std::string sep;
       if(!is_static && classname.size() > 0){
 	o << classname << cv << ref_types[itype] << " a";
-      sep = ", ";
-      }
-      for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
-	//      const auto& argtype = clang_getArgType(method_type, iarg);
-	//o << sep << argtype << " arg" << iarg;
-	o << sep << arg_decl(iarg);
 	sep = ", ";
       }
-      o << ")->" << fully_qualified_name(return_type_ ) << "{ ";
+      gen_arg_list(o, nargs, sep);
+      o << ")->" << fix_template_type(fully_qualified_name(return_type_ )) << "{ ";
       if(clang_getCursorResultType(method.cursor).kind != CXType_Void){
 	o << "return ";
       }
-      
+
       if(is_static) o << classname << "::";
       if(!is_static && classname.size() > 0) o << "a" << accessors[itype];
       o << name_cxx << "(";
@@ -362,12 +361,14 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
 }
 
 std::string
-FunctionWrapper::arg_decl(int iarg) const{
+FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
   const auto& argtype = clang_getArgType(method_type, iarg);
   const auto argtypename = fully_qualified_name(argtype); //str(clang_getTypeSpelling(argtype));
 
+  if(argtypes_only) return argtypename;
+
   //type pattern of function pointer or function pointer array
-  //to split parts before and after the * 
+  //to split parts before and after the *
   std::regex re_func("(.*\\(\\s*\\*\\s*)(\\).*)");
 
   //pattern of c-array type
@@ -395,7 +396,8 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
   varname(varname),
   classname(classname),
   nindents(nindents),
-  all_lambda(true),
+  all_lambda(false),
+  pTypeRcd(pTypeRcd),
   rvalueref_arg(false),
   templated_(templated),
   wrapper_generated_(false){
@@ -409,10 +411,10 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
 //	    << "\n"
 //	    << "\tmethod.cursor: " <<  method.cursor << "\n"
 //	    << "\tpTypeRcd->cursor: " << pTypeRcd->cursor << "\n"
-//    	    << "\tpTypeRcd->type_name: " << pTypeRcd->type_name << "\n"
+//	    << "\tpTypeRcd->type_name: " << pTypeRcd->type_name << "\n"
 //	    << "\tfully_qualified_name(pTypeRcd->cursor): " << fully_qualified_name(pTypeRcd->cursor) << "\n"
 //	    << "\tclassname " << classname << "\n";
-  
+
   if(pTypeRcd && classname.size() == 0){
     this->classname = pTypeRcd->type_name;
   }
@@ -430,7 +432,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
       this->varname = "types";
     }
   }
-  
+
   is_static = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;
   return_type_ = clang_getResultType(method_type);
   inaccessible_type = !isAccessible(return_type_);
@@ -442,7 +444,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     name_cxx = fully_qualified_name(cursor);
   }
 
-  std::string name_jl_suffix = jl_type_name(name_cxx);    
+  std::string name_jl_suffix = jl_type_name(name_cxx);
 
   static std::regex opregex("^operator(.{1,2})$");
   std::cmatch m;
@@ -472,30 +474,30 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     {"|=", "bwor!"},
     {"&=", "bwand!"},
   };
-  
+
   for(const auto& m: op_map){
     if(name_jl_suffix == m.first){
       name_jl_suffix = m.second;
       override_base_ = false;
     }
-  }  
-  
-  
+  }
+
+
   setindex_ = getindex_ = false;
-  
+
   if(name_cxx == "operator[]"){
     getindex_ = true;
-    
+
     if(return_type_.kind == CXType_LValueReference
        && !(clang_isConstQualifiedType(clang_getPointeeType(return_type_)))){
       setindex_ = true;
     }
    }
-  
+
   if(name_cxx == "operator new" || name_cxx == "operator delete"
      || name_cxx == "operator new[]" || name_cxx == "operator delete[]"
      ) is_static = true;
-  
+
 
   if(is_static){
     name_jl_ = jl_type_name(class_prefix) + name_jl_suffix;
@@ -565,12 +567,12 @@ std::ostream&
 FunctionWrapper::generate(std::ostream& o,
 			  std::vector<std::string>& get_index_register){
 
-  if(!validate()) return o; 
-  
+  if(!validate()) return o;
+
   if(setindex_ || getindex_){
     if(setindex_) gen_setindex(o);
     if(getindex_) gen_getindex(o, get_index_register);
-    
+
     return o;
   }
 
@@ -581,18 +583,18 @@ FunctionWrapper::generate(std::ostream& o,
     return o;
   }
 
-  
-  indent(o,1) << "// " << signature() << "\n";
-  indent(o << "\n", nindents)
+  indent(o, nindents)
     << "DEBUG_MSG(\"Adding wrapper for "
     << signature()
     << " (\" __HERE__ \")\");""\n";
+  indent(o,nindents) << "// signature to use in the veto list: " << signature() << "\n";
+
   indent(o, nindents) << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
 
   if(!all_lambda) gen_func_with_cast(o);
 
   gen_func_with_lambdas(o);
-  
+
   return o;
 }
 
@@ -607,3 +609,21 @@ bool FunctionWrapper::isAccessible(CXType type) const{
   return !(access == CX_CXXPrivate || access == CX_CXXProtected);
 }
 
+//FIXME: this method handle the case the method of a templated class
+//use the class as an argument or return type.
+//Need to handle more generally cases of dependency on the class template parameters
+std::string FunctionWrapper::fix_template_type(std::string type_name) const{
+
+  if(!templated_ || !pTypeRcd) return type_name;
+
+  std::string genuine_classname = pTypeRcd->type_name;
+
+  std::regex r(std::string("(?=^|::)") + genuine_classname + "(?=$|::)");
+
+  std::string fixed = std::regex_replace(type_name, r, "WrappedType");
+  if(fixed != type_name){
+    fixed = "typename " + fixed;
+  }
+
+  return fixed;
+}

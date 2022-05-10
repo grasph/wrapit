@@ -55,9 +55,16 @@ public:
 
   std::set<std::string> generated_jl_functions(){ return generated_jl_functions_; }
   
+  std::string fix_template_type(std::string type_name) const;
+
+  bool defines_getindex() const { return getindex_; }
+
+  bool defines_setindex() const { return setindex_; }
   
 protected:
 
+  std::ostream& gen_arg_list(std::ostream& o, int nargs, std::string sep, bool argtypes_only = false) const;
+  
   std::ostream&
   gen_func_with_default_values(std::ostream& o);
 
@@ -103,8 +110,7 @@ protected:
 
   bool isAccessible(CXType type) const;
   
-private:
-  std::string arg_decl(int iarg) const;
+  std::string arg_decl(int iarg, bool argtype_only) const;
 
   
 private:

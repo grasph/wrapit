@@ -1,0 +1,8 @@
+module_name = "TestTemplate2"
+
+input = [ "A.h" ]
+		  
+include_dirs = [ "." ]
+
+cxx-std = "c++17"
+

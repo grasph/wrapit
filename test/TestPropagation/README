@@ -1,0 +1,17 @@
+Test the propagation_mode option.
+
+Test sample: 
+
+  - class A has one public member function f_A()
+  - class B has one public member function f_B() using class A as the type of its argument
+
+   - class A is defined in A.h header file
+   - class B is defined in B1.h and B2.h header files used for different test. B1 use a forward declaration of A, while B2 includes the definition of A.
+
+Expected behaviour:
+
+  - Test 1: mode "types", forward declaration with A.h included in the extra_headers option list:   
+^ Test # ^ mode    ^ fwd declaration/definition ^ resulting wrapped function list ^
+|  1     | types   |    fwd                     | f_B                             |
+|  2     | types   |    def                     | f_B                             |
+|  3     | methods |    fwd                     | f_B, f_A                        |

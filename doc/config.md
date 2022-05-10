@@ -108,6 +108,10 @@ clang_features      = [ ]
 clang_opts      = [ ]
 ```
 
+# Discard methods with no wrapper for one type of its argument type
+# or return value
+auto_veto = true
+
 ### Debugging mode options
 
 ```

@@ -142,6 +142,8 @@ int main(int argc, char* argv[]){
 
     auto veto_list = toml_config["veto_list"].value_or(""sv);
 
+    auto auto_veto = toml_config["auto_veto"].value_or(true);
+
     auto propagation_mode  = toml_config["propagation_mode"].value_or("types"sv);
 
     auto build_cmd  = toml_config["build_cmd"].value_or("echo No build command defined"sv);
@@ -247,6 +249,7 @@ int main(int argc, char* argv[]){
 
     tree.add_std_option(cxx_std);
 
+    tree.auto_veto(auto_veto);
     tree.enableTestBuild(test_build);
     tree.build_nskips(build_nskips);
     tree.build_nmax(build_nmax);

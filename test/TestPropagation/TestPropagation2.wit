@@ -1,0 +1,14 @@
+module_name="TestPropagation2"
+
+propagation_mode = "types"
+
+input = [ "B2.h" ]
+
+include_dirs = [ "." ]
+
+extra_headers = [  ]
+
+cxx-std = "c++17"
+
+macro_definitions = [ "" ]
+

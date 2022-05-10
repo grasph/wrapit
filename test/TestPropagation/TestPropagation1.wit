@@ -1,0 +1,11 @@
+module_name="TestPropagation1"
+
+propagation_mode = "types"
+
+input = [ "B1.h" ]
+
+include_dirs = [ "." ]
+
+extra_headers = [ "A.h" ]
+
+cxx-std = "c++17"

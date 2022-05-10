@@ -13,18 +13,18 @@ CPPFLAGS += -MMD
 
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
-CC_FILES=jlHello.cxx
+MODULE_NAME=TestPropagation
 
-.PHONY: all clean run_demo
+.PHONY: all clean
+.PRECIOUS: jlTestPropagation1.cxx jlTestPropagation2.cxx jlTestPropagation3.cxx
 
-.PRECIOUS: $(CC_FILES)
+PRODUCTS=jlTestPropagation1.so jlTestPropagation2.so jlTestPropagation3.so jlTestPropagation1.cxx jlTestPropagation2.cxx jlTestPropagation3.cxx jlTestPropagation1.h jlTestPropagation2.h jlTestPropagation3.h  TestPropagation1.jl  TestPropagation2.jl  TestPropagation3.jl
 
-PRODUCTS=jlHello.so jlHello.cxx jlHello.h Hello.jl
 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) jlHello.d jlHello.o jlHello-report.txt
+	-$(RM) $(PRODUCTS) jlTestPropagation1.d jlTestPropagation2.d jlTestPropagation3.d
 
 jl%.cxx: %.wit
 	wrapit --force $<
@@ -32,14 +32,14 @@ jl%.cxx: %.wit
 %.o: %.cxx
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-
 jl%.so: jl%.o
-	$(LINK.o) -o $@ --shared -fPIC $< $(ROOT_LIBS)
+	$(LINK.o) -o $@ --shared -fPIC $<
 
 echo_%:
-	@echo $*=$($*)
+	 @echo $*=$($*)
 
-run_demo: all
-	. ./setup.sh && julia demo_Hello.jl
+test:
+	$(MAKE) all && . ./setup.sh && { julia runTestPropagation1.jl; julia runTestPropagation2.jl; julia runTestPropagation3.jl; }
+
 
 -include $(addsuffix .d, $(basename $(CC_FILES)))

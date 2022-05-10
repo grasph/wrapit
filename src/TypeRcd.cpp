@@ -15,3 +15,31 @@ TypeRcd::TypeRcd(const CXCursor& cursor, const std::string& type_name)
   }
   assert(this->type_name.size() > 0);
 }
+
+std::string
+TypeRcd::name(int icombi) const{
+  std::stringstream buf;
+  buf << type_name;
+  if(icombi >= 0){
+    buf << "<";
+    const char* sep = "";
+    for(const auto& ptype: template_parameter_combinations[icombi]){
+      buf << sep << ptype;
+      sep = ", ";
+    }
+    buf << ">";
+  }
+  return buf.str();
+}
+
+std::vector<std::string> TypeRcd::names() const{
+  if(template_parameters.size() == 0){
+    return std::vector<std::string>(1, type_name);
+  } else{
+    std::vector<std::string> r;
+    for(unsigned i = 0; i < template_parameter_combinations.size(); ++i){
+      r.emplace_back(name(i));
+    }
+    return r;
+  }
+}

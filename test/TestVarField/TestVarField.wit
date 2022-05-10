@@ -1,0 +1,7 @@
+module_name         = "TestVarField"
+
+input               = [ "A.h" ] 
+
+include_dirs        = [ "." ]
+
+cxx-std             = "c++17"

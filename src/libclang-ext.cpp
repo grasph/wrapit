@@ -9,6 +9,7 @@
 #include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclTemplate.h"
+//#include "clang/Frontend/ASTUnit.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "utils.h"
@@ -24,9 +25,36 @@ int hasDefaultConstructor(CXCursor cursor){
   return -1;
 }
 
+
+//struct CXTranslationUnitImpl {
+//  void* CIdx;
+//  clang::ASTUnit *TheASTUnit;
+//  void *StringPool;
+//  void *Diagnostics;
+//  void *OverridenCursorsPool;
+//  void *CommentToXML;
+//  unsigned ParsingOptions;
+//  std::vector<std::string> Arguments;
+//};
+
 std::string fully_qualified_name(CXCursor cursor) {
  if(clang_isDeclaration(cursor.kind)){
    auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
+
+//   auto tu = static_cast<const CXTranslationUnitImpl*>(cursor.data[2])->TheASTUnit;
+//   
+//   std::cerr << "==> typeid(*decl): " << typeid(*decl).name() << "\n";
+//   auto tmp = dynamic_cast<const clang::TypedefDecl*>(decl);
+//   if(tmp){
+//     std::cerr << "==> !!!!\n";
+//     auto tpsi = tmp->getTypeSourceInfo()->getType();
+//     std::cerr << "type source info: " << tpsi.getAsString()
+//	       << ", type: " << typeid(tpsi).name()
+//	       << ", type: " << typeid(*tpsi.getTypePtr()).name()
+//	       << ", iPOD: " << tpsi.isCXX11PODType(tu->getASTContext())
+//	       << "\n";
+//   }
+   
    auto named_decl =  dynamic_cast<const clang::NamedDecl*>(decl);
    if(named_decl){
      std::string buffer_;
@@ -95,7 +123,6 @@ std::string fully_qualified_name(CXType t){
   // Then we substitute the local name of the pointee type
   // with the fully qualified name in the reference/pointer type
   // spelling.
-
   auto name = str(clang_getTypeSpelling(t));
   auto base = base_type_(t);
 
@@ -139,7 +166,10 @@ std::string fully_qualified_name(CXType t){
     //FQN of tmpl that will be used to substitute back the tmpl spelling in name:
     base_fqn = fully_qualified_name(tmpl);
   } else  if(base.kind > CXType_LastBuiltin){
-    base_fqn = fully_qualified_name(clang_getTypeDeclaration(base));
+    const auto& type_decl = clang_getTypeDeclaration(base);
+    if(type_decl.kind != CXCursor_NoDeclFound){
+      base_fqn = fully_qualified_name(clang_getTypeDeclaration(base));
+    }
     base_local_name = remove_cv(str(clang_getTypeSpelling(base)));
   }
 

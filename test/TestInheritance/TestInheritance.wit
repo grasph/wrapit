@@ -1,0 +1,8 @@
+module_name         = "TestInheritance"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h", "D.h" ] 
+
+cxx-std             = "c++17"
+

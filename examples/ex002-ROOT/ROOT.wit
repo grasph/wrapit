@@ -2,11 +2,10 @@ module_name         = "ROOT"
 export_jl_fname     = "ROOT-export.jl"
 module_jl_fname     = "ROOT-generated.jl"
 
-extra_headers       = [ "TVectorT.h" ] #"stddef.h", 
+include_dirs        = [ "%ROOT_INC_DIR%" ]
 
-include_dirs        = [ "%ROOT_INC_DIR%", "." ]
-
-input               = [ "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",    "TFile.h", "TNamed.h", "TObject.h" ] 
+input               = [ "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",  "TFile.h", "TNamed.h", "TObject.h", "TGraph.h", "TF1.h" ] 
+extra_headers       = [ "TVectorT.h" ]
 
 veto_list           = "jlROOT-veto.h"
 

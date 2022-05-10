@@ -10,7 +10,7 @@ In this example, we will use ROOT library functionalities from Julia via an inte
 
 We will create a histogram, fill it with random numbers drawn according to a normal distribution, fit the histogram, plot the result --shown in the image below--, display it on screen and save the result  in a ROOT-format file. All of these actions will be done using the ROOT library.
 
-![Plot produced with the ROOT C++ framework accessed form Julia](demo_ROOT.png)
+![Plot produced with the ROOT C++ framework accessed form Julia](demo_ROOT-ref.png)
 
 ## Prerequisite
 

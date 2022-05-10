@@ -1,0 +1,8 @@
+module_name         = "TestCtorDefVal"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ] 
+
+cxx-std             = "c++17"
+

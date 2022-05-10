@@ -13,18 +13,18 @@ CPPFLAGS += -MMD
 
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
-CC_FILES=jlHello.cxx
+MODULE_NAME=TestVarField
 
-.PHONY: all clean run_demo
+.PHONY: all clean test
 
-.PRECIOUS: $(CC_FILES)
+.PRECIOUS: $(PRODUCT)
 
-PRODUCTS=jlHello.so jlHello.cxx jlHello.h Hello.jl
+PRODUCTS=jl$(MODULE_NAME).so jl$(MODULE_NAME).cxx jl$(MODULE_NAME).h $(MODULE_NAME).jl
 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) jlHello.d jlHello.o jlHello-report.txt
+	-$(RM) $(PRODUCTS) jl$(MODULE_NAME).d jl$(MODULE_NAME).o jl$(MODULE_NAME)-report.txt A.o A.d
 
 jl%.cxx: %.wit
 	wrapit --force $<
@@ -33,13 +33,15 @@ jl%.cxx: %.wit
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
 
-jl%.so: jl%.o
-	$(LINK.o) -o $@ --shared -fPIC $< $(ROOT_LIBS)
+jl%.so: jl%.o A.o
+	$(LINK.o) -o $@ --shared -fPIC $^
+	touch $(MODULE_NAME).jl
 
 echo_%:
-	@echo $*=$($*)
+	 @echo $*=$($*)
 
-run_demo: all
-	. ./setup.sh && julia demo_Hello.jl
+test:
+	$(MAKE) all && . ./setup.sh && julia run$(MODULE_NAME).jl
+
 
 -include $(addsuffix .d, $(basename $(CC_FILES)))

@@ -23,6 +23,7 @@ CC_FILES=jlROOT.cxx
 .PRECIOUS: $(CC_FILES)
 
 PRODUCTS=jlROOT.so jlROOT.cxx jlROOT.h ROOT-export.jl ROOT-generated.jl ROOT-generated.wit
+
 all: $(PRODUCTS)
 
 clean:
@@ -39,18 +40,29 @@ ifeq ($(ROOT_LIBS),)
 endif
 
 run_demo: all
-	  LD_LIBRARY_PATH=. JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i TDemo1.jl
+	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_ROOT.jl
 
-jlROOT.cxx: ROOT-generated.wit jlROOT-veto.h Extra.h
+run_demo2: all
+	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_TGraph.jl
+
+test: all
+	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_ROOT.jl
+	cmp demo_ROOT.png demo_ROOT-ref.png
+	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_TGraph.jl
+	cmp demo_TGraph.png demo_TGraph-ref.png
+
+jlROOT.cxx: ROOT-generated.wit jlROOT-veto.h
 	wrapit --force $<
 
 %.o: %.cxx
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-jl%.so: jl%.o check_root
+jl%.so: jl%.o
+	$(MAKE) check_root
 	$(LINK.o) -o $@ --shared -fPIC $< $(ROOT_LIBS)
 
 echo_%:
 	@echo "$* = $(subst ",\",$($*))"
 
 -include $(addsuffix .d, $(basename $(CC_FILES)))
+
