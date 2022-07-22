@@ -1,6 +1,4 @@
 module_name         = "ROOT"
-export_jl_fname     = "ROOT-export.jl"
-module_jl_fname     = "ROOT-generated.jl"
 
 include_dirs        = [ "%ROOT_INC_DIR%" ]
 

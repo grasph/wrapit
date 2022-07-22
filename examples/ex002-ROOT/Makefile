@@ -22,8 +22,7 @@ CC_FILES=jlROOT.cxx
 
 .PRECIOUS: $(CC_FILES)
 
-PRODUCTS=jlROOT.so jlROOT.cxx jlROOT.h ROOT-export.jl ROOT-generated.jl ROOT-generated.wit
-
+PRODUCTS=jlROOT.so jlROOT.cxx jlROOT.h ROOT.jl ROOT-generated.wit
 all: $(PRODUCTS)
 
 clean:
