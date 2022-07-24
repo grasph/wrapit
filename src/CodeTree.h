@@ -119,9 +119,6 @@ namespace codetree{
 
     std::ostream& generate_cxx(std::ostream&);
 
-    std::ostream& generate_default_ctor_cxx(std::ostream&o, const TypeRcd& type);
-
-    
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
     
