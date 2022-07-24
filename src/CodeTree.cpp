@@ -376,22 +376,6 @@ CodeTree::generate_cxx(std::ostream& o){
     std::regex_match(t.type_name.c_str(), cm, re);
     std::string ctor(cm[1]);
 
-    if(has_an_implicit_default_ctor(t.cursor)
-       && !clang_CXXRecord_isAbstract(t.cursor)
-       && !is_type_vetoed(t.type_name + "::" + ctor + "()")
-       ){
-      if(verbose > 0){
-	std::cerr << "Generating wrapper for default constructor of " << t.cursor << "\n";
-      }
-      //FIXME handling of templated classes
-      if(clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
-	gen_comment_header(t);
-	++nwraps_.methods;
-	generate_default_ctor_cxx(o, t);
-      }
-      if(test_build_) test_build(o);
-    }
-
     //FIXME: add generation of accessor for templated classes
     if(/*t.template_parameter_combinations.size() == 0
 	 &&*/ clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
@@ -600,20 +584,6 @@ CodeTree::generate_method_cxx(std::ostream& o, const MethodRcd& method){
   return method_cxx_decl(o, method);
 }
 
-std::ostream&
-CodeTree::generate_default_ctor_cxx(std::ostream&o, const TypeRcd& type){
-  nwraps_.methods += 1;
-
-  indent(o << "\n", 1)
-    << "DEBUG_MSG(\"Adding wrapper for default constructor of class "
-    << type.type_name
-    << " (\" __HERE__ \")\");\n";
-  indent(o, 1) << "// defined in "   << clang_getCursorLocation(type.cursor) << "\n";
-
-  indent(o, 1) << "t" << type.id << ".constructor<>();\n\n";
-
-  return o;
-}
 
 bool CodeTree::has_an_implicit_default_ctor(const CXCursor& def) const{
   if(verbose > 3) std::cerr << __FUNCTION__ << "(" << def << ")\n";
