@@ -119,7 +119,7 @@ namespace codetree{
 
     std::ostream& generate_cxx(std::ostream&);
 
-    std::ostream& generate_default_ctor_cxx(std::ostream&o, const TypeRcd& type) const;
+    std::ostream& generate_default_ctor_cxx(std::ostream&o, const TypeRcd& type);
 
     
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
@@ -339,6 +339,8 @@ namespace codetree{
 
     int get_min_required_args(CXCursor cursor) const;
 
+    std::ostream& show_stats(std::ostream& o) const;
+    
   private:
     bool auto_veto_;
     
@@ -377,6 +379,19 @@ namespace codetree{
     bool import_getindex_;
     
     bool import_setindex_;
+
+
+    struct {
+      unsigned enums = 0;
+      unsigned types = 0;
+      unsigned type_templates = 0;
+      unsigned methods = 0;
+      unsigned field_getters = 0;
+      unsigned field_setters = 0;
+      unsigned global_var_getters = 0;
+      unsigned global_var_setters = 0;
+      unsigned global_funcs = 0;
+    } nwraps_;
     
   };
 }

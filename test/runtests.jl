@@ -1,3 +1,4 @@
+#!/usr/bin/env julia
 using Test
 tests = ["TestCtorDefVal"  "TestInheritance"  "TestPropagation"  "TestTemplate1"  "TestTemplate2"  "TestVarField"]
 

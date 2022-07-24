@@ -44,14 +44,14 @@ public:
   /// This is the case for operators.
   bool override_base(){ return override_base_;}
 
-  bool is_global() { return is_static || classname.size() == 0;}
+  bool is_global() { return is_static_ || classname.size() == 0;}
 
-  std::string name_jl() const {return name_jl_; }
-
-  bool wrapper_generated() const { return wrapper_generated_; }
+  bool is_static() { return is_static_; }
+  
+  std::string name_jl() const { return name_jl_; }
 
   std::ostream&
-  gen_accessors(std::ostream& o, bool getter_only = false);
+  gen_accessors(std::ostream& o, bool getter_only = false, int* ngens = nullptr);
 
   std::set<std::string> generated_jl_functions(){ return generated_jl_functions_; }
   
@@ -60,6 +60,8 @@ public:
   bool defines_getindex() const { return getindex_; }
 
   bool defines_setindex() const { return setindex_; }
+
+  bool is_ctor() const { return is_ctor_;}
   
 protected:
 
@@ -70,7 +72,7 @@ protected:
 
   
   std::ostream&
-  gen_ctor(std::ostream& o) const;
+  gen_ctor(std::ostream& o);
   
   std::ostream&
   gen_setindex(std::ostream& o) const;
@@ -133,7 +135,7 @@ private:
   std::string name_jl_;
   std::set<std::string> generated_jl_functions_;
   
-  bool is_static;
+  bool is_static_;
   bool inaccessible_type;
   bool rvalueref_arg;
   bool allArgTypesAccessible;
@@ -141,7 +143,7 @@ private:
   bool setindex_;
   bool getindex_;
 
-  bool is_ctor;
+  bool is_ctor_;
   bool is_abstract_;
   bool override_base_;
 
@@ -152,7 +154,6 @@ private:
   std::string short_arg_list_jl;
 
   bool templated_;
-  bool wrapper_generated_;
 };
 
 #endif //FUNCTIONWRAPPER_H not defined
