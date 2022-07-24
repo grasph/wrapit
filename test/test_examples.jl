@@ -1,3 +1,4 @@
+#!/usr/bin/env julia
 using Test
 
 ex_basedir = normpath(joinpath(pwd(), "../examples"))
@@ -5,7 +6,8 @@ ex_basedir = normpath(joinpath(pwd(), "../examples"))
 @testset "ex001-HelloWorld" begin
 ex_dir = joinpath(ex_basedir, "ex001-HelloWorld")
 cd(ex_dir)
-@test readchomp(`/bin/sh -c '. ./setup.sh && julia demo_Hello.jl'`) == "Hello World!"
+run(`make clean all`)
+    @test readchomp(`/bin/sh -c '. ./setup.sh && julia demo_Hello.jl'`) == "Hello World!"
 end
 
 run_exroot = false

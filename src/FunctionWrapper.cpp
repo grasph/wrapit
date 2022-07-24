@@ -6,7 +6,7 @@
 #include <regex>
 
 std::ostream&
-FunctionWrapper::gen_ctor(std::ostream& o) const{
+FunctionWrapper::gen_ctor(std::ostream& o){
   int nargsmin =  method.min_args;
   int nargsmax = clang_getNumArgTypes(method_type);
 
@@ -21,11 +21,12 @@ FunctionWrapper::gen_ctor(std::ostream& o) const{
 			<< "constructor<";
     gen_arg_list(o, nargs, "", /*argtypes_only = */ true) << ">();\n";
   }
+  generated_jl_functions_.insert(name_jl_);
   return o;
 }
 
 std::ostream&
-FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
+FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
   //Code to generate for non-static field ns::A::x of type T
   // T& and const T& replaced by T if T is a POD.
   //
@@ -93,6 +94,8 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
 
   auto gen_setters = !is_const && !getter_only;
 
+  bool wrapper_generated = false;
+    
   if(kind == CXCursor_FieldDecl){
 
     const char* ref_types[] = { "&", "*" };
@@ -100,17 +103,17 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
 
     bool non_const_getter = !is_const;
 
+    indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << " methods "
+	     << " to provide read access to the field " << target_name
+	     << " (\" __HERE__ \")\");\n";
+    indent(o, nindents) << "// defined in " << clang_getCursorLocation(cursor) << "\n";
+    indent(o, nindents) << "// signature to use in the veto list: " << fully_qualified_name(cursor) << "\n";
+
+
     for(unsigned iref = 0; iref < 2; ++iref){
       auto ref = ref_types[iref];
       auto op = ops[iref];
-
-      indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << " methods "
-	       << " to provide read access to the field " << target_name
-	       << " (\" __HERE__ \")\");\n";
-      indent(o, nindents)
-	       << "// defined in "     << clang_getCursorLocation(cursor)
-	       << "// signature to use in the veto list: " << fully_qualified_name(cursor) << "\n";
-
+      
       //tA.method("x", [](const ns::A&  a) -> const T& { return a.x; });
       indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []("
 			  << "const " << classname << ref << " a) -> " << const_type(target_type)
@@ -128,18 +131,18 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
 
 
     if(gen_setters){
+      indent(o, nindents)
+	<< "// defined in "     << clang_getCursorLocation(cursor) << "\n";
+      indent(o, nindents) << "// signature to use in the veto list: " << fully_qualified_name(cursor) << "\n";
+      indent(o, nindents)
+	<< "// with ! suffix to veto the setter only\n";
+
       for(unsigned iref = 0; iref < 2; ++iref){
 	auto ref = ref_types[iref];
 	auto op = ops[iref];
 	indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << "! methods "
-		 << " to provide write access to the field " << target_name
+		 << "to provide write access to the field " << target_name
 		 << " (\" __HERE__ \")\");\n";
-	indent(o, nindents)
-	  << "// defined in "     << clang_getCursorLocation(cursor)
-	  << "// signature to use in the veto list: " << fully_qualified_name(cursor) << "\n";
-	indent(o, nindents)
-	  << "// with ! suffix to veto the setter only\n";
-
 	//tA.method("x!", [](ns::A&  a, int val) -> T&  { return a.x = val; });
 	indent(o, nindents) << varname << ".method(\"" << target_name_jl << "!\", []("
 		     << classname << ref << " a, " << const_type(target_type) << " val) -> "
@@ -147,13 +150,13 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
 		     << " { return a" << op << target_name << " = val; });\n";
       }
     }
-    wrapper_generated_ = true;
+    wrapper_generated = true;
   } else if(kind == CXCursor_VarDecl){
     auto fqn = fully_qualified_name(cursor);
     auto fqn_jl = jl_type_name(fqn);
 
     indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << fqn_jl << " methods "
-	     << " to provide access to the global variable " << fqn
+	     << "to provide access to the global variable " << fqn
 	     << " (\" __HERE__ \")\");\n";
     indent(o, nindents) << "// defined in "     << clang_getCursorLocation(cursor) << "\n";
 
@@ -170,16 +173,18 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only) {
 		   << "-> " << rtype
 		   << " { return " << fqn << " = val; });\n";
     }
-    wrapper_generated_ = true;
+    wrapper_generated = true;
   } else{
     std::cerr << "Bug found at " << __FILE__ << ":" << __LINE__ << "\n";
   }
 
-  if(wrapper_generated_){
+  if(wrapper_generated){
+    if(ngens) *ngens += 1;
     generated_jl_functions_.insert(target_name_jl);
   }
 
-  if(wrapper_generated_ && gen_setters){
+  if(wrapper_generated && gen_setters){
+    if(ngens) *ngens += 1;
     generated_jl_functions_.insert(target_name_jl + "!");
   }
 
@@ -265,7 +270,7 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
   std::string msg1;
   std::string msg2;
 
-  if(is_static){
+  if(is_static_){
     msg1 = "global function ";
     msg2 = "";
   } else{
@@ -284,13 +289,11 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
   }
 
   o << "static_cast<"
-    << fix_template_type(fully_qualified_name(return_type_)) << " (" << (is_static ? "" : class_prefix) << "*)"
+    << fix_template_type(fully_qualified_name(return_type_)) << " (" << (is_static_ ? "" : class_prefix) << "*)"
     << "(" << fix_template_type(short_arg_list_cxx) << (is_variadic ? ",..." : "" ) << ") " << cv
     << ">(&" << class_prefix << name_cxx << "));\n";
 
   generated_jl_functions_.insert(name_jl_);
-
-  wrapper_generated_ = true;
 
   return o;
 }
@@ -328,13 +331,13 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
   const char* ref_types[] = { "&", "*" };
   const char* accessors[] = { ".", "->"};
 
-  int ntypes = (is_static || classname.size() == 0) ? 1 : 2;
+  int ntypes = (is_static_ || classname.size() == 0) ? 1 : 2;
 
   for(int itype = 0; itype < ntypes; ++itype){
     for(int nargs = nargsmin; nargs <= nargsmax; ++nargs){
       indent(o, nindents) <<  varname << ".method(\"" << name_jl_<<  "\", [](";
       std::string sep;
-      if(!is_static && classname.size() > 0){
+      if(!is_static_ && classname.size() > 0){
 	o << classname << cv << ref_types[itype] << " a";
 	sep = ", ";
       }
@@ -344,8 +347,8 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
 	o << "return ";
       }
 
-      if(is_static) o << classname << "::";
-      if(!is_static && classname.size() > 0) o << "a" << accessors[itype];
+      if(is_static_) o << classname << "::";
+      if(!is_static_ && classname.size() > 0) o << "a" << accessors[itype];
       o << name_cxx << "(";
       sep = "";
       for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
@@ -356,7 +359,6 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
     }
   }
   generated_jl_functions_.insert(name_jl_);
-  wrapper_generated_ = true;
   return o;
 }
 
@@ -399,8 +401,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
   all_lambda(false),
   pTypeRcd(pTypeRcd),
   rvalueref_arg(false),
-  templated_(templated),
-  wrapper_generated_(false){
+  templated_(templated){
 
   cursor = method.cursor;
   method_type = clang_getCursorType(cursor);
@@ -433,7 +434,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     }
   }
 
-  is_static = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;
+  is_static_ = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;
   return_type_ = clang_getResultType(method_type);
   inaccessible_type = !isAccessible(return_type_);
 
@@ -496,10 +497,10 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
 
   if(name_cxx == "operator new" || name_cxx == "operator delete"
      || name_cxx == "operator new[]" || name_cxx == "operator delete[]"
-     ) is_static = true;
+     ) is_static_ = true;
 
 
-  if(is_static){
+  if(is_static_){
     name_jl_ = jl_type_name(class_prefix) + name_jl_suffix;
   } else{
     //FIXME: Add prefix. The namespace?
@@ -512,7 +513,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     cv = " const";
   }
 
-  is_ctor = clang_getCursorKind(method.cursor) == CXCursor_Constructor;
+  is_ctor_ = clang_getCursorKind(method.cursor) == CXCursor_Constructor;
 
   is_abstract_ = pTypeRcd ? clang_CXXRecord_isAbstract(pTypeRcd->cursor) : false;
 }
@@ -572,11 +573,10 @@ FunctionWrapper::generate(std::ostream& o,
   if(setindex_ || getindex_){
     if(setindex_) gen_setindex(o);
     if(getindex_) gen_getindex(o, get_index_register);
-
     return o;
   }
 
-  if(is_ctor){
+  if(is_ctor_){
     if(!is_abstract_){
       gen_ctor(o);
     }

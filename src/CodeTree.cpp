@@ -1,6 +1,7 @@
 // Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
 #include "CodeTree.h"
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
 #include <set>
@@ -181,12 +182,13 @@ CodeTree::generate_cxx(std::ostream& o){
     //    std::cerr << "==> Comments of " << c.type_name << ":\n"
     //	      << clang_Cursor_getRawCommentText(c.cursor)
     //	      << "\n";
-    
+
     const auto& t = clang_getCursorType(c.cursor);
-
-
     auto type_name_cxx = str(clang_getTypeSpelling(t));
+
     if(is_type_vetoed(c.type_name)) continue;
+
+    // Generate the IsMirrorType<> statements
     if(t.kind == CXType_Record || c.template_parameter_combinations.size() > 0){
       auto canonical_type = clang_getCanonicalType(t);
       bool done = false;
@@ -289,11 +291,12 @@ CodeTree::generate_cxx(std::ostream& o){
       indent(o, 1) << " */\n";
       comment_header_generated = true;
     }
-    
+
     //FIXME: handle typedefs depending on a template parameter
     //       of the class where it is defined.
     //       The kind will be CXType_Unexposed in this case.
     if(kind == CXType_Record){
+      ++nwraps_.types;
       indent(o,1) << "DEBUG_MSG(\"Adding wrapper for type " << typename_cxx
 		  << " (\" __HERE__ \")\");\n";
       indent(o, 1) << "// defined in "   << clang_getCursorLocation(t) << "\n";
@@ -301,6 +304,7 @@ CodeTree::generate_cxx(std::ostream& o){
 		  << ">(\"" << typename_jl << "\");\n\n";
       if(test_build_) test_build(o);
     } else if(kind == CXType_Enum){
+      ++nwraps_.enums;
       indent(o, 1) << "DEBUG_MSG(\"Adding wrapper for enum " << typename_cxx
 		   << " (\" __HERE__ \")\");\n";
       indent(o, 1) << "// defined in "   << clang_getCursorLocation(t) << "\n";
@@ -321,6 +325,7 @@ CodeTree::generate_cxx(std::ostream& o){
 	//FIXME: improve handling of Unexposed declaration
 	//       here we assume it's always a class/struct declaration.
 	if(kind == CXType_Record || kind == CXType_Unexposed){
+	  ++nwraps_.types;
 	  indent(o,1) << "DEBUG_MSG(\"Adding wrapper for type " << typename_cxx
 		      << " (\" __HERE__ \")\");\n";
 	  indent(o, 1) << "// defined in "   << clang_getCursorLocation(c) << "\n";
@@ -328,6 +333,7 @@ CodeTree::generate_cxx(std::ostream& o){
 		      << ">(\"" << typename_jl << "\");\n\n";
 	  if(test_build_) test_build(o);
 	} else if(kind == CXType_Enum){
+	  ++nwraps_.enums;
 	  indent(o, 1) << "DEBUG_MSG(\"Adding wrapper for enum " << typename_cxx
 		       << " (\" __HERE__ \")\");\n";
 	  indent(o, 1) << "// defined in "   << clang_getCursorLocation(c) << "\n";
@@ -338,6 +344,7 @@ CodeTree::generate_cxx(std::ostream& o){
       }
     }
   }
+
   if(comment_header_generated){
     indent(o << "\n", 1) << "/* End of typedefs wrappers\n";
     indent(o, 1) << " **********************************************************************/\n\n";
@@ -350,7 +357,7 @@ CodeTree::generate_cxx(std::ostream& o){
       indent(o << "\n", 1)
 	<< "/**********************************************************************/\n";
       indent(o, 1) << "/* Wrappers for the methods of class " << t.type_name << "\n";
-      indent(o, 1) << " */";
+      indent(o, 1) << " */\n";
       comment_header_generated = true;
     }
   };
@@ -379,6 +386,7 @@ CodeTree::generate_cxx(std::ostream& o){
       //FIXME handling of templated classes
       if(clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
 	gen_comment_header(t);
+	++nwraps_.methods;
 	generate_default_ctor_cxx(o, t);
       }
       if(test_build_) test_build(o);
@@ -461,8 +469,35 @@ CodeTree::generate_cxx(std::ostream& o){
 
   indent(o, 1) << "DEBUG_MSG(\"End of wrapper definitions\");\n";
   o << "\n}\n";
+
+  show_stats(std::cout);
+  
   return o;
-  }
+}
+
+std::ostream& CodeTree::show_stats(std::ostream& o) const{
+  o << "\nGenerated wrapper statictics\n"
+    << std::setw(20) << std::left << "  enums: "
+    << nwraps_.enums << "\n"
+    << std::setw(20) << std::left << "  classes/structs: "
+    << nwraps_.types << "\n"
+    << std::setw(20) << std::left << "    templates: "
+    << nwraps_.type_templates << "\n"
+    << std::setw(20) << std::left << "    others: "
+    << (nwraps_.types-nwraps_.type_templates) << "\n"
+    << std::setw(20) << std::left << "  class methods: "
+    << nwraps_.methods << "\n"
+    << std::setw(20) << std::left << "  field accessors:"
+    << nwraps_.field_getters << " getters and "
+    << nwraps_.field_setters << " setters\n"
+    << std::setw(20) << std::left << "  global variable accessors: "
+    << nwraps_.global_var_getters << " getters and "
+    << nwraps_.global_var_setters << " setters\n"
+    << std::setw(20) << std::left << "  global functions: "
+    << nwraps_.global_funcs << "\n"
+    << "\n";
+  return o;
+}
 
 std::ostream&
   CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
@@ -470,12 +505,23 @@ std::ostream&
 				int nindents){
   FunctionWrapper helper(MethodRcd(cursor), type_rcd, "", "", nindents);
 
-  helper.gen_accessors(o, getter_only);
+  int ngens = 0;
+  helper.gen_accessors(o, getter_only, &ngens);
   if((type_rcd && export_mode_ >= export_mode_t::member_functions && type_rcd)
      || export_mode_ >= export_mode_t::all_functions){
     for(const auto& n: helper.generated_jl_functions()) to_export_.insert(n);
   }
 
+  const int ngetters = ngens > 0 ? 1 : 0;
+  const int nsetters = ngens > 1 ? 1 : 0;
+
+  if(type_rcd){
+    nwraps_.field_getters += ngetters;
+    nwraps_.field_setters += nsetters;
+  } else {
+    nwraps_.global_var_getters += ngetters;
+    nwraps_.global_var_setters += nsetters;
+  }
   return o;
 }
 
@@ -505,6 +551,7 @@ CodeTree::generate_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
 	      << "\n";
   }
 
+  ++nwraps_.types;
   o << "types.add_type<" << typename_cxx
     << ">(\"" << typename_jl << "\"";
 
@@ -554,7 +601,9 @@ CodeTree::generate_method_cxx(std::ostream& o, const MethodRcd& method){
 }
 
 std::ostream&
-CodeTree::generate_default_ctor_cxx(std::ostream&o, const TypeRcd& type) const{
+CodeTree::generate_default_ctor_cxx(std::ostream&o, const TypeRcd& type){
+  nwraps_.methods += 1;
+
   indent(o << "\n", 1)
     << "DEBUG_MSG(\"Adding wrapper for default constructor of class "
     << type.type_name
@@ -659,18 +708,26 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   import_getindex_ |= wrapper.defines_getindex();
   import_setindex_ |= wrapper.defines_setindex();
-  
-  if(wrapper.wrapper_generated()
-     && (export_mode_ >= export_mode_t::all_functions
-	 || (export_mode_ >= export_mode_t::member_functions && !wrapper.is_global()))){
-    to_export_.insert(wrapper.name_jl());
+
+  if(wrapper.generated_jl_functions().size() > 0){
+    if(pTypeRcd){
+      ++nwraps_.methods;
+    }  else{
+      ++nwraps_.global_funcs;
+    }
   }
 
+  if(!wrapper.is_ctor()
+     && (export_mode_ >= export_mode_t::all_functions
+	 || (export_mode_ >= export_mode_t::member_functions && !wrapper.is_global()))){
+    for(const auto& n: wrapper.generated_jl_functions()) to_export_.insert(n);
+  }
+  
   return o;
 }
 
 std::ostream&
-CodeTree::generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
+  CodeTree::generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
 
   if(verbose > 3) std::cerr << __FUNCTION__ << "("
 			    << "..." << ", "
@@ -708,6 +765,8 @@ CodeTree::generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
     return o;
   }
 
+  ++nwraps_.types;
+  ++nwraps_.type_templates;
   indent(o, 1) << "// defined in "   << clang_getCursorLocation(cursor) << "\n";
 
   //types.add_type<Parametric<
@@ -850,7 +909,7 @@ std::ostream& CodeTree::generate_jl(std::ostream& o,
   if(import_setindex_ || import_getindex_) o << "\n";
   if(import_getindex_) o << "import Base.getindex\n";
   if(import_setindex_) o << "import Base.setindex!\n";
-  
+
   o <<  "\n"
     "using CxxWrap\n"
     "@wrapmodule(\"" << shared_lib_basename<< "\")\n"
@@ -2032,6 +2091,8 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
     return o;
   }
 
+  ++nwraps_.enums;
+
   //extract prefix from a string formatted as 'prefix::type_name':
   auto prefix_cxx = get_prefix(type_name);
   auto prefix_jl = jl_type_name(prefix_cxx);
@@ -2056,7 +2117,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 		<< typename_jl << "\", jlcxx::julia_type(\"CppEnum\"));\n";
 
     if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
-
+  } else{
     indent(o << "\n", 1) << "DEBUG_MSG(\"Adding anonymous enum defined in "
 	     << clang_getCursorLocation(cursor)
 	     << " (\" __HERE__ \")\");\n";
