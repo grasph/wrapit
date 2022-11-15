@@ -17,7 +17,7 @@
 int hasDefaultConstructor(CXCursor cursor){
   if(clang_isDeclaration(cursor.kind)){
     auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
-    auto cxx_record_decl =  dynamic_cast<const clang::CXXRecordDecl*>(decl);
+    auto cxx_record_decl =  llvm::dyn_cast<const clang::CXXRecordDecl>(decl);
     if(cxx_record_decl){
       return cxx_record_decl->hasDefaultConstructor() ? 1 : 0;
     }
@@ -44,7 +44,7 @@ std::string fully_qualified_name(CXCursor cursor) {
 //   auto tu = static_cast<const CXTranslationUnitImpl*>(cursor.data[2])->TheASTUnit;
 //   
 //   std::cerr << "==> typeid(*decl): " << typeid(*decl).name() << "\n";
-//   auto tmp = dynamic_cast<const clang::TypedefDecl*>(decl);
+//   auto tmp = llvm::dyn_cast<const clang::TypedefDecl>(decl);
 //   if(tmp){
 //     std::cerr << "==> !!!!\n";
 //     auto tpsi = tmp->getTypeSourceInfo()->getType();
@@ -55,7 +55,7 @@ std::string fully_qualified_name(CXCursor cursor) {
 //	       << "\n";
 //   }
    
-   auto named_decl =  dynamic_cast<const clang::NamedDecl*>(decl);
+   auto named_decl =  llvm::dyn_cast<const clang::NamedDecl>(decl);
    if(named_decl){
      std::string buffer_;
      llvm::raw_string_ostream buffer(buffer_);
@@ -209,7 +209,7 @@ std::vector<std::string>
 get_template_parameters(CXCursor cursor){
   std::vector<std::string> res;
   auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
-  auto template_decl =  dynamic_cast<const clang::TemplateDecl*>(decl);
+  auto template_decl =  llvm::dyn_cast<const clang::TemplateDecl>(decl);
   if(!template_decl){
     return res;
   }

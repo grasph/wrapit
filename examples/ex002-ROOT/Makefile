@@ -7,9 +7,9 @@ LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
 CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17
 
-CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -I/home/pgras/git.d/root_build/include -fmax-errors=3
+CXXFLAGS += -fmax-errors=3 -O2
 
-CPPFLAGS += -MMD
+CPPFLAGS += -MMD -I $(ROOT_INC_DIR)
 
 ROOT_LIBS = $(shell root-config --libs)
 ROOT_INC_DIR = $(shell root-config --incdir)
