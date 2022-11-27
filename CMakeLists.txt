@@ -15,8 +15,47 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cxxopts)
 
-find_package(Clang REQUIRED CONFIG)
-include_directories(${CLANG_INCLUDE_DIRS})
+set(SEARCH_CLANG_CMAKE TRUE
+    CACHE BOOL "If true use the Clang cmake configuration files found on the system.")
+
+if(NOT CLANG_JLL)
+   find_package(Clang REQUIRED CONFIG)
+   include_directories(${CLANG_INCLUDE_DIRS})
+else() #Using Clang_jll
+   #Clang_jll package lacks the Clang Cmake conifiguration file,
+   #Set the clang dependency by  hand:
+   set(STATIC_LIBS clangAST clangLex clangBasic)
+   foreach(static_lib IN LISTS STATIC_LIBS) 
+       add_library(${static_lib} STATIC IMPORTED)
+       set_property(TARGET ${static_lib} PROPERTY
+                    IMPORTED_LOCATION "${CMAKE_INSTALL_PREFIX}/lib/lib${static_lib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+   endforeach()
+   
+   set(SHARED_LIBS libclang LLVM)
+   foreach(shared_lib IN LISTS SHARED_LIBS) 
+       add_library(${shared_lib} SHARED IMPORTED)
+       set(lib_path "${CMAKE_INSTALL_PREFIX}/lib/lib${shared_lib}${CMAKE_SHARE_LIBRARY_SUFFIX}")
+       string(REPLACE liblib lib lib_path ${lib_path})
+       set_property(TARGET ${shared_lib} PROPERTY
+                    IMPORTED_LOCATION ${lib_path})
+   endforeach()
+   
+   set_target_properties(clangBasic PROPERTIES
+                         INTERFACE_LINK_LIBRARIES "LLVM")
+   
+   set_target_properties(clangLex PROPERTIES
+                         INTERFACE_LINK_LIBRARIES "clangBasic;LLVM")
+   
+   set_target_properties(clangAST PROPERTIES
+                         INTERFACE_LINK_LIBRARIES "clangBasic;clangLex;LLVM")
+
+   execute_process(COMMAND /bin/sh -c "nm -C \$prefix/lib/libclang.so | grep -q abi:cxx11" RESULT_VARIABLE rc)
+   if(NOT ($ENV{target} MATCHES "darwin"))
+      if(NOT (rc EQUAL 0)) #libclang.so compiled with cxx03 ABI
+         add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
+      endif()
+    endif()
+endif()
 
 add_executable(wrapit src/TypeRcd.cpp src/utils.cpp  src/libclang-ext.cpp src/FunctionWrapper.cpp src/CodeTree.cpp src/main.cpp src/toml.hpp)
 target_link_libraries(wrapit PRIVATE libclang clangAST cxxopts)
