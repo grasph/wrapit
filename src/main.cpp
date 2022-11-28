@@ -275,7 +275,7 @@ int main(int argc, char* argv[]){
     }
 
     for (const auto& include : include_dirs){
-      tree.add_include_dir(include);
+      tree.add_include_dir(include.string());
     }
 
     for (const auto& macro: macro_definitions){

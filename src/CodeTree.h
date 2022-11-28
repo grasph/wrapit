@@ -80,7 +80,7 @@ namespace codetree{
     void export_mode(export_mode_t mode){ export_mode_ = mode; }
 
     void add_source_file(const fs::path& fname){
-      files_to_wrap_.push_back(fname.c_str());
+      files_to_wrap_.push_back(fname.string());
     }
     
     bool has_cursor(const std::vector<CXCursor> vec, const CXCursor& cursor){
