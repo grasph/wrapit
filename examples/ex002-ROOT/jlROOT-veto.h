@@ -14,3 +14,5 @@ Func_t TSystem::DynFindSymbol(const char *, const char *);
 // function are declared as const. Only one signature of callback function
 // can be wrapped.
 void TF1::TF1(const char *, Double_t (*)(Double_t *, Double_t *), Double_t, Double_t, Int_t, Int_t, TF1::EAddToList);
+
+/void .*::SavePrimitive(std::ostream .*, Option_t .*)/;
