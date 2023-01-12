@@ -49,8 +49,8 @@ else() #Using Clang_jll
    set_target_properties(clangAST PROPERTIES
                          INTERFACE_LINK_LIBRARIES "clangBasic;clangLex;LLVM")
 
-   execute_process(COMMAND /bin/sh -c "nm -C \$prefix/lib/libclang.so | grep -q abi:cxx11" RESULT_VARIABLE rc)
    if(NOT ($ENV{target} MATCHES "darwin"))
+      execute_process(COMMAND /bin/sh -c "nm -C \$prefix/lib/libclang.so | grep -q abi:cxx11" RESULT_VARIABLE rc)
       if(NOT (rc EQUAL 0)) #libclang.so compiled with cxx03 ABI
          add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
       endif()

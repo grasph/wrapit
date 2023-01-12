@@ -1166,11 +1166,6 @@ CodeTree::register_type(const CXType& type){
     "std::vector<void*>",
   };
 
-  if(std::find(natively_supported.begin(), natively_supported.end(), type_name)
-     != natively_supported.end()){
-    return true;
-  }
-
   bool usable;
   std::vector<CXCursor> defs;
   std::tie(usable, defs) = find_type_definition(type);
@@ -1202,7 +1197,13 @@ CodeTree::register_type(const CXType& type){
       // abort();
     }
 
-    if(type0.kind == CXType_Record){
+  if(std::find(natively_supported.begin(), natively_supported.end(), type0_name)
+     != natively_supported.end()){
+    return true;
+  }
+
+    
+  if(type0.kind == CXType_Record){
 
       bool found = false;
 
@@ -1884,6 +1885,11 @@ CodeTree::parse(std::ofstream& header_file, const std::filesystem::path& header_
 
   std::vector<const char*> opts(opts_.size());
   for(unsigned i = 0; i < opts_.size(); ++i) opts[i] = opts_[i].c_str();
+
+  if(verbose > 1){
+    //Enable clang verbose option
+    opts.push_back("-v");
+  }
 
   if(verbose > 0){
     std::cerr << "Clang options:\n";
