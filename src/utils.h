@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 static const char* one_indent = "  ";
 extern int verbose;
