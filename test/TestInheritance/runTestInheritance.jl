@@ -15,4 +15,9 @@ using CxxWrap
     @test virtual_func(b) == "B::virtual_func()"
     #A non-virtual function: the method of the cast type must be called
     @test real_func(b) == "A1::real_func()"
+
+    s = TestInheritance.String("Hello")
+    s_with_underscore = f(s)
+    @test s_with_underscore == s * "_"
 end
+

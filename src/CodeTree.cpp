@@ -101,6 +101,11 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
 	    break;
 	  }
 	}
+
+	if(str(clang_getTypeSpelling(t1)) == "std::string"){
+	  isBaseWrapped = true;
+	}
+	
 	if(isBaseWrapped){
 	  if(clang_Cursor_isNull(data.first_parent)){
 	    data.first_parent = cursor;
@@ -1199,9 +1204,8 @@ CodeTree::register_type(const CXType& type){
 
   if(std::find(natively_supported.begin(), natively_supported.end(), type0_name)
      != natively_supported.end()){
-    return true;
+    continue;
   }
-
     
   if(type0.kind == CXType_Record){
 
