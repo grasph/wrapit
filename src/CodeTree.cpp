@@ -105,7 +105,7 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
 	if(str(clang_getTypeSpelling(t1)) == "std::string"){
 	  isBaseWrapped = true;
 	}
-	
+
 	if(isBaseWrapped){
 	  if(clang_Cursor_isNull(data.first_parent)){
 	    data.first_parent = cursor;
@@ -460,7 +460,7 @@ CodeTree::generate_cxx(std::ostream& o){
   o << "\n}\n";
 
   show_stats(std::cout);
-  
+
   return o;
 }
 
@@ -697,7 +697,7 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 	 || (export_mode_ >= export_mode_t::member_functions && !wrapper.is_global()))){
     for(const auto& n: wrapper.generated_jl_functions()) to_export_.insert(n);
   }
-  
+
   return o;
 }
 
@@ -1159,7 +1159,7 @@ CodeTree::register_type(const CXType& type){
 
   std::vector<std::string> natively_supported = {
     "std::string",
-    "std::wsting",
+    "std::wstring",
     "std::vector<std::string>",
     "std::vector<std::wstring>",
     "std::vector<bool>",
@@ -1206,7 +1206,7 @@ CodeTree::register_type(const CXType& type){
      != natively_supported.end()){
     continue;
   }
-    
+
   if(type0.kind == CXType_Record){
 
       bool found = false;
@@ -1216,12 +1216,12 @@ CodeTree::register_type(const CXType& type){
       int i = -1;
 
       if(!clang_Cursor_isNull(cc) && !clang_equalCursors(cc, c)){//a template
-	i = add_type(cc);
-	if(i == types_.size() -1 ){//new type
-	  types_[i].template_parameters = get_template_parameters(cc);
-	}
+	      i = add_type(cc);
+	      if(i == types_.size() -1 ){//new type
+		types_[i].template_parameters = get_template_parameters(cc);
+	      }
       } else{
-	i = add_type(c);
+	      i = add_type(c);
       }
 
       types_[i].to_wrap = true;
@@ -1241,32 +1241,32 @@ CodeTree::register_type(const CXType& type){
 			     });
 
       if(it == enums_.end()){
-	enums_.emplace_back(c);
-	it = enums_.end() - 1;
+	      enums_.emplace_back(c);
+	      it = enums_.end() - 1;
       }
 
       it->to_wrap = true;
     } else if(type0.kind == CXType_Typedef){
       bool defined_in_a_class = false;
       for(const auto& t: types_){
-	for(const auto& typedef_in_class: t.typedefs){
-	  if(clang_equalCursors(typedef_in_class, c)){
-	    defined_in_a_class = true;
-	    break;
-	  }
-	}
-	if(defined_in_a_class) break;
+	      for(const auto& typedef_in_class: t.typedefs){
+		if(clang_equalCursors(typedef_in_class, c)){
+		  defined_in_a_class = true;
+		  break;
+		}
+	      }
+	      if(defined_in_a_class) break;
       }
       if(!defined_in_a_class && !has_cursor(typedefs_, c)){
-	auto underlying_type = clang_getTypedefDeclUnderlyingType(c);
-	auto kind = base_type(underlying_type).kind;
-	if(kind != CXType_Unexposed){
-	  typedefs_.push_back(c);
-	} else{
-	  if(verbose > 0) std::cerr << "Warning: typedef " << c << " for " << underlying_type
+	      auto underlying_type = clang_getTypedefDeclUnderlyingType(c);
+	      auto kind = base_type(underlying_type).kind;
+	      if(kind != CXType_Unexposed){
+		typedefs_.push_back(c);
+	      } else{
+		if(verbose > 0) std::cerr << "Warning: typedef " << c << " for " << underlying_type
 				    << " cannot be wrapped.\n";
-	  return false;
-	}
+		return false;
+	      }
       }
     } else if(type0.kind == CXType_Elaborated){
       auto elab_type =  static_cast<const clang::ElaboratedType*>(type0.data[0]);
