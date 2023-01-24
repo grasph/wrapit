@@ -1154,7 +1154,7 @@ CodeTree::register_type(const CXType& type){
 
   std::vector<std::string> natively_supported = {
     "std::string",
-    "std::wsting",
+    "std::wstring",
     "std::vector<std::string>",
     "std::vector<std::wstring>",
     "std::vector<bool>",
@@ -1211,12 +1211,12 @@ CodeTree::register_type(const CXType& type){
       int i = -1;
 
       if(!clang_Cursor_isNull(cc) && !clang_equalCursors(cc, c)){//a template
-	i = add_type(cc);
-	if(i == types_.size() -1 ){//new type
-	  types_[i].template_parameters = get_template_parameters(cc);
-	}
+	      i = add_type(cc);
+	      if(i == types_.size() -1 ){//new type
+	        types_[i].template_parameters = get_template_parameters(cc);
+	      }
       } else{
-	i = add_type(c);
+	      i = add_type(c);
       }
 
       types_[i].to_wrap = true;
@@ -1236,32 +1236,32 @@ CodeTree::register_type(const CXType& type){
 			     });
 
       if(it == enums_.end()){
-	enums_.emplace_back(c);
-	it = enums_.end() - 1;
+	      enums_.emplace_back(c);
+	      it = enums_.end() - 1;
       }
 
       it->to_wrap = true;
     } else if(type0.kind == CXType_Typedef){
       bool defined_in_a_class = false;
       for(const auto& t: types_){
-	for(const auto& typedef_in_class: t.typedefs){
-	  if(clang_equalCursors(typedef_in_class, c)){
-	    defined_in_a_class = true;
-	    break;
-	  }
-	}
-	if(defined_in_a_class) break;
+	      for(const auto& typedef_in_class: t.typedefs){
+	        if(clang_equalCursors(typedef_in_class, c)){
+	          defined_in_a_class = true;
+	          break;
+	        }
+	      }
+	      if(defined_in_a_class) break;
       }
       if(!defined_in_a_class && !has_cursor(typedefs_, c)){
-	auto underlying_type = clang_getTypedefDeclUnderlyingType(c);
-	auto kind = base_type(underlying_type).kind;
-	if(kind != CXType_Unexposed){
-	  typedefs_.push_back(c);
-	} else{
-	  if(verbose > 0) std::cerr << "Warning: typedef " << c << " for " << underlying_type
+	      auto underlying_type = clang_getTypedefDeclUnderlyingType(c);
+	      auto kind = base_type(underlying_type).kind;
+	      if(kind != CXType_Unexposed){
+	        typedefs_.push_back(c);
+	      } else{
+	        if(verbose > 0) std::cerr << "Warning: typedef " << c << " for " << underlying_type
 				    << " cannot be wrapped.\n";
-	  return false;
-	}
+	        return false;
+	      }
       }
     } else if(type0.kind == CXType_Elaborated){
       auto elab_type =  static_cast<const clang::ElaboratedType*>(type0.data[0]);
@@ -1899,7 +1899,7 @@ CodeTree::parse(std::ofstream& header_file, const std::filesystem::path& header_
   unit_ = unit;
 
 
-  //  diagnose(filename_.c_str(), unit);
+  diagnose(filename_.c_str(), unit);
 
   if (unit == nullptr) {
     std::cerr << "Unable to parse " << filename_ << ". Quitting.\n";

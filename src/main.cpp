@@ -136,8 +136,8 @@ int main(int argc, char* argv[]){
     auto clang_opts     = read_vstring("clang_opts");
 
     auto lib_basename     = std::string("jl") + module_name;
-    auto out_cpp_fname    = std::string("jl") + module_name + ".cxx";
-    auto out_h_fname      = std::string("jl") + module_name + ".h";
+    auto out_cpp_fname    = toml_config["out_cpp_fname"].value_or(std::string("jl") + module_name + ".cxx");
+    auto out_h_fname      = toml_config["out_h_fname"].value_or(std::string("jl") + module_name + ".h");
     auto out_report_fname = std::string("jl") + module_name + "-report.txt";
 
     auto veto_list = toml_config["veto_list"].value_or(""sv);
