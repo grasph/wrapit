@@ -447,11 +447,11 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
 
   std::string name_jl_suffix = jl_type_name(name_cxx);
 
-  static std::regex opregex("^operator(.{1,2})$");
+  static std::regex opregex("(^|.*::)operator(.{1,2})$");
   std::cmatch m;
   override_base_ = false;
   if(std::regex_match(name_cxx.c_str(), m, opregex)){
-    name_jl_suffix = m[1];
+    name_jl_suffix = m[2];
     override_base_ = true;
   }
 
