@@ -23,20 +23,18 @@
 extern CXPrintingPolicy pp;
 
 
-#define WRAP_TYPEDEFS
-
 namespace{
 
- void diagnose(const fs::path& p, const CXTranslationUnit& tu){
-   unsigned diagnosticCount = clang_getNumDiagnostics(tu);
+  void diagnose(const fs::path& p, const CXTranslationUnit& tu){
+    unsigned diagnosticCount = clang_getNumDiagnostics(tu);
 
-   for(unsigned i = 0; i < diagnosticCount; i++) {
-     CXDiagnostic diagnostic = clang_getDiagnostic(tu, i);
-     CXSourceLocation location = clang_getDiagnosticLocation(diagnostic);
-     CXString text = clang_getDiagnosticSpelling(diagnostic);
-     std::cerr << location <<  ": " << text << "\n";
-   }
- }
+    for(unsigned i = 0; i < diagnosticCount; i++) {
+      CXDiagnostic diagnostic = clang_getDiagnostic(tu, i);
+      CXSourceLocation location = clang_getDiagnosticLocation(diagnostic);
+      CXString text = clang_getDiagnosticSpelling(diagnostic);
+      std::cerr << location <<  ": " << text << "\n";
+    }
+  }
 }
 
 using namespace codetree;
@@ -131,7 +129,7 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
 
     if(clang_Cursor_isNull(data.c) && !clang_Cursor_isNull(data.first_parent)){
       std::cerr << "Inheritance preference" << clazz << ":" << data.preferred_parent
-              << " cannot be fulfilled as there is no such inheritance. "
+		<< " cannot be fulfilled as there is no such inheritance. "
                 << "Inheritance from class "
                 << clang_getCursorType(data.first_parent) << " is mapped into "
                 << " Julia.\n";
@@ -154,9 +152,9 @@ CodeTree::generate_cxx(std::ostream& o){
 
   o << "#include " << filename_ << "\n";
 
-//  for(const auto& include: forced_headers_){
-//    o << "#include \"" << include << "\"\n";
-//  }
+  //  for(const auto& include: forced_headers_){
+  //    o << "#include \"" << include << "\"\n";
+  //  }
 
 
 
@@ -199,7 +197,7 @@ CodeTree::generate_cxx(std::ostream& o){
       bool done = false;
       if(canonical_type.kind != CXType_Invalid){
         auto it = std::find_if(no_mirrored_types.begin(), no_mirrored_types.end(),
-                          [canonical_type](const CXType& t){  return clang_equalTypes(t, canonical_type); });
+			       [canonical_type](const CXType& t){  return clang_equalTypes(t, canonical_type); });
         if(it == no_mirrored_types.end()){
           no_mirrored_types.push_back(canonical_type);
         } else{
@@ -218,32 +216,6 @@ CodeTree::generate_cxx(std::ostream& o){
       }
     }
   }
-
-#ifdef WRAP_TYPEDEFS
-  for(const auto& c: typedefs_){
-    auto type_name_cxx = fully_qualified_name(c);
-    auto underlying_type = clang_getTypedefDeclUnderlyingType(c);
-    auto kind = base_type(underlying_type).kind;
-    if(is_type_vetoed(type_name_cxx)) continue;
-    if(kind == CXType_Record || kind == CXType_Enum){
-      auto canonical_type = clang_getCanonicalType(underlying_type);
-      bool done = false;
-      if(canonical_type.kind != CXType_Invalid){
-        auto it = std::find_if(no_mirrored_types.begin(), no_mirrored_types.end(),
-                          [canonical_type](const CXType& t){  return clang_equalTypes(t, canonical_type); });
-        if(it == no_mirrored_types.end()){
-          no_mirrored_types.push_back(canonical_type);
-        } else{
-          done = true;
-        }
-      }
-      if(!done){ //no-mirrored statement not yet generated
-        if(verbose > 2) std::cerr << "Disable mirrored type for typedef " << type_name_cxx << "\n";
-        indent(o, 1) << "template<> struct IsMirroredType<" << type_name_cxx << "> : std::false_type { };\n";
-      }
-    }
-  }
-#endif //WRAP_TYPEDEFS defined
 
   //Specify the class inheritances:
   for(const auto& t:types_){
@@ -279,82 +251,6 @@ CodeTree::generate_cxx(std::ostream& o){
   }
 
   bool comment_header_generated = false;
-#ifdef WRAP_TYPEDEFS
-
-  //Add classes used in typedefs
-
-  for(const auto& t: typedefs_){
-    auto underlying_type = clang_getTypedefDeclUnderlyingType(t);
-    auto kind = base_type(underlying_type).kind;
-    auto typename_cxx = fully_qualified_name(t);
-    auto typename_jl = jl_type_name(typename_cxx);
-    if(is_type_vetoed(typename_cxx)) continue;
-
-    if(!comment_header_generated){
-      indent(o << "\n", 1) << "/**********************************************************************\n";
-      indent(o, 1) << " * Wrappers for typedefs\n";
-      indent(o, 1) << " */\n";
-      comment_header_generated = true;
-    }
-
-    //FIXME: handle typedefs depending on a template parameter
-    //       of the class where it is defined.
-    //       The kind will be CXType_Unexposed in this case.
-    if(kind == CXType_Record){
-      ++nwraps_.types;
-      indent(o,1) << "DEBUG_MSG(\"Adding wrapper for type " << typename_cxx
-                  << " (\" __HERE__ \")\");\n";
-      indent(o, 1) << "// defined in "   << clang_getCursorLocation(t) << "\n";
-      indent(o,1) << "types.add_type<" << typename_cxx
-                  << ">(\"" << typename_jl << "\");\n\n";
-      if(test_build_) test_build(o);
-    } else if(kind == CXType_Enum){
-      ++nwraps_.enums;
-      indent(o, 1) << "DEBUG_MSG(\"Adding wrapper for enum " << typename_cxx
-                   << " (\" __HERE__ \")\");\n";
-      indent(o, 1) << "// defined in "   << clang_getCursorLocation(t) << "\n";
-      indent(o, 1) << "types.add_bits<" << typename_cxx << ">(\""
-                   << typename_jl << "\", jlcxx::julia_type(\"CppEnum\"));\n\n";
-      if(test_build_) test_build(o);
-    }
-  }
-
-  for(const auto& t: types_){
-    for(const auto& c: t.typedefs){
-      auto underlying_type = clang_getTypedefDeclUnderlyingType(c);
-      auto kind = base_type(underlying_type).kind;
-      for(const auto& clazz: t.names()){
-        std::string typename_cxx = clazz + "::" + str(clang_getCursorSpelling(c));
-        auto typename_jl = jl_type_name(typename_cxx);
-
-        //FIXME: improve handling of Unexposed declaration
-        //       here we assume it's always a class/struct declaration.
-        if(kind == CXType_Record || kind == CXType_Unexposed){
-          ++nwraps_.types;
-          indent(o,1) << "DEBUG_MSG(\"Adding wrapper for type " << typename_cxx
-                      << " (\" __HERE__ \")\");\n";
-          indent(o, 1) << "// defined in "   << clang_getCursorLocation(c) << "\n";
-          indent(o,1) << "types.add_type<" << typename_cxx
-                      << ">(\"" << typename_jl << "\");\n\n";
-          if(test_build_) test_build(o);
-        } else if(kind == CXType_Enum){
-          ++nwraps_.enums;
-          indent(o, 1) << "DEBUG_MSG(\"Adding wrapper for enum " << typename_cxx
-                       << " (\" __HERE__ \")\");\n";
-          indent(o, 1) << "// defined in "   << clang_getCursorLocation(c) << "\n";
-          indent(o, 1) << "types.add_bits<" << typename_cxx << ">(\""
-                       << typename_jl << "\", jlcxx::julia_type(\"CppEnum\"));\n\n";
-          if(test_build_) test_build(o);
-        }
-      }
-    }
-  }
-
-  if(comment_header_generated){
-    indent(o << "\n", 1) << "/* End of typedefs wrappers\n";
-    indent(o, 1) << " **********************************************************************/\n\n";
-  }
-#endif
 
   comment_header_generated = false;
   auto gen_comment_header = [&](const TypeRcd& t){
@@ -388,11 +284,11 @@ CodeTree::generate_cxx(std::ostream& o){
         gen_comment_header(t);
         generate_method_cxx(o, m);
         if(test_build_) test_build(o);
-        }
-        if(accessor_generation_enabled()){
-          for(const auto& f: t.fields){
-            auto accessor_gen = check_veto_list_for_var_or_field(f, false);
-            if(accessor_gen != accessor_mode_t::none){
+      }
+      if(accessor_generation_enabled()){
+	for(const auto& f: t.fields){
+	  auto accessor_gen = check_veto_list_for_var_or_field(f, false);
+	  if(accessor_gen != accessor_mode_t::none){
             gen_comment_header(t);
             generate_accessor_cxx(o, &t, f, accessor_gen == accessor_mode_t::getter, 1);
           }
@@ -488,7 +384,7 @@ std::ostream& CodeTree::show_stats(std::ostream& o) const{
 }
 
 std::ostream&
-  CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
+CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
                                 const CXCursor& cursor, bool getter_only,
                                 int nindents){
   FunctionWrapper helper(MethodRcd(cursor), type_rcd, "", "", nindents);
@@ -543,10 +439,10 @@ CodeTree::generate_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
 
   if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
 
-//  auto it = std::find(types_missing_def_.begin(), types_missing_def_.end(), typename_cxx);
-//  if(it!=types_missing_def_.end()){
-//    types_missing_def_.erase(it);
-//  }
+  //  auto it = std::find(types_missing_def_.begin(), types_missing_def_.end(), typename_cxx);
+  //  if(it!=types_missing_def_.end()){
+  //    types_missing_def_.erase(it);
+  //  }
 
   const auto& base = getParentClassForWrapper(cursor);
 
@@ -699,7 +595,7 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 }
 
 std::ostream&
-  CodeTree::generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
+CodeTree::generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
 
   if(verbose > 3) std::cerr << __FUNCTION__ << "("
                             << "..." << ", "
@@ -725,10 +621,10 @@ std::ostream&
   int id = type_rcd.id;
 
 
-//  if(is_type_vetoed(typename_cxx)){
-//    std::cerr << "Info: class/struct " << typename_cxx << " vetoed\n";
-//    return o;
-//  }
+  //  if(is_type_vetoed(typename_cxx)){
+  //    std::cerr << "Info: class/struct " << typename_cxx << " vetoed\n";
+  //    return o;
+  //  }
 
   if(type_rcd.template_parameter_combinations.empty()){
     std::cerr << "Warning: no specialization found for template class "
@@ -891,12 +787,12 @@ std::ostream& CodeTree::generate_jl(std::ostream& o,
     "end\n";
 
   //FIXME add code documentation generation
-//  for(const auto& t: types){
-//    if(t->wrapper()!=Entity::kNoWrapper && t->docstring().size() > 0){
-//      o << "\n@doc \"\"\"" << std::regex_replace(t->docstring(), std::regex("\""), "\\\"")
-//        << "\"\"\" " << t->name_jl();
-//    }
-//  }
+  //  for(const auto& t: types){
+  //    if(t->wrapper()!=Entity::kNoWrapper && t->docstring().size() > 0){
+  //      o << "\n@doc \"\"\"" << std::regex_replace(t->docstring(), std::regex("\""), "\\\"")
+  //        << "\"\"\" " << t->name_jl();
+  //    }
+  //  }
   o << "\nend #module\n";
 
   if(verbose > 2){
@@ -1029,6 +925,8 @@ CodeTree::visit_global_function(CXCursor cursor){
   if(!auto_veto_ || !inform_missing_types(missing_types, MethodRcd(cursor))){
     functions_.emplace_back(cursor, min_args);
   }
+
+  for(auto const& x: missing_types) types_missing_def_.insert(fully_qualified_name(base_type(x)));
 }
 
 
@@ -1064,15 +962,16 @@ CodeTree::find_type_definition(const CXType& type) const{
 
   //FIXME: definitions_ is empty
   //-> simplify the code to definitions.push_back(d)
-  auto it = std::find_if(definitions.begin(), definitions.end(),[&d](const auto& c){
-    return clang_equalCursors(c, d);
-  });
-
-  if(it == definitions.end()){
-    definitions.push_back(d);
-  } else{
-    return std::make_tuple(usable, definitions);
-  }
+  ///  auto it = std::find_if(definitions.begin(), definitions.end(),[&d](const auto& c){
+  ///    return clang_equalCursors(c, d);
+  ///  });
+  ///
+  ///  if(it == definitions.end()){
+  ///    definitions.push_back(d);
+  ///  } else{
+  ///    return std::make_tuple(usable, definitions);
+  ///  }
+  definitions.push_back(d);
 
   int nparams = clang_Type_getNumTemplateArguments(type0);
 
@@ -1096,7 +995,7 @@ CodeTree::find_type_definition(const CXType& type) const{
         return clang_equalCursors(c, d);
       });
       if(it == definitions.end()){
-          definitions.push_back(d);
+	definitions.push_back(d);
       }
     }
   }
@@ -1105,15 +1004,21 @@ CodeTree::find_type_definition(const CXType& type) const{
 
 std::tuple<bool, CXCursor>
 CodeTree::find_base_type_definition_(const CXType& type0) const{
+
   bool usable = true;
 
+  if(type0.kind == CXType_Invalid || type0.kind == CXType_Unexposed){
+    return std::make_tuple(false,
+                           clang_getNullCursor());
+  }
+  
   //FIXME: do we need to check if the wrapper of the type
   //is requested, that is definition header in the list and class not vetoed,
   //and set usable to false if it is not?
-
-  if(type0.kind != CXType_Record
+  if(/*type0.kind != CXType_Record
      && type0.kind != CXType_Enum
-     && type0.kind <= CXType_LastBuiltin){
+     &&*/ type0.kind <= CXType_LastBuiltin
+     || type0.kind == CXType_FunctionProto){
     return std::make_tuple(true,
                            clang_getNullCursor());
   }
@@ -1151,7 +1056,7 @@ CodeTree::register_type(const CXType& type){
   if(verbose > 3) std::cerr << __FUNCTION__ << "(" << type << "), type of kind "
                             << type.kind
                             << ".\n";
-
+  
   std::string type_name = fully_qualified_name(type);
 
   std::vector<std::string> natively_supported = {
@@ -1199,12 +1104,12 @@ CodeTree::register_type(const CXType& type){
       // abort();
     }
 
-  if(std::find(natively_supported.begin(), natively_supported.end(), type0_name)
-     != natively_supported.end()){
-    continue;
-  }
+    if(std::find(natively_supported.begin(), natively_supported.end(), type0_name)
+       != natively_supported.end()){
+      continue;
+    }
 
-  if(type0.kind == CXType_Record){
+    if(type0.kind == CXType_Record){
 
       bool found = false;
 
@@ -1213,12 +1118,12 @@ CodeTree::register_type(const CXType& type){
       int i = -1;
 
       if(!clang_Cursor_isNull(cc) && !clang_equalCursors(cc, c)){//a template
-              i = add_type(cc);
-              if(i == types_.size() -1 ){//new type
-                types_[i].template_parameters = get_template_parameters(cc);
-              }
+	i = add_type(cc);
+	if(i == types_.size() -1 ){//new type
+	  types_[i].template_parameters = get_template_parameters(cc);
+	}
       } else{
-              i = add_type(c);
+	i = add_type(c);
       }
 
       types_[i].to_wrap = true;
@@ -1238,33 +1143,15 @@ CodeTree::register_type(const CXType& type){
                              });
 
       if(it == enums_.end()){
-              enums_.emplace_back(c);
-              it = enums_.end() - 1;
+	enums_.emplace_back(c);
+	it = enums_.end() - 1;
       }
 
       it->to_wrap = true;
     } else if(type0.kind == CXType_Typedef){
-      bool defined_in_a_class = false;
-      for(const auto& t: types_){
-              for(const auto& typedef_in_class: t.typedefs){
-                if(clang_equalCursors(typedef_in_class, c)){
-                  defined_in_a_class = true;
-                  break;
-                }
-              }
-              if(defined_in_a_class) break;
-      }
-      if(!defined_in_a_class && !has_cursor(typedefs_, c)){
-              auto underlying_type = clang_getTypedefDeclUnderlyingType(c);
-              auto kind = base_type(underlying_type).kind;
-              if(kind != CXType_Unexposed){
-                typedefs_.push_back(c);
-              } else{
-                if(verbose > 0) std::cerr << "Warning: typedef " << c << " for " << underlying_type
-                                    << " cannot be wrapped.\n";
-                return false;
-              }
-      }
+
+      auto underlying_base_type = base_type(clang_getTypedefDeclUnderlyingType(c));
+      return register_type(underlying_base_type);
     } else if(type0.kind == CXType_Elaborated){
       auto elab_type =  static_cast<const clang::ElaboratedType*>(type0.data[0]);
       std::cerr << "\t named type: " << elab_type->getNamedType().getAsString() << "\n";
@@ -1303,6 +1190,8 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
     }
   }
 
+  for(auto const& x: missing_types) types_missing_def_.insert(fully_qualified_name(base_type(x)));
+  
   int min_args = get_min_required_args(cursor);
 
   if(verbose > 3) std::cerr << __FUNCTION__ << "(" << cursor << ") -> min_args = "
@@ -1481,17 +1370,17 @@ CodeTree::inform_missing_types(std::vector<CXType> missing_types,
 }
 
 CXToken* CodeTree::next_token(CXSourceLocation loc) const{
-    CXToken* tok = nullptr;
-    CXFile file;
-    unsigned offset;
-    clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
-    while(!tok){
-      clang_getSpellingLocation(loc, nullptr, nullptr, nullptr, &offset);
-      if(offset == 0) break; //loc of file reached => roll over
-      loc = clang_getLocationForOffset(unit_, file, offset + 1);
-      tok = clang_getToken(unit_, loc);
-    }
-    return tok;
+  CXToken* tok = nullptr;
+  CXFile file;
+  unsigned offset;
+  clang_getSpellingLocation(loc, &file, nullptr, nullptr, nullptr);
+  while(!tok){
+    clang_getSpellingLocation(loc, nullptr, nullptr, nullptr, &offset);
+    if(offset == 0) break; //loc of file reached => roll over
+    loc = clang_getLocationForOffset(unit_, file, offset + 1);
+    tok = clang_getToken(unit_, loc);
+  }
+  return tok;
 }
 
 CXSourceRange CodeTree::function_decl_range(const CXCursor& cursor) const{
@@ -1588,9 +1477,9 @@ CodeTree::visit_class_constructor(CXCursor cursor){
        && (!auto_veto_ || !inform_missing_types(missing_types, MethodRcd(cursor), p))){
 
       auto it = std::find_if(p->methods.begin(), p->methods.end(),
-                           [cursor](const MethodRcd& m){
-                             return clang_equalCursors(clang_getCanonicalCursor(m.cursor),
-                                                       clang_getCanonicalCursor(cursor));
+			     [cursor](const MethodRcd& m){
+			       return clang_equalCursors(clang_getCanonicalCursor(m.cursor),
+							 clang_getCanonicalCursor(cursor));
                              });
       if(it == p->methods.end()){
         p->methods.emplace_back(cursor, min_args);
@@ -1604,14 +1493,14 @@ CodeTree::visit_class_constructor(CXCursor cursor){
 
 void
 CodeTree::visit_enum(CXCursor cursor){
-   if(has_cursor(enums_, cursor)) return;
-   if(verbose > 2) std::cerr << __FUNCTION__ << "(" << cursor
-                             << " defined in "
-                             << clang_getCursorLocation(cursor)
-                             << ")\n";
-   disable_owner_mirror(cursor);
-   const auto& type = clang_getCursorType(cursor);
-   enums_.emplace_back(cursor, str(clang_getTypeSpelling(type)));
+  if(has_cursor(enums_, cursor)) return;
+  if(verbose > 2) std::cerr << __FUNCTION__ << "(" << cursor
+			    << " defined in "
+			    << clang_getCursorLocation(cursor)
+			    << ")\n";
+  disable_owner_mirror(cursor);
+  const auto& type = clang_getCursorType(cursor);
+  enums_.emplace_back(cursor, str(clang_getTypeSpelling(type)));
 }
 
 
@@ -1657,10 +1546,14 @@ CodeTree::visit_field_or_global_variable(CXCursor cursor){
                 << "This is not expected please report the problem to the developers.\n";
       return;
     }
-    register_type(clang_getCursorType(cursor));
+    auto type = clang_getCursorType(cursor);
+    bool rc  = register_type(type);
+    if(!rc) types_missing_def_.insert(fully_qualified_name(base_type(type)));
     rcd->fields.push_back(cursor);
   } else if(kind == CXCursor_VarDecl){
-    register_type(clang_getCursorType(cursor));
+    auto type = clang_getCursorType(cursor);
+    bool rc  = register_type(type);
+    if(!rc) types_missing_def_.insert(fully_qualified_name(base_type(type)));
     vars_.push_back(cursor);
   }
 }
@@ -1757,7 +1650,7 @@ bool CodeTree::is_to_visit(CXCursor cursor) const{
       std::cerr << "Skipping cursor " << cursor << " defined at " << clang_getCursorLocation(cursor)
                 << " in an included file, " << cursor << ".\n";
     }
-      return false;
+    return false;
   }
 
   return true;
@@ -1832,7 +1725,7 @@ CXChildVisitResult CodeTree::visit(CXCursor cursor, CXCursor parent, CXClientDat
   } else if(kind == CXCursor_EnumDecl && accessible){
     tree.visit_enum(cursor);
   } else if(kind == CXCursor_TypedefDecl && accessible){
-  //  tree.visit_typedef(cursor);
+    //  tree.visit_typedef(cursor);
   } else if((kind == CXCursor_VarDecl || kind == CXCursor_FieldDecl) && accessible){
     tree.visit_field_or_global_variable(cursor);
   } else if(kind == CXCursor_CXXMethod && accessible){
@@ -1929,47 +1822,58 @@ CodeTree::~CodeTree(){
 
 
 std::ostream& CodeTree::report(std::ostream& o){
-//   std::string s = "Undefined types.";
-//   o << s << "\n";
-//   for(unsigned i = 0; i < s.size(); ++i) o << "-";
-//   o << "\n\n";
-//   o << "Header files, where these types are defined need to be added "
-//     "in the auxiliary_file list provided by the configuration file.\n\n";
-//
-//   for(const auto& t: types_missing_def_){
-//     Type* tt = find_type(t);
-//     if(tt == nullptr || tt->ifilename() < 0){
-//       o << t << "\n";
-//     }
-//   }
-//
-//   std::set<int> used_headers;
-//   for(const auto& t: types_missing_def_){
-//     Type* tt = find_type(t);
-//     if(tt && tt->ifilename() >= 0){
-//       used_headers.insert(tt->ifilename());
-//     }
-//   }
-//
-//   s = "\n\nUnused auxiliary file.";
-//   o << s << "\n";
-//   for(unsigned i = 0; i < s.size(); ++i) o << "-";
-//   o << "\n\n";
-//   o << "File from the auxiliary_file or inputs configurable list which were not used.\n\n";
-//
-// //  for(unsigned i = 0; i < filenames_.size(); ++i){
-// //    if(used_headers.find(i) == used_headers.end()) o << filenames_[i] << "\n";
-// //  }
-//
-//   s = "\n\nUsed file.";
-//   o << s << "\n";
-//   for(unsigned i = 0; i < s.size(); ++i) o << "-";
-//   o << "\n\n";
-//   o << "File from the auxiliary_files or inputs configurable list which were used.\n\n";
-//
-// //  for(unsigned i = 0; i < filenames_.size(); ++i){
-// //    if(used_headers.find(i) != used_headers.end()) o << filenames_[i] << "\n";
-// //  }
+  std::string s = "Undefined types";
+  o << s << "\n";
+  for(unsigned i = 0; i < s.size(); ++i) o << "-";
+  
+  o << "\n\n";
+  o << "The definition of the following types where not found. Use the "
+    "extra_headers configuration parameters to specify the header files that defines.\n\n";
+  if(auto_veto_){
+    o << "The auto_veto parameter is set to true, generation of the wrappers that "
+      "would have needed theses types were skipped.\n";
+  } else{
+    o << "The auto_veto parameter is set to false. The generated julia module "
+      "is likely to fail to be imported because of the missing wrappers for these types.\n";
+  }
+
+  o << "\n";
+  
+  for(const auto& t: types_missing_def_){
+    o << t << "\n";
+  }
+  
+  if(types_missing_def_.size() == 0){
+    o << "No missing definitions\n";
+  }
+  //
+  //   std::set<int> used_headers;
+  //   for(const auto& t: types_missing_def_){
+  //     Type* tt = find_type(t);
+  //     if(tt && tt->ifilename() >= 0){
+  //       used_headers.insert(tt->ifilename());
+  //     }
+  //   }
+  //
+  //   s = "\n\nUnused auxiliary file.";
+  //   o << s << "\n";
+  //   for(unsigned i = 0; i < s.size(); ++i) o << "-";
+  //   o << "\n\n";
+  //   o << "File from the auxiliary_file or inputs configurable list which were not used.\n\n";
+  //
+  // //  for(unsigned i = 0; i < filenames_.size(); ++i){
+  // //    if(used_headers.find(i) == used_headers.end()) o << filenames_[i] << "\n";
+  // //  }
+  //
+  //   s = "\n\nUsed file.";
+  //   o << s << "\n";
+  //   for(unsigned i = 0; i < s.size(); ++i) o << "-";
+  //   o << "\n\n";
+  //   o << "File from the auxiliary_files or inputs configurable list which were used.\n\n";
+  //
+  // //  for(unsigned i = 0; i < filenames_.size(); ++i){
+  // //    if(used_headers.find(i) != used_headers.end()) o << filenames_[i] << "\n";
+  // //  }
   return o;
 }
 
@@ -2002,38 +1906,38 @@ void CodeTree::preprocess(){
   }
 
   //Move the class parents to be declared before their children
-   for(unsigned i = 0; i < types_.size(); ++i){
-     CXCursor parent = getParentClassForWrapper(types_[i].cursor);
+  for(unsigned i = 0; i < types_.size(); ++i){
+    CXCursor parent = getParentClassForWrapper(types_[i].cursor);
 
-     if(clang_Cursor_isNull(parent))  continue;
+    if(clang_Cursor_isNull(parent))  continue;
 
-     for(unsigned j = i + 1 ; j < types_.size(); ++j){
-       if(clang_equalCursors(parent, types_[j].cursor)){
-         std::swap(types_[i], types_[j]);
-         j = i + 1;
-         --i;
-         break;
-       }
-     }
-   }
-  //Remove from types_missing_def_ definition found in a different
-  //Translation unit
-  decltype(types_missing_def_)::const_iterator next_it;
-  decltype(types_missing_def_) to_remove;
-  for(decltype(types_missing_def_)::const_iterator it = types_missing_def_.begin();
-      it != types_missing_def_.end(); ++it){ // = ++next_it){
-    const auto& tn = *it;
-
-    for(const auto& t: types_){
-       if(str(clang_getTypeSpelling(clang_getCursorType(t.cursor))) == tn){
-         to_remove.insert(tn);
-         break;
-       }
+    for(unsigned j = i + 1 ; j < types_.size(); ++j){
+      if(clang_equalCursors(parent, types_[j].cursor)){
+	std::swap(types_[i], types_[j]);
+	j = i + 1;
+	--i;
+	break;
+      }
     }
   }
-  for(const auto& t: to_remove){
-     types_missing_def_.erase(t);
-  }
+  ///  //Remove from types_missing_def_ definition found in a different
+  ///  //Translation unit
+  ///  decltype(types_missing_def_)::const_iterator next_it;
+  ///  decltype(types_missing_def_) to_remove;
+  ///  for(decltype(types_missing_def_)::const_iterator it = types_missing_def_.begin();
+  ///      it != types_missing_def_.end(); ++it){ // = ++next_it){
+  ///    const auto& tn = *it;
+  ///
+  ///    for(const auto& t: types_){
+  ///       if(str(clang_getTypeSpelling(clang_getCursorType(t.cursor))) == tn){
+  ///         to_remove.insert(tn);
+  ///         break;
+  ///       }
+  ///    }
+  ///  }
+  ///  for(const auto& t: to_remove){
+  ///     types_missing_def_.erase(t);
+  ///  }
 
   if(verbose > 2){
     std::cerr << "\nType list at end of preprocess:\n";
@@ -2195,7 +2099,7 @@ void CodeTree::inheritances(const std::vector<std::string>& val){
   for(const auto&v :val){
     std::cmatch cm;
     if(std::regex_match(v.c_str(), cm, re)){
-        inheritance_[std::string(cm[1])] = std::string(cm[2]);
+      inheritance_[std::string(cm[1])] = std::string(cm[2]);
     } else{
       std::cerr << "Invalid syntax for inheritance configuration list element: "
                 << v << ". The syntax is Child_class:Parent_class\n";

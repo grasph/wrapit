@@ -194,7 +194,8 @@ std::string fully_qualified_name(CXType t){
 
 
 CXType remove_non_builtin_qualifiers(CXType type){
-  if(type.kind > CXType_LastBuiltin){
+  //FIXME: there are probably more kinds to exclude
+  if(type.kind > CXType_LastBuiltin && type.kind != CXType_FunctionProto){
     return clang_getCursorType(clang_getTypeDeclaration(type));
   } else{
     return type;

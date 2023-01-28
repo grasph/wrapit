@@ -234,12 +234,11 @@ int main(int argc, char* argv[]){
     }
     auto& out_export_jl = same_ ? out_jl : out_export_jl_;
 
-//    std::ofstream out_report(out_report_fname, open_mode);
-//    if(out_report.tellp()!=0){
-//      std::cerr << "File " << out_report_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-//      in_err = true;
-//    }
-//    auto out_report = open_file(out_report_fname);
+    std::ofstream out_report(out_report_fname, open_mode);
+    if(out_report.tellp()!=0){
+      std::cerr << "File " << out_report_fname << " is on way, please move it or use the --force option to force its deletion.\n";
+      in_err = true;
+    }
 
     if(in_err) return -1;
 
@@ -315,6 +314,6 @@ int main(int argc, char* argv[]){
     tree.generate_cxx(out_cpp);
     tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);
 
-    //tree.report(out_report);
+    tree.report(out_report);
   }
 }

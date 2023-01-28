@@ -4,5 +4,7 @@ input = [ "A.h" ]
 		  
 include_dirs = [ "." ]
 
+auto_veto = false
+
 cxx-std = "c++17"
 
