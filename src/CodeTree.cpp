@@ -333,6 +333,11 @@ CodeTree::generate_cxx(std::ostream& o){
     if(test_build_) test_build(o);
   }
 
+  if(override_base_){
+    indent(o, 1) << "types.unset_override_module();\n";
+    override_base_ = false;
+  }
+  
   for(const auto& v: vars_){
     auto accessor_gen = check_veto_list_for_var_or_field(v, true);
     if(accessor_gen != accessor_mode_t::none){
@@ -343,11 +348,6 @@ CodeTree::generate_cxx(std::ostream& o){
   if(functions_.size() > 0 || vars_.size() > 0){
     indent(o, 1) << "/* End of global function wrappers\n";
     indent(o, 1) << " **********************************************************************/\n\n";
-  }
-
-  if(override_base_){
-    indent(o, 1) << "types.unset_override_module();\n";
-    override_base_ = false;
   }
 
 
