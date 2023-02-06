@@ -103,8 +103,7 @@ The code is experimental, but can already produce ready-to-use code. It has seve
 
   * Support of wrapping of template class is incomplete and typically require manual correction to the code;
   * Wrapping of variadic functions is not supported;
-  * Global variables are not mapped, but access can be provided by defining accessor functions in an input header file;
-  
+  * Produce the c++ code in a single source file, which can require large resource to compile in case a large library is to wrapped.
 
 ## Technology
 
