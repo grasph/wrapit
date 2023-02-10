@@ -1431,6 +1431,9 @@ bool CodeTree::is_method_deleted(CXCursor cursor) const{
       if(s== "{"){ //body start
         break;
       }
+      if(s== ";"){ //end statement
+        break;
+      }
 
       if(s == "operator") expecting_operator = true;
       else expecting_operator = false;
