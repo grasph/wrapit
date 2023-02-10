@@ -1431,6 +1431,8 @@ bool CodeTree::is_method_deleted(CXCursor cursor) const{
       if(s== "{"){ //body start
         break;
       }
+      //FIXME: for not-understood reason, 'range' can  go beyond the function declaration.
+      //Following lines is a workaround to deal with such case.
       if(s== ";"){ //end statement
         break;
       }
