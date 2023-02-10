@@ -1071,6 +1071,7 @@ CodeTree::register_type(const CXType& type){
     "std::vector<float>",
     "std::vector<double>",
     "std::vector<void*>",
+    "jlcxx::SafeCFunction",
   };
 
   bool usable;
