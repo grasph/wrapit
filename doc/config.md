@@ -39,6 +39,13 @@ extra_headers       = [ ]
 # in the comment of the generated C++ source must be used.
 veto_list           = ""
 
+# List of classes with instances owned by the C++ library
+# for which the destructor should not be called by the Julia
+# garbage collector. It is necessary to list classed, whose
+# destructor is not public or is deleted. These are handled
+# automatically.
+vetoed_finalizer_classes = []
+
 # Mode to generate binding not requested by required
 # to define a requested function binding. Possible values:
 #   "types": generate binding only for the type (recommended)
@@ -81,7 +88,8 @@ export_jl_fname     = ""
 # "none": no symbol is exported
 # "member_functions": non-static class methods are exported
 # "all_functions": all functions (global, static and non-static methods)
-export              = "methods"
+# "all": all symbols including types
+export              = "member_functions"
 
 # List of symbols to exclude from the Julia module export list to be used
 # to prevent clashes with existing symbol.

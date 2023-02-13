@@ -7,7 +7,7 @@ int TypeRcd::nRecords = 0;
 
 TypeRcd::TypeRcd(const CXCursor& cursor, const std::string& type_name)
   : cursor(cursor), to_wrap(false), id(nRecords++),
-    explicit_ctor(false), vetoed_default_ctor(false){
+    default_ctor(true), finalize(true){
   if(type_name.size() == 0){
     this->type_name = fully_qualified_name(cursor);
   }  else{
@@ -43,3 +43,4 @@ std::vector<std::string> TypeRcd::names() const{
     return r;
   }
 }
+

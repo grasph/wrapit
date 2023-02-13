@@ -123,9 +123,9 @@ int main(int argc, char* argv[]){
     auto extra_headers = read_vstring("extra_headers");
 
     auto inheritances = read_vstring("inheritances");
-
-
-    auto module_name     = toml_config["module_name"].value_or(std::string("CxxLib"));
+    auto vetoed_finalizer_classes  = read_vstring("vetoed_finalizer_classes");
+    
+    auto module_name = toml_config["module_name"].value_or(std::string("CxxLib"));
     auto out_export_jl_fname = toml_config["export_jl_fname"].value_or(std::string());
     auto out_jl_fname = toml_config["module_jl_fname"].value_or(std::string());
     if(out_jl_fname.size() == 0) out_jl_fname = module_name + ".jl";
@@ -139,6 +139,7 @@ int main(int argc, char* argv[]){
     auto out_cpp_fname    = toml_config["out_cpp_fname"].value_or(std::string("jl") + module_name + ".cxx");
     auto out_h_fname      = toml_config["out_h_fname"].value_or(std::string("jl") + module_name + ".h");
     auto out_report_fname = std::string("jl") + module_name + "-report.txt";
+
 
     auto veto_list = toml_config["veto_list"].value_or(""sv);
 
@@ -255,6 +256,7 @@ int main(int argc, char* argv[]){
     tree.build_every(build_every);
     tree.build_cmd(std::string(build_cmd));
     tree.inheritances(inheritances);
+    tree.vetoed_finalizer_classes(vetoed_finalizer_classes);
     tree.accessor_generation_enabled(fields_and_variables);
     
     if(propagation_mode == "types"){

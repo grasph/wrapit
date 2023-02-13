@@ -178,6 +178,10 @@ namespace codetree{
 
     void inheritances(const std::vector<std::string>& val);
 
+    void vetoed_finalizer_classes(const std::vector<std::string>& val){
+      for(const auto& e: val) finalizers_to_veto_.insert(e);
+    }
+
     void build_cmd(const std::string& val){ build_cmd_ = val; }
 
     void enableTestBuild(bool val){ test_build_ = val; }
@@ -211,8 +215,8 @@ namespace codetree{
     
     //Runs the wrapper build command
     void test_build(std::ostream& o);
-    
-    bool has_an_implicit_default_ctor(const CXCursor& type_cursor) const;
+
+    void set_type_rcd_ctor_info(TypeRcd& rcd);
     
     CXToken* next_token(CXSourceLocation loc) const;
     CXSourceRange function_decl_range(const CXCursor& cursor) const;
@@ -225,6 +229,8 @@ namespace codetree{
     std::tuple<bool, std::vector<CXCursor>>
     find_type_definition(const CXType& type) const;
 
+    bool requires_default_ctor_wrapper(const TypeRcd& type_rcd) const;
+    
     //Used by find_type_definition.
     std::tuple<bool, CXCursor> find_base_type_definition_(const CXType& type0) const;
     
@@ -278,6 +284,9 @@ namespace codetree{
     void
     visit_class_constructor(CXCursor cursor);
 
+    void
+    visit_class_destructor(CXCursor cursor);
+    
     void
     visit_enum(CXCursor cursor);
 
@@ -365,6 +374,9 @@ namespace codetree{
     //Map of child->mother class inheritance preference
     std::map<std::string, std::string> inheritance_;
 
+    //List of classes whose finalizer must be disabled
+    std::set<std::string> finalizers_to_veto_;
+    
     bool visiting_a_templated_class_;
 
     std::vector<std::string> include_dirs_;

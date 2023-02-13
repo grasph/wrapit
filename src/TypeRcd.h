@@ -18,13 +18,12 @@ struct TypeRcd {
   bool to_wrap;
   int id;
   static int nRecords;
-  bool explicit_ctor;
-  bool vetoed_default_ctor;
+  bool default_ctor;
+  bool finalize;
   TypeRcd(const CXCursor& cursor, const std::string& type_name = std::string());
   TypeRcd(): cursor(clang_getNullCursor()){}
 
   std::string name(int combi) const;
-
   std::vector<std::string> names() const;
 };
 

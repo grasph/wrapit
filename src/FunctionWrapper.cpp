@@ -4,6 +4,7 @@
 #include "libclang-ext.h"
 #include <sstream>
 #include <regex>
+#include <sstream>
 
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o){
@@ -15,15 +16,30 @@ FunctionWrapper::gen_ctor(std::ostream& o){
     << signature()
     << " (\" __HERE__ \")\");""\n";
   indent(o, nindents) << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
+  auto finalize = pTypeRcd && pTypeRcd->finalize;
 
   for(int nargs = nargsmin; nargs <= nargsmax; ++nargs){
-    indent(o, nindents) << varname << "." << (templated_ ? "template " : "")
-			<< "constructor<";
-    gen_arg_list(o, nargs, "", /*argtypes_only = */ true) << ">();\n";
+    std::stringstream  buf;
+    gen_arg_list(buf, nargs, "", /*argtypes_only = */ true);
+    gen_ctor(o, nindents, varname, templated_, finalize,  buf.str());
   }
   generated_jl_functions_.insert(name_jl_);
   return o;
 }
+
+std::ostream&
+FunctionWrapper::gen_ctor(std::ostream& o, int nindents,
+			  const std::string& varname, bool templated,
+			  bool finalize,
+			  const std::string& arg_list){
+  indent(o, nindents) << varname << "." << (templated ? "template " : "")
+		      << "constructor<"
+		      << arg_list
+		      << ">(/*finalize=*/" << (finalize?"true":"false") << ");\n";
+  return o;
+}
+
+
 
 std::ostream&
 FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {

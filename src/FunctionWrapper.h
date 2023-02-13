@@ -25,7 +25,7 @@ public:
 		  bool templated = false);
 
 
-  /// Returns the method signature. 
+  /// Returns the method signature.
   /// Used by CodeTree to support method
   /// vetoing.
   std::string signature() const;
@@ -40,6 +40,14 @@ public:
   generate(std::ostream& o,
 	   std::vector<std::string>& get_index_register);
 
+  /// Generate the default class contructor wrapper if the
+  /// class requires it.
+  static std::ostream&
+  gen_ctor(std::ostream& o, int nindents,
+	   const std::string& varname, bool templated,
+	   bool finalize,
+	   const std::string& arg_list);
+  
   /// Tells if the Base module must be overriden.
   /// This is the case for operators.
   bool override_base(){ return override_base_;}
@@ -47,14 +55,14 @@ public:
   bool is_global() { return is_static_ || classname.size() == 0;}
 
   bool is_static() { return is_static_; }
-  
+
   std::string name_jl() const { return name_jl_; }
 
   std::ostream&
   gen_accessors(std::ostream& o, bool getter_only = false, int* ngens = nullptr);
 
   std::set<std::string> generated_jl_functions(){ return generated_jl_functions_; }
-  
+
   std::string fix_template_type(std::string type_name) const;
 
   bool defines_getindex() const { return getindex_; }
@@ -62,18 +70,18 @@ public:
   bool defines_setindex() const { return setindex_; }
 
   bool is_ctor() const { return is_ctor_;}
-  
+
 protected:
 
   std::ostream& gen_arg_list(std::ostream& o, int nargs, std::string sep, bool argtypes_only = false) const;
-  
+
   std::ostream&
   gen_func_with_default_values(std::ostream& o);
 
-  
+
   std::ostream&
   gen_ctor(std::ostream& o);
-  
+
   std::ostream&
   gen_setindex(std::ostream& o) const;
 
@@ -94,7 +102,7 @@ protected:
   // for this.
   std::ostream&
   gen_func_with_cast(std::ostream& o);
-  
+
 
   // Generates wrappers for a c++ global or class member function.
   // Uses a lambda function indirection to handle
@@ -111,17 +119,17 @@ protected:
   validate();
 
   bool isAccessible(CXType type) const;
-  
+
   std::string arg_decl(int iarg, bool argtype_only) const;
 
-  
+
 private:
   MethodRcd method;
   std::string varname;
   std::string classname;
   std::string class_prefix;
   int nindents;
-  
+
   bool all_lambda;
 
 
@@ -134,12 +142,12 @@ private:
   std::string name_cxx;
   std::string name_jl_;
   std::set<std::string> generated_jl_functions_;
-  
+
   bool is_static_;
   bool inaccessible_type;
   bool rvalueref_arg;
   bool allArgTypesAccessible;
-  
+
   bool setindex_;
   bool getindex_;
 

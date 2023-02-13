@@ -1,0 +1,10 @@
+module_name         = "TestNoFinalizer"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ]
+
+vetoed_finalizer_classes = [ "B", "X" ]
+
+cxx-std             = "c++17"
+
