@@ -91,6 +91,14 @@ For a complex header file tree, the rules may not be sufficient to define the en
 (\*) Directly means here that the content of the #include files are ignored.
 (\*\*) Note that an exact match of the entity signature is required for the veto to work. The signature can be found in comments above the wrap declaration in the generated c++ code before the entity is vetoed.
 
+## Memory management
+
+Information on how releasing of allocated memory is handled can be found in the [CxxWrap](https://github.com/JuliaInterop/CxxWrap.jl) documentation. CxxWrap creates a finalizer that take care of deleted the C++ object when an object is released by the garbage collector. The code genrated by WrapIt disable the finalizer for classes, whose destructor is not public or is deleted. The finalizer can also be disabled on request with the veto_finalizer_classes [configuration](../doc/config.md) parameter.
+
+## C++ pointer and references
+
+CxxWrap maps C++ (const) pointer and reference to Julia types (`Const`)`CxxPtr{T}` and (`Const`)`CxxRef{T}`. More on how to deal with values, pointers, and references can be found in dedicated [page](../doc/values_refs_and_ptrs.md).
+
 ## Debugging Tips
 
    1. In case of wrapping failure, error message when importing the module in Julia, can refer to types using mangled c++ identifier like St6vectorIdSaIdEE. To demangle, the name, use the Unix command `c++filt` with the `-t` option, in this example, `c++-filt -t St6vectorIdSaIdEE` which will reveal the actual type, `std::vector<double, std::allocator<double> >`.
