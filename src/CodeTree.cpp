@@ -129,7 +129,7 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
 
     if(clang_Cursor_isNull(data.c) && !clang_Cursor_isNull(data.first_parent)){
       std::cerr << "Inheritance preference" << clazz << ":" << data.preferred_parent
-		<< " cannot be fulfilled as there is no such inheritance. "
+                << " cannot be fulfilled as there is no such inheritance. "
                 << "Inheritance from class "
                 << clang_getCursorType(data.first_parent) << " is mapped into "
                 << " Julia.\n";
@@ -197,7 +197,7 @@ CodeTree::generate_cxx(std::ostream& o){
       bool done = false;
       if(canonical_type.kind != CXType_Invalid){
         auto it = std::find_if(no_mirrored_types.begin(), no_mirrored_types.end(),
-			       [canonical_type](const CXType& t){  return clang_equalTypes(t, canonical_type); });
+                               [canonical_type](const CXType& t){  return clang_equalTypes(t, canonical_type); });
         if(it == no_mirrored_types.end()){
           no_mirrored_types.push_back(canonical_type);
         } else{
@@ -209,11 +209,11 @@ CodeTree::generate_cxx(std::ostream& o){
         if(c.template_parameter_combinations.size() > 0){
           for(unsigned i = 0; i < c.template_parameter_combinations.size(); ++i){
             indent(o, 1) << "template<> struct IsMirroredType<" << c.name(i)<< "> : std::false_type { };\n";
-	    indent(o, 1) << "template<> struct DefaultConstructible<" << c.name(i)<< "> : std::false_type { };\n";
+            indent(o, 1) << "template<> struct DefaultConstructible<" << c.name(i)<< "> : std::false_type { };\n";
           }
         } else{
           indent(o, 1) << "template<> struct IsMirroredType<" << type_name_cxx << "> : std::false_type { };\n";
-	  indent(o, 1) << "template<> struct DefaultConstructible<" << type_name_cxx << "> : std::false_type { };\n";
+          indent(o, 1) << "template<> struct DefaultConstructible<" << type_name_cxx << "> : std::false_type { };\n";
         }
       }
     }
@@ -288,9 +288,9 @@ CodeTree::generate_cxx(std::ostream& o){
         if(test_build_) test_build(o);
       }
       if(accessor_generation_enabled()){
-	for(const auto& f: t.fields){
-	  auto accessor_gen = check_veto_list_for_var_or_field(f, false);
-	  if(accessor_gen != accessor_mode_t::none){
+        for(const auto& f: t.fields){
+          auto accessor_gen = check_veto_list_for_var_or_field(f, false);
+          if(accessor_gen != accessor_mode_t::none){
             gen_comment_header(t);
             generate_accessor_cxx(o, &t, f, accessor_gen == accessor_mode_t::getter, 1);
           }
@@ -464,7 +464,7 @@ CodeTree::generate_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
 
   if(type_rcd.default_ctor){
     FunctionWrapper::gen_ctor(o, 1, varname, type_rcd.template_parameters.empty(),
-			      type_rcd.finalize, std::string());
+                              type_rcd.finalize, std::string());
   }
 
   if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
@@ -523,10 +523,9 @@ void CodeTree::set_type_rcd_ctor_info(TypeRcd& rcd){
       }
     } else if(kind == CXCursor_Destructor){
       if(access != CX_CXXPublic || data.tree->is_method_deleted(cursor)){
-	data.public_dtor = false;
+        data.public_dtor = false;
       }
     }
-
     return CXChildVisit_Continue;
   }, &data);
 
@@ -726,7 +725,7 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   //    wrapped.constructor<>();
   if(t.default_ctor){
     FunctionWrapper::gen_ctor(o, 2, "wrapped", /*templated=*/true,
-			      t.finalize, std::string());
+                              t.finalize, std::string());
   }
   
   //        wrapped.method("get_first", [](const T& a) -> T1 { return a.get_first(); });
@@ -1019,7 +1018,7 @@ CodeTree::find_type_definition(const CXType& type) const{
         return clang_equalCursors(c, d);
       });
       if(it == definitions.end()){
-	definitions.push_back(d);
+        definitions.push_back(d);
       }
     }
   }
@@ -1143,12 +1142,12 @@ CodeTree::register_type(const CXType& type){
       int i = -1;
 
       if(!clang_Cursor_isNull(cc) && !clang_equalCursors(cc, c)){//a template
-	i = add_type(cc);
-	if(i == types_.size() -1 ){//new type
-	  types_[i].template_parameters = get_template_parameters(cc);
-	}
+        i = add_type(cc);
+        if(i == types_.size() -1 ){//new type
+          types_[i].template_parameters = get_template_parameters(cc);
+        }
       } else{
-	i = add_type(c);
+        i = add_type(c);
       }
 
       types_[i].to_wrap = true;
@@ -1168,8 +1167,8 @@ CodeTree::register_type(const CXType& type){
                              });
 
       if(it == enums_.end()){
-	enums_.emplace_back(c);
-	it = enums_.end() - 1;
+        enums_.emplace_back(c);
+        it = enums_.end() - 1;
       }
 
       it->to_wrap = true;
@@ -1434,7 +1433,7 @@ bool CodeTree::is_method_deleted(CXCursor cursor) const{
                              << clang_getCursorLocation(cursor) << "\n";
 
   //     declaration or definition
-  auto range = function_decl_range(cursor);
+  auto range = clang_getCursorExtent(cursor);
 
   CXToken* toks = nullptr;
   unsigned nToks = 0;
@@ -1452,11 +1451,6 @@ bool CodeTree::is_method_deleted(CXCursor cursor) const{
       if(s == "=" && !expecting_operator) equal = true;
 
       if(s== "{"){ //body start
-        break;
-      }
-      //FIXME: for not-understood reason, 'range' can  go beyond the function declaration.
-      //Following lines is a workaround to deal with such case.
-      if(s== ";"){ //end statement
         break;
       }
 
@@ -1487,6 +1481,11 @@ CodeTree::visit_class_constructor(CXCursor cursor){
     return ;
   }
 
+  if(is_method_deleted(cursor)){
+    if(verbose > 1) std::cerr << "Constructor " << wrapper.signature() << " is deleted.\n";
+    return;
+  }
+
   std::vector<CXType> missing_types;
   int min_args;
   std::tie(missing_types, min_args) = visit_function_arg_and_return_types(cursor);
@@ -1500,17 +1499,17 @@ CodeTree::visit_class_constructor(CXCursor cursor){
     //      p->explicit_non_default_ctor = true;
     if(access == CX_CXXPublic
        && (!auto_veto_ || !inform_missing_types(missing_types, MethodRcd(cursor), p))){
-	
+        
       auto it = std::find_if(p->methods.begin(), p->methods.end(),
-			     [cursor](const MethodRcd& m){
-			       return clang_equalCursors(clang_getCanonicalCursor(m.cursor),
-							 clang_getCanonicalCursor(cursor));
-			     });
+                             [cursor](const MethodRcd& m){
+                               return clang_equalCursors(clang_getCanonicalCursor(m.cursor),
+                                                         clang_getCanonicalCursor(cursor));
+                             });
       if(it == p->methods.end()){
-	p->methods.emplace_back(cursor, min_args);
+        p->methods.emplace_back(cursor, min_args);
       } else if(it->min_args > min_args){
-	it->min_args = min_args;
-	it->cursor = cursor;
+        it->min_args = min_args;
+        it->cursor = cursor;
       }
     }
   }
@@ -1520,9 +1519,9 @@ void
 CodeTree::visit_enum(CXCursor cursor){
   if(has_cursor(enums_, cursor)) return;
   if(verbose > 2) std::cerr << __FUNCTION__ << "(" << cursor
-			    << " defined in "
-			    << clang_getCursorLocation(cursor)
-			    << ")\n";
+                            << " defined in "
+                            << clang_getCursorLocation(cursor)
+                            << ")\n";
   disable_owner_mirror(cursor);
   const auto& type = clang_getCursorType(cursor);
   enums_.emplace_back(cursor, str(clang_getTypeSpelling(type)));
@@ -1954,10 +1953,10 @@ void CodeTree::preprocess(){
 
     for(unsigned j = i + 1 ; j < types_.size(); ++j){
       if(clang_equalCursors(parent, types_[j].cursor)){
-	std::swap(types_[i], types_[j]);
-	j = i + 1;
-	--i;
-	break;
+        std::swap(types_[i], types_[j]);
+        j = i + 1;
+        --i;
+        break;
       }
     }
   }
@@ -2198,7 +2197,7 @@ CodeTree::add_type(const CXCursor& cursor, bool check){
 //  if(it != finalizers_to_veto_.end()){
 //    if(verbose>1){
 //      std::cerr << "Info: Disable contructor call from Julia for the class " << name
-//		  << " listed in the vetoed_finalize_class configuration parameter\n";
+//                << " listed in the vetoed_finalize_class configuration parameter\n";
 //    }
 //    types_.back().finalize = false;
 //    finalizers_to_veto_.erase(it);
