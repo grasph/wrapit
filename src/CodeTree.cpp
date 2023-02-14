@@ -1433,7 +1433,7 @@ bool CodeTree::is_method_deleted(CXCursor cursor) const{
                              << clang_getCursorLocation(cursor) << "\n";
 
   //     declaration or definition
-  auto range = function_decl_range(cursor);
+  auto range = clang_getCursorExtent(cursor);
 
   CXToken* toks = nullptr;
   unsigned nToks = 0;
@@ -1451,11 +1451,6 @@ bool CodeTree::is_method_deleted(CXCursor cursor) const{
       if(s == "=" && !expecting_operator) equal = true;
 
       if(s== "{"){ //body start
-        break;
-      }
-      //FIXME: for not-understood reason, 'range' can  go beyond the function declaration.
-      //Following lines is a workaround to deal with such case.
-      if(s== ";"){ //end statement
         break;
       }
 
@@ -1487,7 +1482,7 @@ CodeTree::visit_class_constructor(CXCursor cursor){
   }
 
   if(is_method_deleted(cursor)){
-    if(verbose > 0) std::cerr << "Method " << wrapper.signature() << " is deleted.\n";
+    if(verbose > 1) std::cerr << "Constructor " << wrapper.signature() << " is deleted.\n";
     return;
   }
 
