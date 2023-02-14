@@ -8,7 +8,8 @@
 
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o){
-  int nargsmin =  method.min_args;
+  int nargsmin =  std::max(1, method.min_args); //no-arg ctor, aka "default ctor" generate elsewhere with direct call to gen_ctor(std::ostream& o, int nindents,
+  //                                              const std::string& varname, bool templated, bool finalize, const std::string& arg_list)
   int nargsmax = clang_getNumArgTypes(method_type);
 
   indent(o << "\n", nindents)

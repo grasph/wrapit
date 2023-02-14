@@ -38,14 +38,14 @@ An `A` or `CxxBaseRef{A}` instance can be converted to a `CxxPtr{A}` (resp. `Con
 
 The following table shows how to call a C++ function wrapped with CxxWrap, when the argument to pass is not of the expected "flavour" (plain type, c++ reference, or c++ pointer).
 
-| Type of variable a      | f(A)      | f(const A&) | f(A&)                         | f(const A*)          | f(A*)           |
-|----------------|-----------|-------------|-------------------------------|----------------------|-----------------|
-| AAllocated     | f(a)      | f(a)        | f(a)                          | f(CxxPtr(a))         | f(CxxPtr(a))    |
-| ADeferenced    | f(A(a))   | f(a)        | f(a)                          | f(CxxPtr(a))         | f(CxxPtr(a))    |
-| ConstCxxRef{A} | f(A(a))   | f(a)        | f(A(a))⁽¹⁾ or f(CxxPtr(a))⁽³⁾ | f(ConstCxxPtr(a))⁽²⁾ | f(CxxPtr(a))⁽³⁾ |
-| CxxRef{A}      | f(A(a))   | f(a)        | f(a)                          | f(ConstCxxPtr(a))⁽²⁾ | f(CxxPtr(a))    |
-| ConstCxxPtr{A} | f(A(a[])) | f(a[])      | f(a[])⁽³⁾                     | f(a)                 | f(CxxPtr(a))⁽³⁾ |
-| CxxPtr{A}      | f(A(a[])) | f(a[])      | f(a[])                        | f(a)                 | f(a)            |
+| Type of variable a | f(A)  | f(const A&) | f(A&)                          | f(const A*)          | f(A*)           |
+|----------------|-----------|-------------|--------------------------------|----------------------|-----------------|
+| AAllocated     | f(a)      | f(a)        | f(a)                           | f(CxxPtr(a))         | f(CxxPtr(a))    |
+| ADeferenced    | f(A(a))   | f(a)        | f(a)                           | f(CxxPtr(a))         | f(CxxPtr(a))    |
+| ConstCxxRef{A} | f(A(a))   | f(a)        | f(A(a))⁽¹⁾ or f(CxxPtr(a)[])⁽³⁾| f(ConstCxxPtr(a))⁽²⁾ | f(CxxPtr(a))⁽³⁾ |
+| CxxRef{A}      | f(A(a))   | f(a)        | f(a)                           | f(ConstCxxPtr(a))⁽²⁾ | f(CxxPtr(a))    |
+| ConstCxxPtr{A} | f(A(a[])) | f(a[])      | f(a[])⁽³⁾                      | f(a)                 | f(CxxPtr(a))⁽³⁾ |
+| CxxPtr{A}      | f(A(a[])) | f(a[])      | f(a[])                         | f(a)                 | f(a)            |
 
 
 (1) Won't be the expected behavior is f is meant to modify a as it will act on a copy and won't modify it.  
