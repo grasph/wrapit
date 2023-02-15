@@ -2199,9 +2199,8 @@ CodeTree::add_type(const CXCursor& cursor, bool check){
   if(index == not_found){
     index = types_.size();
     types_.emplace_back(cursor);
+    set_type_rcd_ctor_info(types_.back());
   }
-
-  set_type_rcd_ctor_info(types_.back());
 
 //  auto name = str(clang_getTypeSpelling(clang_getCursorType(cursor)));
 //  auto it = finalizers_to_veto_.find(name);
