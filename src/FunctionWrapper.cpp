@@ -65,7 +65,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
 
   //target: variable or field accessors must be generated for
   auto target_name = str(clang_getCursorSpelling(cursor));
-  auto target_name_jl = jl_type_name(target_name);
+  std::string target_name_jl;
   auto target_type = clang_getCursorType(cursor);
   auto target_type_name = str(clang_getTypeSpelling(target_type));
   auto target_type_jl = jl_type_name(target_type_name);
@@ -118,6 +118,8 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
   bool wrapper_generated = false;
 
   if(kind == CXCursor_FieldDecl){
+
+    target_name_jl = jl_type_name(target_name);
 
     const char* ref_types[] = { "&", "*" };
     const char* ops[] = { ".", "->"};
@@ -174,22 +176,23 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
     wrapper_generated = true;
   } else if(kind == CXCursor_VarDecl){
     auto fqn = fully_qualified_name(cursor);
-    auto fqn_jl = jl_type_name(fqn);
+    target_name_jl = jl_type_name(fqn);
 
-    indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << fqn_jl << " methods "
+    indent(o << "\n", nindents) << "DEBUG_MSG(\"Adding " << target_name_jl << " methods "
              << "to provide access to the global variable " << fqn
              << " (\" __HERE__ \")\");\n";
+
     indent(o, nindents) << "// defined in "     << clang_getCursorLocation(cursor) << "\n";
 
     auto rtype = gen_setters ? non_const_type_or_pod(target_type) : const_type(target_type);
     //types.method("ns!A!x", []() -> T& { return ns::A::x; });
-    indent(o, nindents) << "types.method(\"" << fqn_jl << "\", []()"
+    indent(o, nindents) << "types.method(\"" << target_name_jl << "\", []()"
                         << "-> " << rtype
                         << " { return " << fqn << "; });\n";
 
     if(gen_setters){
       //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
-      indent(o, nindents) << "types.method(\"" << fqn_jl << "!\", []("
+      indent(o, nindents) << "types.method(\"" << target_name_jl << "!\", []("
                           << const_type(target_type) << " val)"
                           << "-> " << rtype
                           << " { return " << fqn << " = val; });\n";

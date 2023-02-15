@@ -1588,7 +1588,13 @@ CodeTree::visit_field_or_global_variable(CXCursor cursor){
     auto type = clang_getCursorType(cursor);
     bool rc  = register_type(type);
     if(!rc) types_missing_def_.insert(fully_qualified_name(base_type(type)));
-    vars_.push_back(cursor);
+    //to prevent duplicates in case of static fields, which can
+    //appear both within the class block and outside, the
+    //following check is performed:
+    if(clang_equalCursors(clang_getCursorLexicalParent(cursor),
+                          clang_getCursorSemanticParent(cursor))){
+      vars_.push_back(cursor);
+    }
   }
 }
 
