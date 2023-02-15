@@ -1,7 +1,10 @@
+//-*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// vim: noai:ts=2:sw=2:expandtab
+//
+// Copyright (C) 2021 Philippe Gras <philippe.gras@cern.ch>
+//
 #ifndef CODETREE_H
 #define CODETREE_H
-
-// Copyright (C) 2021 Philippe Gras <philippe.gras@cern.ch>
 
 #include <vector>
 #include <string>
@@ -31,17 +34,17 @@ namespace codetree{
 
   enum class propagation_mode_t { types, methods };
   enum class export_mode_t { none, member_functions, all_functions, all };
-  
+
   class CodeTree{
   public:
     CodeTree(): auto_veto_(true), include_depth_(1), mainFileOnly_(true), override_base_(false),
-		propagation_mode_(propagation_mode_t::types), export_mode_(export_mode_t::member_functions),
-		unit_(nullptr), index_(nullptr),
-		build_cmd_("echo Build command not defined."),  test_build_(false),
-		ibuild_(0), build_nskips_(0), build_nmax_(-1), build_every_(1),
-		visiting_a_templated_class_(false), accessor_generation_enabled_(false),
-		import_getindex_(false),
-		import_setindex_(false)
+                propagation_mode_(propagation_mode_t::types), export_mode_(export_mode_t::member_functions),
+                unit_(nullptr), index_(nullptr),
+                build_cmd_("echo Build command not defined."),  test_build_(false),
+                ibuild_(0), build_nskips_(0), build_nmax_(-1), build_every_(1),
+                visiting_a_templated_class_(false), accessor_generation_enabled_(false),
+                import_getindex_(false),
+                import_setindex_(false)
     {
       opts_.push_back("-x");
       opts_.push_back("c++-header");
@@ -49,9 +52,9 @@ namespace codetree{
     CodeTree(CodeTree&&) = default;
 
     ~CodeTree();
-    
+
     std::vector<std::string> include_files;
-    
+
     std::vector<TypeRcd> types_;
     std::vector<MethodRcd> functions_;
     std::vector<TypeRcd> enums_;
@@ -72,56 +75,56 @@ namespace codetree{
 
     void auto_veto(bool val){ auto_veto_ = val; };
     bool auto_veto() { return auto_veto_; }
-    
+
     bool accessor_generation_enabled() const { return accessor_generation_enabled_;}
 
     void accessor_generation_enabled(bool val) { accessor_generation_enabled_ = val;}
-    
+
     void export_mode(export_mode_t mode){ export_mode_ = mode; }
 
     void add_source_file(const fs::path& fname){
       files_to_wrap_.push_back(fname.string());
     }
-    
+
     bool has_cursor(const std::vector<CXCursor> vec, const CXCursor& cursor){
       for(const auto& c: vec){
-	if(clang_equalCursors(c, cursor)) return true;
+        if(clang_equalCursors(c, cursor)) return true;
       }
       return false;
     }
 
     bool has_cursor(const std::vector<TypeRcd> vec, const CXCursor& cursor){
       for(const auto& e: vec){
-	if(clang_equalCursors(e.cursor, cursor)) return true;
+        if(clang_equalCursors(e.cursor, cursor)) return true;
       }
       return false;
     }
 
     bool has_type_name(const std::vector<TypeRcd> vec, const std::string& type_name){
       for(const auto& e: vec){
-	if(e.type_name == type_name) return true;
+        if(e.type_name == type_name) return true;
       }
       return false;
-    }    
-    
+    }
+
     bool has_file(const std::vector<CXFile> vec, const CXFile& file) const{
       for(const auto& f: vec){
-	if(clang_File_isEqual(f, file)) return true;
+        if(clang_File_isEqual(f, file)) return true;
       }
       return false;
     }
 
     bool isAccessible(CXType type) const;
-    
+
     CXType resolve_private_typedef(CXType type) const;
-    
+
     bool fromMainFiles(const CXCursor& cursor) const;
 
     std::ostream& generate_cxx(std::ostream&);
 
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
-    
+
     //To be called before the generate_xx functions.
     //Sorts the types such that a parent type appears in the list
     //before its children
@@ -136,9 +139,9 @@ namespace codetree{
     void parse_vetoes(const fs::path& fname);
 
     std::ostream& generate_jl(std::ostream& o,
-			      std::ostream& export_o,
-			      const std::string& module_name,
-			      const std::string& shared_lib_name) const;
+                              std::ostream& export_o,
+                              const std::string& module_name,
+                              const std::string& shared_lib_name) const;
 
     std::ostream& report(std::ostream& o);
 
@@ -169,7 +172,7 @@ namespace codetree{
     void propagation_mode(propagation_mode_t val){
       propagation_mode_ = val;
     }
-    
+
     std::ostream&
     generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd);
 
@@ -187,7 +190,7 @@ namespace codetree{
     void enableTestBuild(bool val){ test_build_ = val; }
 
     void build_nskips(int val){ build_nskips_ = val;}
-    
+
     void build_nmax(int val){ build_nmax_ = val;}
 
     void build_every(int val){ build_every_ = val;}
@@ -202,27 +205,27 @@ namespace codetree{
     /// Adds a type to the list of types/classes to wrap.
     /// Returns the index of the added type in the vector types_
     int add_type(const CXCursor& cursor, bool check = true);
-    
+
     bool in_veto_list(const std::string signature) const;
-    
+
     //Check is a field or variable is veto status for accessor generation
     // acccessor_mode_t::none -> both accessors vetoed
     accessor_mode_t
     check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_var) const;
-    
+
     //Look for a file in the include dirs and returns the path
     std::string resolve_include_path(const std::string& fname);
-    
+
     //Runs the wrapper build command
     void test_build(std::ostream& o);
 
     void set_type_rcd_ctor_info(TypeRcd& rcd);
-    
+
     CXToken* next_token(CXSourceLocation loc) const;
     CXSourceRange function_decl_range(const CXCursor& cursor) const;
-    
+
     bool add_type_specialization(TypeRcd* pTypeRcd,  const CXType& type);
-    
+
     //Finds the definition of a type or the underlying type in case
     //of a pointer or reference. For a templated type,
     //it retrieves also the types of the template parameters.
@@ -230,18 +233,18 @@ namespace codetree{
     find_type_definition(const CXType& type) const;
 
     bool requires_default_ctor_wrapper(const TypeRcd& type_rcd) const;
-    
+
     //Used by find_type_definition.
     std::tuple<bool, CXCursor> find_base_type_definition_(const CXType& type0) const;
-    
+
     bool is_method_deleted(CXCursor cursor) const;
-    
+
     std::string getUnQualifiedTypeSpelling(const CXType& type) const;
-    
+
     bool inform_missing_types(std::vector<CXType> missing_types,
-			      const MethodRcd& methodRcd,
-			      const TypeRcd* classRcd = nullptr) const;
-      
+                              const MethodRcd& methodRcd,
+                              const TypeRcd* classRcd = nullptr) const;
+
 
     bool is_type_vetoed(const std::string& type_name) const;
 
@@ -253,9 +256,9 @@ namespace codetree{
 
     std::ostream&
     generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
-			  const CXCursor& cursor, bool getter_only, int nindents);
+                          const CXCursor& cursor, bool getter_only, int nindents);
 
-    
+
     std::string type_name(CXCursor cursor) const{
       if(clang_Cursor_isNull(cursor)) return std::string();
 
@@ -270,7 +273,7 @@ namespace codetree{
       return r;
     }
 
-    
+
     bool is_to_visit(CXCursor cursor) const;
 
     TypeRcd* find_class_of_method(const CXCursor& method);
@@ -286,7 +289,7 @@ namespace codetree{
 
     void
     visit_class_destructor(CXCursor cursor);
-    
+
     void
     visit_enum(CXCursor cursor);
 
@@ -312,11 +315,11 @@ namespace codetree{
     std::vector<std::string> get_enum_constants(CXCursor cursor) const;
 
     std::ostream& method_cxx_decl(std::ostream& o, const MethodRcd& method,
-				  std::string varname = "",
-				  std::string classname = "",
-				  int nindents = 1,
-				  bool templated = false);
-    
+                                  std::string varname = "",
+                                  std::string classname = "",
+                                  int nindents = 1,
+                                  bool templated = false);
+
     std::ostream& generate_method_cxx(std::ostream& o, const MethodRcd& method);
 
     std::string get_prefix(const std::string& type_name) const;
@@ -331,7 +334,7 @@ namespace codetree{
     bool has_type(CXCursor cursor) const;
 
     bool has_type(const std::string& t) const;
-    
+
     bool isAForwardDeclaration(CXCursor cursor) const;
 
 
@@ -346,10 +349,10 @@ namespace codetree{
     int get_min_required_args(CXCursor cursor) const;
 
     std::ostream& show_stats(std::ostream& o) const;
-    
+
   private:
     bool auto_veto_;
-    
+
     fs::path filename_;
 
     bool mainFileOnly_;
@@ -359,10 +362,10 @@ namespace codetree{
     bool override_base_;
 
     std::vector<std::string> get_index_generated_;
-    
+
     std::vector<unsigned> incomplete_types_;
 
-    propagation_mode_t propagation_mode_; 
+    propagation_mode_t propagation_mode_;
 
     std::set<std::string> to_export_;
     export_mode_t export_mode_;
@@ -379,7 +382,7 @@ namespace codetree{
 
     //List of classes whose finalizer has been disabled
     std::set<std::string> vetoed_finalizers_;
-    
+
     bool visiting_a_templated_class_;
 
     std::vector<std::string> include_dirs_;
@@ -389,7 +392,7 @@ namespace codetree{
     bool accessor_generation_enabled_;
 
     bool import_getindex_;
-    
+
     bool import_setindex_;
 
 
@@ -404,7 +407,7 @@ namespace codetree{
       unsigned global_var_setters = 0;
       unsigned global_funcs = 0;
     } nwraps_;
-    
+
   };
 }
 #endif //CODETREE_H not defined

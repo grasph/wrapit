@@ -1,4 +1,8 @@
+//-*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// vim: noai:ts=2:sw=2:expandtab
+//
 // Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
+//
 
 #include <iostream>
 #include <fstream>
@@ -56,22 +60,22 @@ find_include_path(const fs::path& p, const std::vector<fs::path>& inc_dirs){
   } else{
     for(const auto& d: inc_dirs){
       try{
-	pp =  fs::canonical(d / p);
-	found = true;
+        pp =  fs::canonical(d / p);
+        found = true;
       } catch(fs::filesystem_error){
-	//path does not exist
-	/* NO-OP */
+        //path does not exist
+        /* NO-OP */
       }
     }
   }
-    return std::make_tuple(pp, found);
+  return std::make_tuple(pp, found);
 }
 
 
 
 int main(int argc, char* argv[]){
   cxxopts::Options option_list("wrapit",
-			       "Generates wrappers from a c++ header file for Cxx.jl.\n");
+                               "Generates wrappers from a c++ header file for Cxx.jl.\n");
   // clang-format off
   option_list.add_options()
     ("h,help", "display this help and exit")
@@ -92,8 +96,8 @@ int main(int argc, char* argv[]){
       toml_config = toml::parse_file(options["cfgfile"].as<std::string>());
     } catch(const toml::v2::ex::parse_error& ex){
       std::cerr << "Failed to read the configuration file "
-		<<  options["cfgfile"].as<std::string>()
-		<< "\n\t" << ex.what() <<  " at " << ex.source() << ".\n";
+                <<  options["cfgfile"].as<std::string>()
+                << "\n\t" << ex.what() <<  " at " << ex.source() << ".\n";
       return 1;
     }
 
@@ -101,7 +105,7 @@ int main(int argc, char* argv[]){
       auto config_ = toml_config.get_as<toml::array>(datacard);
       std::vector<std::string> values;
       if(config_){
-	for(const auto& v: *config_) values.push_back(**(v.as<std::string>()));
+        for(const auto& v: *config_) values.push_back(**(v.as<std::string>()));
       }
       return values;
     };
@@ -109,11 +113,11 @@ int main(int argc, char* argv[]){
     auto read_vpath = [toml_config](const char* datacard, std::vector<fs::path> defaults = std::vector<fs::path>()){
       auto config_ = toml_config.get_as<toml::array>(datacard);
       if(config_){
-	std::vector<fs::path> values;
-	for(const auto& v: *config_) values.push_back(**(v.as<std::string>()));
-	return values;
+        std::vector<fs::path> values;
+        for(const auto& v: *config_) values.push_back(**(v.as<std::string>()));
+        return values;
       } else{
-	return defaults;
+        return defaults;
       }
     };
 
@@ -124,7 +128,7 @@ int main(int argc, char* argv[]){
 
     auto inheritances = read_vstring("inheritances");
     auto vetoed_finalizer_classes  = read_vstring("vetoed_finalizer_classes");
-    
+
     auto module_name = toml_config["module_name"].value_or(std::string("CxxLib"));
     auto out_export_jl_fname = toml_config["export_jl_fname"].value_or(std::string());
     auto out_jl_fname = toml_config["module_jl_fname"].value_or(std::string());
@@ -156,15 +160,15 @@ int main(int argc, char* argv[]){
     auto build_every = toml_config["build_every"].value_or(1);
 
     auto fields_and_variables = toml_config["fields_an_variables"].value_or(true);
-    
+
     auto verbosity = options["verbosity"].as<int>();
-      //toml_config["verbosity"].value_or(0);
+    //toml_config["verbosity"].value_or(0);
 
     if(propagation_mode != "types"
        && propagation_mode != "methods"){
       std::cerr << "Warning: value '" << propagation_mode
-		<< "' for configurable propagation_mode is not valid. "
-	"Valid values: types, methods.\n";
+                << "' for configurable propagation_mode is not valid. "
+        "Valid values: types, methods.\n";
       propagation_mode = "types";
     }
 
@@ -177,8 +181,8 @@ int main(int argc, char* argv[]){
        && export_mode != "all_functions"
        && export_mode != "all"){
       std::cerr << "Warning: value '" << export_mode
-		<< "' for configurable export is not valid. "
-	"Valid values: none, all_functions, all.\n";
+                << "' for configurable export is not valid. "
+        "Valid values: none, all_functions, all.\n";
       export_mode = "member_functions";
     }
 
@@ -195,38 +199,38 @@ int main(int argc, char* argv[]){
     auto open_file = [&](const std::string& fname){
       std::ofstream f(fname, open_mode);
       if(f.tellp()!=0){
-	std::cerr << "File " << fname << " is on way, please move it or use the --force option to force its deletion.\n";
-	in_err = true;
+        std::cerr << "File " << fname << " is on way, please move it or use the --force option to force its deletion.\n";
+        in_err = true;
       }
       return f;
     };
 
-//    std::ofstream out_cpp(out_cpp_fname, open_mode );
-//    if(out_cpp.tellp()!=0){
-//      std::cerr << "File " << out_cpp_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-//      in_err = true;
-//    }
+    //    std::ofstream out_cpp(out_cpp_fname, open_mode );
+    //    if(out_cpp.tellp()!=0){
+    //      std::cerr << "File " << out_cpp_fname << " is on way, please move it or use the --force option to force its deletion.\n";
+    //      in_err = true;
+    //    }
     auto out_cpp = open_file(out_cpp_fname);
 
-//    std::ofstream out_h(out_h_fname, open_mode );
-//    if(out_h.tellp()!=0){
-//      std::cerr << "File " << out_h_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-//      in_err = true;
-//    }
+    //    std::ofstream out_h(out_h_fname, open_mode );
+    //    if(out_h.tellp()!=0){
+    //      std::cerr << "File " << out_h_fname << " is on way, please move it or use the --force option to force its deletion.\n";
+    //      in_err = true;
+    //    }
     auto out_h = open_file(out_h_fname);
 
-//    std::ofstream out_jl(out_jl_fname, open_mode);
-//    if(out_jl.tellp()!=0){
-//      std::cerr << "File " << out_jl_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-//      in_err = true;
-//    }
+    //    std::ofstream out_jl(out_jl_fname, open_mode);
+    //    if(out_jl.tellp()!=0){
+    //      std::cerr << "File " << out_jl_fname << " is on way, please move it or use the --force option to force its deletion.\n";
+    //      in_err = true;
+    //    }
     auto out_jl = open_file(out_jl_fname);
 
-//    std::ofstream out_export_jl(out_export_jl_fname, open_mode);
-//    if(out_export_jl.tellp()!=0){
-//      std::cerr << "File " << out_export_jl_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-//      in_err = true;
-//    }
+    //    std::ofstream out_export_jl(out_export_jl_fname, open_mode);
+    //    if(out_export_jl.tellp()!=0){
+    //      std::cerr << "File " << out_export_jl_fname << " is on way, please move it or use the --force option to force its deletion.\n";
+    //      in_err = true;
+    //    }
     std::ofstream out_export_jl_;
     bool same_ = true;
     if(out_export_jl_fname.size() > 0){
@@ -258,7 +262,7 @@ int main(int argc, char* argv[]){
     tree.inheritances(inheritances);
     tree.vetoed_finalizer_classes(vetoed_finalizer_classes);
     tree.accessor_generation_enabled(fields_and_variables);
-    
+
     if(propagation_mode == "types"){
       tree.propagation_mode(propagation_mode_t::types);
     } else if(propagation_mode == "methods"){
@@ -285,16 +289,16 @@ int main(int argc, char* argv[]){
 
     for (const auto& name: clang_features){
       if(name.size() > 0){
-	tree.enable_feature(name);
+        tree.enable_feature(name);
       }
     }
 
     for (const auto& name: clang_opts){
       if(name.size() > 0){
-	tree.add_clang_opt(name);
+        tree.add_clang_opt(name);
       }
     }
-    
+
     for(const auto& s: extra_headers){
       tree.add_forced_header(s);
     }

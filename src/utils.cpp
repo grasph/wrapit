@@ -1,4 +1,8 @@
+//-*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// vim: noai:ts=2:sw=2:expandtab
+//
 // Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
+//
 #include "utils.h"
 #include <regex>
 #include <string>
@@ -27,7 +31,7 @@ std::ostream& operator<<(std::ostream& stream, const CXString& str){
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, const CXCursor& x){ 
+std::ostream& operator<<(std::ostream& stream, const CXCursor& x){
   stream << clang_getCursorSpelling(x);
   return stream;
 }
@@ -49,8 +53,8 @@ std::ostream& operator<<(std::ostream& stream, CX_CXXAccessSpecifier x){
   if(x == CX_CXXPublic) return stream << "public";
   if(x == CX_CXXPrivate) return stream << "private";
   if(x == CX_CXXProtected) return stream << "protected";
-    return stream << "invalid";
-  }
+  return stream << "invalid";
+}
 
 std::ostream& operator<<(std::ostream& stream, CXSourceLocation location){
   unsigned line;
@@ -81,10 +85,9 @@ std::string jl_type_name(const CXType& t){
 }
 
 void replace(std::string& s, const std::string& to_replace,
-		    const std::string& replacement){
+             const std::string& replacement){
   auto pos = s.find(to_replace);
   if(pos!=std::string::npos){
     s.replace(pos, to_replace.size(), replacement.c_str());
   }
 }
-

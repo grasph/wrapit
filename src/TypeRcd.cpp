@@ -1,4 +1,8 @@
+//-*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// vim: noai:ts=2:sw=2:expandtab
+//
 // Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
+//
 #include "TypeRcd.h"
 #include "utils.h"
 #include "assert.h"
@@ -43,4 +47,3 @@ std::vector<std::string> TypeRcd::names() const{
     return r;
   }
 }
-

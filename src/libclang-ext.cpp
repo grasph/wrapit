@@ -1,4 +1,8 @@
+//-*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// vim: noai:ts=2:sw=2:expandtab
+//
 // Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
+//
 #include "libclang-ext.h"
 #include <regex>
 #include <string>
@@ -38,35 +42,35 @@ int hasDefaultConstructor(CXCursor cursor){
 //};
 
 std::string fully_qualified_name(CXCursor cursor) {
- if(clang_isDeclaration(cursor.kind)){
-   auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
+  if(clang_isDeclaration(cursor.kind)){
+    auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
 
-//   auto tu = static_cast<const CXTranslationUnitImpl*>(cursor.data[2])->TheASTUnit;
-//   
-//   std::cerr << "==> typeid(*decl): " << typeid(*decl).name() << "\n";
-//   auto tmp = llvm::dyn_cast<const clang::TypedefDecl>(decl);
-//   if(tmp){
-//     std::cerr << "==> !!!!\n";
-//     auto tpsi = tmp->getTypeSourceInfo()->getType();
-//     std::cerr << "type source info: " << tpsi.getAsString()
-//	       << ", type: " << typeid(tpsi).name()
-//	       << ", type: " << typeid(*tpsi.getTypePtr()).name()
-//	       << ", iPOD: " << tpsi.isCXX11PODType(tu->getASTContext())
-//	       << "\n";
-//   }
-   
-   auto named_decl =  llvm::dyn_cast<const clang::NamedDecl>(decl);
-   if(named_decl){
-     std::string buffer_;
-     llvm::raw_string_ostream buffer(buffer_);
-     named_decl->printQualifiedName(buffer);
-     return buffer.str();
-   }
- }
- //if this point is reached, fully qualified name retrieval failed,
- //fall back to the original name:
- std::cerr  << "Warning: failed to retrieve the fully qualified name of " << cursor << "\n";
- return str(clang_getCursorSpelling(cursor));
+    //   auto tu = static_cast<const CXTranslationUnitImpl*>(cursor.data[2])->TheASTUnit;
+    //
+    //   std::cerr << "==> typeid(*decl): " << typeid(*decl).name() << "\n";
+    //   auto tmp = llvm::dyn_cast<const clang::TypedefDecl>(decl);
+    //   if(tmp){
+    //     std::cerr << "==> !!!!\n";
+    //     auto tpsi = tmp->getTypeSourceInfo()->getType();
+    //     std::cerr << "type source info: " << tpsi.getAsString()
+    //         << ", type: " << typeid(tpsi).name()
+    //         << ", type: " << typeid(*tpsi.getTypePtr()).name()
+    //         << ", iPOD: " << tpsi.isCXX11PODType(tu->getASTContext())
+    //         << "\n";
+    //   }
+
+    auto named_decl =  llvm::dyn_cast<const clang::NamedDecl>(decl);
+    if(named_decl){
+      std::string buffer_;
+      llvm::raw_string_ostream buffer(buffer_);
+      named_decl->printQualifiedName(buffer);
+      return buffer.str();
+    }
+  }
+  //if this point is reached, fully qualified name retrieval failed,
+  //fall back to the original name:
+  std::cerr  << "Warning: failed to retrieve the fully qualified name of " << cursor << "\n";
+  return str(clang_getCursorSpelling(cursor));
 }
 
 //FIXME: see if the function below can't be implementd
@@ -90,21 +94,21 @@ CXType base_type_(CXType type){
 }
 
 std::string remove_cv(const std::string& type_name){
-   char buf[type_name.size() + 1];
-   strcpy(buf, type_name.c_str());
-   char* saveptr;
-   char* tok;
-   char* p = buf;
-   std::string result;
-   std::string sep;
-   while((tok = strtok_r(p, " \t", &saveptr)) != nullptr){
-      p = nullptr;
-      if(strcmp(tok, "const") != 0 && strcmp(tok, "volatile")){
-	result += sep + tok;
-	sep = " ";
-      }
-   }
-   return result;
+  char buf[type_name.size() + 1];
+  strcpy(buf, type_name.c_str());
+  char* saveptr;
+  char* tok;
+  char* p = buf;
+  std::string result;
+  std::string sep;
+  while((tok = strtok_r(p, " \t", &saveptr)) != nullptr){
+    p = nullptr;
+    if(strcmp(tok, "const") != 0 && strcmp(tok, "volatile")){
+      result += sep + tok;
+      sep = " ";
+    }
+  }
+  return result;
 }
 
 //FIXME: does not work for a template type returned
@@ -144,13 +148,13 @@ std::string fully_qualified_name(CXType t){
     if(nargs > 0){
       buf << "<";
       for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
-	buf << sep;
-	sep = ",";
-	auto arg_type = clang_Type_getTemplateArgumentAsType (base, iarg);
-	if(arg_type.kind != CXType_Invalid){
-	  buf << fully_qualified_name(arg_type);
-	  ++nprocessed_args;
-	}
+        buf << sep;
+        sep = ",";
+        auto arg_type = clang_Type_getTemplateArgumentAsType (base, iarg);
+        if(arg_type.kind != CXType_Invalid){
+          buf << fully_qualified_name(arg_type);
+          ++nprocessed_args;
+        }
       }
       buf << ">";
       tmpl_args = buf.str();
@@ -184,7 +188,7 @@ std::string fully_qualified_name(CXType t){
 
   if(nargs > 0 && nprocessed_args != nargs){
     std::cerr << "Warning: failed to interpret template argument of " << fqn
-	      << ". Some argument might not be fully qualified in the produced "
+              << ". Some argument might not be fully qualified in the produced "
       "c++ code, that is the code might need to be edited to add the possible "
       "namespace and class prefix.\n";
   }

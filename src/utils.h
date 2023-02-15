@@ -1,3 +1,8 @@
+//-*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// vim: noai:ts=2:sw=2:expandtab
+//
+// Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
+//
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -20,15 +25,15 @@ bool has(const T& collection, const U& element){
 
 template<typename T, typename U, typename F>
 bool has(const T& collection, const U& element){
-    F equals;
-    for(const auto& e: collection){
-      if(equals(e, element)) return true;
-    }
-    return false;
+  F equals;
+  for(const auto& e: collection){
+    if(equals(e, element)) return true;
+  }
+  return false;
 }
 
 void replace(std::string& s, const std::string& to_replace,
-	     const std::string& replacement);
+             const std::string& replacement);
 
 std::ostream& operator<<(std::ostream& stream, const CXString& str);
 std::ostream& operator<<(std::ostream& stream, const CXCursor& x);

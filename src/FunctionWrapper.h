@@ -1,3 +1,8 @@
+//-*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// vim: noai:ts=2:sw=2:expandtab
+//
+// Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
+//
 #ifndef FUNCTIONWRAPPER_H
 #define FUNCTIONWRAPPER_H
 
@@ -19,10 +24,10 @@
 class FunctionWrapper{
 public:
   FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRcd,
-		  std::string varname = std::string(),
-		  std::string classname = std::string(),
-		  int nindents = 0,
-		  bool templated = false);
+                  std::string varname = std::string(),
+                  std::string classname = std::string(),
+                  int nindents = 0,
+                  bool templated = false);
 
 
   /// Returns the method signature.
@@ -38,16 +43,16 @@ public:
   //                  by all classes but it is not necessary.
   std::ostream&
   generate(std::ostream& o,
-	   std::vector<std::string>& get_index_register);
+           std::vector<std::string>& get_index_register);
 
   /// Generate the default class contructor wrapper if the
   /// class requires it.
   static std::ostream&
   gen_ctor(std::ostream& o, int nindents,
-	   const std::string& varname, bool templated,
-	   bool finalize,
-	   const std::string& arg_list);
-  
+           const std::string& varname, bool templated,
+           bool finalize,
+           const std::string& arg_list);
+
   /// Tells if the Base module must be overriden.
   /// This is the case for operators.
   bool override_base(){ return override_base_;}
@@ -89,7 +94,7 @@ protected:
   //been generated, otherwise generates it and returns true.
   std::ostream&
   gen_getindex(std::ostream& o,
-	       std::vector<std::string>& get_index_register) const;
+               std::vector<std::string>& get_index_register) const;
 
   void build_arg_lists();
 
