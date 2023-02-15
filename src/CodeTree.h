@@ -179,7 +179,7 @@ namespace codetree{
     void inheritances(const std::vector<std::string>& val);
 
     void vetoed_finalizer_classes(const std::vector<std::string>& val){
-      for(const auto& e: val) finalizers_to_veto_.insert(e);
+      finalizers_to_veto_ = val;
     }
 
     void build_cmd(const std::string& val){ build_cmd_ = val; }
@@ -375,7 +375,10 @@ namespace codetree{
     std::map<std::string, std::string> inheritance_;
 
     //List of classes whose finalizer must be disabled
-    std::set<std::string> finalizers_to_veto_;
+    std::vector<std::string> finalizers_to_veto_;
+
+    //List of classes whose finalizer has been disabled
+    std::set<std::string> vetoed_finalizers_;
     
     bool visiting_a_templated_class_;
 

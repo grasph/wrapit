@@ -527,13 +527,11 @@ void CodeTree::set_type_rcd_ctor_info(TypeRcd& rcd){
     return CXChildVisit_Continue;
   }, &data);
 
-
-
   bool finalize_vetoed = false;
-  auto it = finalizers_to_veto_.find(rcd.type_name);
+  auto it = find(finalizers_to_veto_.begin(), finalizers_to_veto_.end(), rcd.type_name);
   if(it != finalizers_to_veto_.end()){
     finalize_vetoed = true;
-    finalizers_to_veto_.erase(it);
+    vetoed_finalizers_.insert(rcd.type_name);
   }
 
   rcd.default_ctor = !clang_CXXRecord_isAbstract(rcd.cursor)
@@ -1453,7 +1451,7 @@ bool CodeTree::is_method_deleted(CXCursor cursor) const{
 
       if(s == "("){ ++in_paren; continue; }
       if(s == ")"){ --in_paren; continue; }
-      
+
       if(equal){
 	if(s == "delete") deleted = true;
 	break;
@@ -1914,9 +1912,16 @@ std::ostream& CodeTree::report(std::ostream& o){
   for(unsigned i = 0; i < s.size(); ++i) o << "-";
   o << "\n\n";
 
-  if(finalizers_to_veto_.size() > 0){
+  std::vector<std::string> missed_vetoes;
+  for(const auto& v: finalizers_to_veto_){
+    if(vetoed_finalizers_.find(v) == vetoed_finalizers_.end()){
+      missed_vetoes.push_back(v);
+    }
+  }
+
+  if(missed_vetoes.size() > 0){
     const char* sep ="";
-    for(const auto& e: finalizers_to_veto_){
+    for(const auto& e: missed_vetoes){
       o << sep << e;
       sep = ", ";
     }
