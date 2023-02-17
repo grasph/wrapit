@@ -1086,16 +1086,11 @@ CodeTree::register_type(const CXType& type){
   std::vector<std::string> natively_supported = {
     "std::string",
     "std::wstring",
-    "std::vector<std::string>",
-    "std::vector<std::wstring>",
-    "std::vector<bool>",
-    "std::vector<char>",
-    "std::vector<int>",
-    "std::vector<long>",
-    "std::vector<float>",
-    "std::vector<double>",
-    "std::vector<void*>",
+    "std::vector",
     "jlcxx::SafeCFunction",
+    "std::shared_ptr",
+    "std::unique_ptr",
+    "std::weak_ptr"
   };
 
   bool usable;
@@ -1129,7 +1124,13 @@ CodeTree::register_type(const CXType& type){
       // abort();
     }
 
-    if(std::find(natively_supported.begin(), natively_supported.end(), type0_name)
+    std::string type0_name_base = type0_name;
+    auto cc = clang_getSpecializedCursorTemplate(c);
+    if(!clang_Cursor_isNull(cc) && !clang_equalCursors(cc, c)){//a template
+      type0_name_base = fully_qualified_name(cc);
+    }
+
+    if(std::find(natively_supported.begin(), natively_supported.end(), type0_name_base)
        != natively_supported.end()){
       continue;
     }
@@ -1137,8 +1138,6 @@ CodeTree::register_type(const CXType& type){
     if(type0.kind == CXType_Record){
 
       bool found = false;
-
-      auto cc = clang_getSpecializedCursorTemplate(c);
 
       int i = -1;
 
