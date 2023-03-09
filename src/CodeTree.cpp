@@ -22,6 +22,7 @@
 #include "utils.h"
 
 #include "clang/AST/Type.h" //FOR DEBUG
+#include "clang/AST/DeclTemplate.h"
 
 extern CXPrintingPolicy pp;
 
@@ -708,10 +709,12 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   buf << "t" << t.id << "_decl_methods";
   std::string decl_methods = buf.str();
 
-  auto param_list1 = join(myapply(t.template_parameters,
-                                  [](const std::string& x){
-                                    return std::string("typename ") + x;}),
-                          ", ");
+  auto nparams = t.template_parameters.size();
+  std::vector<std::string> param_list;
+  for(decltype(nparams) i = 0; i < nparams; ++i){
+    param_list.emplace_back(t.template_parameter_types[i] + " " + t.template_parameters[i]);
+  }
+  auto param_list1 = join(param_list, ", ");
   auto param_list2 = join(t.template_parameters, ", ");
 
   //  auto t1_decl_methods = []<typename T1, typename T2>(jlcxx::TypeWrapper<T1, T2> wrapped){
@@ -1158,7 +1161,7 @@ CodeTree::register_type(const CXType& type){
                                 << ". Number of template parameters: "
                                 << clang_Type_getNumTemplateArguments(clang_getCursorType(c))
                                 << ".\n";
-      add_type_specialization(&types_[i], c, clang_getCursorType(c));
+      add_type_specialization(&types_[i], clang_getCursorType(c));
       incomplete_types_.push_back(types_.size() - 1);
     } else if(type0.kind == CXType_Enum){
       auto it = std::find_if(enums_.begin(), enums_.end(),
@@ -1620,25 +1623,38 @@ CodeTree::visit_class_template_specialization(CXCursor cursor){
     add_type(specialized_cursor, /*check = */false);
     pTypeRcd = & types_.back();
   }
-  add_type_specialization(pTypeRcd, cursor, type);
+  add_type_specialization(pTypeRcd, type);
   pTypeRcd->to_wrap = true;
   pTypeRcd->template_parameters = get_template_parameters(specialized_cursor);
 }
 
-bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXCursor& cursor, const CXType& type){
+bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
 
+  auto cursor = clang_getTypeDeclaration(type);
   auto nparams = clang_Type_getNumTemplateArguments(type);
   if(nparams <= 0) return false;
 
   std::vector<std::string> combi;
+  std::vector<std::string> param_types;
   for(decltype(nparams) i = 0; i < nparams; ++i){
-    const auto& param_kind = clang_Cursor_getTemplateArgumentKind(cursor, i);
-    if(param_kind == CXTemplateArgumentKind_Integral) {
-      combi.push_back(std::to_string(clang_Cursor_getTemplateArgumentValue(cursor, i)));
+    const auto& param = clang_Type_getTemplateArgumentAsType(type, i);
+    if (param.kind != CXType_Invalid) {
+      combi.push_back(str(clang_getTypeSpelling(param)));
+      param_types.push_back("typename");
     } else {
-      const auto& param_type = clang_Type_getTemplateArgumentAsType(type, i);
-      //FIXME: add support for value template argument
-      combi.push_back(str(clang_getTypeSpelling(param_type)));
+      const auto *SD =
+        llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(
+            static_cast<const clang::Decl *>(cursor.data[0]));
+      using clang::TemplateArgument;
+      auto TA = SD->getTemplateArgs()[i];
+      if (TA.getKind() == TemplateArgument::ArgKind::Integral){
+        combi.push_back(std::to_string(TA.getAsIntegral().getSExtValue()));
+        param_types.push_back(TA.getIntegralType().getAsString());
+      } else {
+        // The "FIXME" is a message for the user; highlighting that the template argument
+        // is neither a type or an integral parameter
+        combi.push_back("/* FIXME */");
+      }
     }
   }
 
@@ -1647,6 +1663,7 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXCursor& cursor
                                    combi)){
     combi_list.push_back(combi);
   }
+  pTypeRcd->template_parameter_types = param_types;
 
   return true;
 }

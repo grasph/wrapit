@@ -224,7 +224,7 @@ namespace codetree{
     CXToken* next_token(CXSourceLocation loc) const;
     CXSourceRange function_decl_range(const CXCursor& cursor) const;
 
-    bool add_type_specialization(TypeRcd* pTypeRcd, const CXCursor& cursor, const CXType& type);
+    bool add_type_specialization(TypeRcd* pTypeRcd, const CXType& type);
 
     //Finds the definition of a type or the underlying type in case
     //of a pointer or reference. For a templated type,
