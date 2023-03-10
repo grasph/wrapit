@@ -1,6 +1,6 @@
 # CxxWrap C++/Julia mapping of plain, pointer, and reference types
 
-In this page, is summarised the mapping of C++ function argument and return types to Julia types performed by CxxWrap for struct/class. The provided information is based on CxxWrap version 0.13.3. For older versions refer to [this document version](https://github.com/grasph/wrapit/blob/e20fa248e8513442f696a16d1af64ed060da1481/doc/values_refs_and_ptrs.md).
+In this page, is summarised the mapping of C++ function arguments and return types to Julia types performed by CxxWrap for struct/class. The provided information is based on CxxWrap version 0.13.3. For older versions refer to [this document version](https://github.com/grasph/wrapit/blob/e20fa248e8513442f696a16d1af64ed060da1481/doc/values_refs_and_ptrs.md).
 
 We will find at the end of the page a [cheat sheet](#Cheat_sheet) for calling a C++ function with arguments which are not in the expected type, between original type and a pointer or reference to it.
 
@@ -15,7 +15,7 @@ We will find at the end of the page a [cheat sheet](#Cheat_sheet) for calling a 
 | f(A*)       | f(::Union{Ptr{Nothing}, CxxPtr{<:A}})                  |
 | f(shared_ptr<A>) | f(::SmartPointer{A})                              |
 
-## Mapping of function return type
+## Mapping of function return types
 
 | C++ function return type | Julia wrapper return type and its parent tree     |
 |-------------------|----------------------------------------------------------|
