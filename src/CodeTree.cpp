@@ -1207,14 +1207,11 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   for(int i = 0; i < clang_getNumArgTypes(method_type); ++i){
     auto argtype = clang_getArgType(method_type, i);
     if(verbose > 3) std::cerr << cursor << ", arg " << (i+1) << " type: " << argtype << "\n";
-    if(argtype.kind == CXType_IncompleteArray)
-    {
+    if(argtype.kind == CXType_IncompleteArray){
       auto eltype = clang_getElementType(argtype);
       bool rc = register_type(eltype);
       if(!rc) missing_types.push_back(argtype);
-    }
-    else if(argtype.kind != CXType_Void)
-    {
+    } else if(argtype.kind != CXType_Void){
       bool rc = register_type(argtype);
       if(!rc) missing_types.push_back(argtype);
     }
