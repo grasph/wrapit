@@ -1,8 +1,8 @@
 # Documentation of `cxxwrapgen` configuration file
 
-The configuration file use the [toml](https://toml.io) syntax.
+The configuration file uses the [toml](https://toml.io) syntax.
 
-The list of parameter with their defaut value is provided below.
+The list of parameters with their defaut value is provided below.
 
 
 ### Main parameters
@@ -15,7 +15,7 @@ module_name         = "CxxLib"
 # See also include_dirs
 input               = [ ]
 
-# List of directory, where header files must be look for
+# List of directories, where header files must be look for
 include_dirs        = [ "." ]
 
 # C++ standard to be used to interpret the header files
@@ -55,7 +55,7 @@ vetoed_finalizer_classes = []
 #              and its member functions 
 propagation_mode    = "types"
 
-# Switch for the genration of field and variable accessors
+# Switch for the generation of field and variable accessors
 fields_and_variables = true
 
 # List of class inheritance mapping specification, to be used for classes
@@ -77,7 +77,7 @@ inheritances        = [ "" ]
 ### Extra options for the julia module code generation
 
 ```
-# Name to be used for the file to genarate for the Julia module code.
+# Name to be used for the file to generate for the Julia module code.
 # If empty, use the module name with .jl extension added
 module_jl_fname     = ""
 
@@ -126,10 +126,10 @@ auto_veto = true
 
 ```
 # Switch to enable code compilation test during the code generation.
-# This feature is to be used for debugging purpose, when we cannot identify
+# This feature is to be used for debugging purposes, when we cannot identify
 # which line of the generated code is causing an error. A command to build the code
 # and possibly test it is run regularly during the code generation process,
-# and the generation is stopped it the command exit with a code different than 0.
+# and the generation is stopped if the command exit with a code different than 0.
 test_build   	    = false
 
 # Command to run when test_build is enabled
