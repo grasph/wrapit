@@ -34,7 +34,7 @@ else() #Using Clang_jll
    set(SHARED_LIBS libclang LLVM)
    foreach(shared_lib IN LISTS SHARED_LIBS) 
        add_library(${shared_lib} SHARED IMPORTED)
-       set(lib_path "${CMAKE_INSTALL_PREFIX}/lib/lib${shared_lib}${CMAKE_SHARE_LIBRARY_SUFFIX}")
+       set(lib_path "${CMAKE_INSTALL_PREFIX}/lib/lib${shared_lib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
        string(REPLACE liblib lib lib_path ${lib_path})
        set_property(TARGET ${shared_lib} PROPERTY
                     IMPORTED_LOCATION ${lib_path})
