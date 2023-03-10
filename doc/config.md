@@ -36,7 +36,9 @@ extra_headers       = [ ]
 
 # File containing a list of type and functions to exclude from the
 # wrapping generation. The exact entity signature that can be found
-# in the comment of the generated C++ source must be used.
+# in the comment of the generated C++ source must be used. Alternatively,
+# one can use a regex surrounded by '/' to exclude signatures based on
+# pattern matching.
 veto_list           = ""
 
 # List of classes with instances owned by the C++ library
