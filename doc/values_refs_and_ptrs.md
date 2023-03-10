@@ -8,25 +8,25 @@ We will find at the end of the page a [cheat sheet](#Cheat_sheet) for calling a 
 
 | C++         | Julia wrapper                                          |
 |-------------|--------------------------------------------------------|
-| f(A)        | f(::Union{ConstCxxRef{A}, CxxRef{A}, A})                                                 |
-| f(A*)       | f(::Union{Ptr{Nothing}, CxxPtr{<:A}})                  |
-| f(const A*) | f(::Union{Ptr{Nothing}, ConstCxxPtr{<:A}, CxxPtr{<:A}) |
+| f(A)        | f(::Union{ConstCxxRef{A}, CxxRef{A}, A})               |
+| f(const A&) | f(::Union{A, ConstCxxRef{<:A}}, CxxRef{<:A}})          |
 | f(A&)       | f(::Union{A, CxxRef{<:A}})                             |
-| f(const A&) | f(::Union{A, ConstCxxRef{<:A}, CxxRef{<:A})            |
+| f(const A*) | f(::Union{Ptr{Nothing}, ConstCxxPtr{<:A}, CxxPtr{<:A}) |
+| f(A*)       | f(::Union{Ptr{Nothing}, CxxPtr{<:A}})                  |
 | f(shared_ptr<A>) | f(::SmartPointer{A})                              |
 
 ## Mapping of function return type
 
-| C++ function return type | Julia wrapper return type and its parent tree            |
-|-------------------|-----------------------------------------------------------------|
-| A                 | AAllocated <: A <: Any                                          |
-| A*                | CxxPtr{A} <: CxxBaseRef{A} <: Ref{A} <: Any                     |
-| A&                | CxxRef{A} <: CxxBaseRef{A} <: Ref{A} <: Any                     |
-| const A*          | ConstCxxPtr{A} <: CxxBaseRef{A} <: Ref{A} <: Any                |
-| const A&          | ConstCxxRef{A} <: CxxBaseRef{A} <: Ref{A} <: Any                |
-| std::unique_ptr<A>| UniquePtrAllocated{A} <: UniquePtr{A} <: SmartPointer{A} <: Any |
-| std::shared_ptr<A>| SharedPtrAllocated{A} <: SharedPtr{A} <: SmartPointer{A} <: Any |
-| std::weak_ptr<A>  | WeakPtrAllocated{A} <: WeakPtr{A} <: SmartPointer{A} <: Any     |
+| C++ function return type | Julia wrapper return type and its parent tree     |
+|-------------------|----------------------------------------------------------|
+| A                 | AAllocated <: A                                          |
+| const A*          | ConstCxxPtr{A} <: CxxBaseRef{A} <: Ref{A}                |
+| A*                | CxxPtr{A} <: CxxBaseRef{A} <: Ref{A}                     |
+| const A&          | ConstCxxRef{A} <: CxxBaseRef{A} <: Ref{A}                |
+| A&                | CxxRef{A} <: CxxBaseRef{A} <: Ref{A}                     |
+| std::unique_ptr<A>| UniquePtrAllocated{A} <: UniquePtr{A} <: SmartPointer{A} |
+| std::shared_ptr<A>| SharedPtrAllocated{A} <: SharedPtr{A} <: SmartPointer{A} |
+| std::weak_ptr<A>  | WeakPtrAllocated{A} <: WeakPtr{A} <: SmartPointer{A}     |
 
 ## Conversions
 

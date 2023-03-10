@@ -163,6 +163,10 @@ using CxxWrap: CxxPtr, ConstCxxPtr
     @test_throws Exception inci_ptr(constptr)
     @test_throws Exception inci_ptr(constptr[])
     #   
+    #   Check recipes for f(std::uniq_ptr<A>& a):
+    instance3_id = i(uniqueptr[]) + 1
+    @test inci_uniqueptr(uniqueptr) == instance3_id
+    @test i(uniqueptr[]) == instance3_id
     #   Check recipes for f(std::shared_ptr<A> a):
     instance4_id = i(sharedptr[]) + 1
     @test inci_sharedptr(sharedptr) == instance4_id
