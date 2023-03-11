@@ -205,10 +205,15 @@ CodeTree::generate_cxx(std::ostream& o){
       if(!done){ //no-mirrored statement not yet generated
         if(verbose > 2) std::cerr << "Disable mirrored type for type " << type_name_cxx << "\n";
         if(c.template_parameter_combinations.size() > 0){
-          for(unsigned i = 0; i < c.template_parameter_combinations.size(); ++i){
-            indent(o, 1) << "template<> struct IsMirroredType<" << c.name(i)<< "> : std::false_type { };\n";
-            indent(o, 1) << "template<> struct DefaultConstructible<" << c.name(i)<< "> : std::false_type { };\n";
+          auto nparams = c.template_parameters.size();
+          std::vector<std::string> param_list;
+          for(decltype(nparams) i = 0; i < nparams; ++i){
+            param_list.emplace_back(c.template_parameter_types[i] + " " + c.template_parameters[i]);
           }
+          auto param_list1 = join(param_list, ", ");
+          auto param_list2 = join(c.template_parameters, ", ");
+          indent(o, 1) << "template<" << param_list1 << "> struct IsMirroredType<" << c.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
+          indent(o, 1) << "template<" << param_list1 << "> struct DefaultConstructible<" << c.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
         } else{
           indent(o, 1) << "template<> struct IsMirroredType<" << type_name_cxx << "> : std::false_type { };\n";
           indent(o, 1) << "template<> struct DefaultConstructible<" << type_name_cxx << "> : std::false_type { };\n";
