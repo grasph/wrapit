@@ -212,6 +212,23 @@ CodeTree::generate_cxx(std::ostream& o){
           }
           auto param_list1 = join(param_list, ", ");
           auto param_list2 = join(c.template_parameters, ", ");
+          o << "\n";
+          indent(o, 1) << "template<" << param_list1 << ">\n";
+          indent(o, 1) << "struct BuildParameterList<" << c.type_name << "<" << param_list2 << ">>\n";
+          indent(o, 1) << "{\n";
+          indent(o, 2) << "typedef ParameterList<";
+          const char* sep = "";
+          for(decltype(nparams) i = 0; i < nparams; ++i){
+            if (c.template_parameter_types[i] != "typename") {
+              o << sep << "std::integral_constant<" << c.template_parameter_types[i] << ", " << c.template_parameters[i] << ">";
+              sep = ", ";
+            } else {
+              o << sep << c.template_parameters[i];
+              sep = ", ";
+            }
+          }
+          o << "> type;\n";
+          indent(o,1) << "};\n\n";
           indent(o, 1) << "template<" << param_list1 << "> struct IsMirroredType<" << c.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
           indent(o, 1) << "template<" << param_list1 << "> struct DefaultConstructible<" << c.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
         } else{
