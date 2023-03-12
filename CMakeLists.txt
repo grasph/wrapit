@@ -7,6 +7,8 @@ project (CxxWrapGen)
 
 include(FetchContent)
 
+find_package(Git)
+
 #Package to parse command line options
 FetchContent_Declare(
     cxxopts
@@ -57,7 +59,37 @@ else() #Using Clang_jll
     endif()
 endif()
 
-add_executable(wrapit src/TypeRcd.cpp src/utils.cpp  src/libclang-ext.cpp src/FunctionWrapper.cpp src/CodeTree.cpp src/main.cpp src/toml.hpp)
+
+add_custom_target(version
+  ${CMAKE_COMMAND}
+  -D SRC=${CMAKE_SOURCE_DIR}/src/version.cpp.in
+  -D DST=${CMAKE_BINARY_DIR}/version.cpp
+  -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+  -P ${CMAKE_SOURCE_DIR}/version.cmake
+  DEPENDS src/version.cpp.in
+  )
+
+# The target 'versions' is used to produce version.cpp
+# This dummy custom command is defined to allow
+# inclusion of version.cpp dependency to the
+# wrapit executable.
+add_custom_command(OUTPUT version.cpp
+  COMMAND true
+  )
+
+add_executable(wrapit
+   src/TypeRcd.cpp
+   src/utils.cpp
+   src/libclang-ext.cpp
+   src/FunctionWrapper.cpp
+   src/CodeTree.cpp
+   src/main.cpp
+   src/toml.hpp
+   version.cpp
+)
+
+add_dependencies(wrapit version)
+
 target_link_libraries(wrapit PRIVATE libclang clangAST cxxopts)
 set_target_properties(wrapit PROPERTIES CXX_STANDARD 17 OUTPUT_NAME wrapit)
 install(TARGETS wrapit DESTINATION bin)
