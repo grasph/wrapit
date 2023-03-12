@@ -767,7 +767,8 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
 std::ostream& CodeTree::generate_jl(std::ostream& o,
                                     std::ostream& export_o,
                                     const std::string& module_name,
-                                    const std::string& shared_lib_basename) const{
+                                    const std::string& lib_prefix,
+                                    const std::string& lib_basename) const{
   o << "module " << module_name << "\n";
 
   bool first = true;
@@ -802,10 +803,14 @@ std::ostream& CodeTree::generate_jl(std::ostream& o,
   if(import_getindex_) o << "import Base.getindex\n";
   if(import_setindex_) o << "import Base.setindex!\n";
 
-  o <<  "\n"
-    "using CxxWrap\n"
-    "@wrapmodule(\"" << shared_lib_basename<< "\")\n"
-    "\n"
+  o <<  "\nusing CxxWrap\n";
+  if(lib_prefix.empty()) {
+    o << "@wrapmodule(\"" << lib_basename<< "\")\n";
+  }
+  else{
+    o << "@wrapmodule(joinpath(" << lib_prefix << ", \"" << lib_basename<< "\"))\n";
+  }
+  o << "\n"
     "function __init__()\n"
     "    @initcxx\n"
     "end\n";

@@ -100,6 +100,9 @@ export              = "member_functions"
 # with the command,
 # julia -e 'println(string.(vcat(names(Main),names(Base),names(Core))))'
 export_blacklist    = []
+
+# Shared library load prefix for the julia module.
+lib_prefix = "@__DIR__"
 ```
 
 ### Extra options for the header file code interpretation ([clang](https://clang.llvm.org/docs/UsersManual.html) options)

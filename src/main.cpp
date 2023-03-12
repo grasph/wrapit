@@ -139,6 +139,7 @@ int main(int argc, char* argv[]){
     auto clang_features = read_vstring("clang_features");
     auto clang_opts     = read_vstring("clang_opts");
 
+    auto lib_prefix       = toml_config["lib_prefix"].value_or(std::string("@__DIR__"));
     auto lib_basename     = std::string("jl") + module_name;
     auto out_cpp_fname    = toml_config["out_cpp_fname"].value_or(std::string("jl") + module_name + ".cxx");
     auto out_h_fname      = toml_config["out_h_fname"].value_or(std::string("jl") + module_name + ".h");
@@ -318,7 +319,7 @@ int main(int argc, char* argv[]){
     tree.parse(out_h, out_h_fname);
     tree.preprocess();
     tree.generate_cxx(out_cpp);
-    tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);
+    tree.generate_jl(out_jl, out_export_jl, module_name, lib_prefix, lib_basename);
 
     tree.report(out_report);
   }

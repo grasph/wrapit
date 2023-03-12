@@ -141,7 +141,8 @@ namespace codetree{
     std::ostream& generate_jl(std::ostream& o,
                               std::ostream& export_o,
                               const std::string& module_name,
-                              const std::string& shared_lib_name) const;
+                              const std::string& lib_prefix,
+                              const std::string& lib_basename) const;
 
     std::ostream& report(std::ostream& o);
 
