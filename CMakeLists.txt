@@ -67,7 +67,15 @@ add_custom_target(version
   -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
   -P ${CMAKE_SOURCE_DIR}/version.cmake
   DEPENDS src/version.cpp.in
-)
+  )
+
+# The target 'versions' is used to produce version.cpp
+# This dummy custom command is defined to allow
+# inclusion of version.cpp dependency to the
+# wrapit executable.
+add_custom_command(OUTPUT version.cpp
+  COMMAND true
+  )
 
 add_executable(wrapit
    src/TypeRcd.cpp
@@ -77,10 +85,10 @@ add_executable(wrapit
    src/CodeTree.cpp
    src/main.cpp
    src/toml.hpp
+   version.cpp
 )
 
 add_dependencies(wrapit version)
-target_sources(wrapit PRIVATE ${CMAKE_BINARY_DIR}/version.cpp)
 
 target_link_libraries(wrapit PRIVATE libclang clangAST cxxopts)
 set_target_properties(wrapit PROPERTIES CXX_STANDARD 17 OUTPUT_NAME wrapit)
