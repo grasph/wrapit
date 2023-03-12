@@ -59,22 +59,15 @@ else() #Using Clang_jll
     endif()
 endif()
 
-#add_custom_command(OUTPUT version.cpp
-#  COMMAND ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/src/version.cpp.in
-#  -D DST=${CMAKE_BINARY_DIR}/version.cpp
-#  -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-#  -P ${CMAKE_SOURCE_DIR}/version.cmake
-#  DEPENDS src/version.cpp.in
-#  )
 
 add_custom_target(version
-  ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/src/version.cpp.in
+  ${CMAKE_COMMAND}
+  -D SRC=${CMAKE_SOURCE_DIR}/src/version.cpp.in
   -D DST=${CMAKE_BINARY_DIR}/version.cpp
   -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
   -P ${CMAKE_SOURCE_DIR}/version.cmake
   DEPENDS src/version.cpp.in
-  )
-
+)
 
 add_executable(wrapit
    src/TypeRcd.cpp
@@ -84,10 +77,10 @@ add_executable(wrapit
    src/CodeTree.cpp
    src/main.cpp
    src/toml.hpp
-   version.cpp
 )
 
 add_dependencies(wrapit version)
+target_sources(wrapit PRIVATE ${CMAKE_BINARY_DIR}/version.cpp)
 
 target_link_libraries(wrapit PRIVATE libclang clangAST cxxopts)
 set_target_properties(wrapit PROPERTIES CXX_STANDARD 17 OUTPUT_NAME wrapit)
