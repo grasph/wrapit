@@ -10,6 +10,9 @@
 #include <regex>
 #include <sstream>
 
+#include "clang/AST/Decl.h"
+#include "llvm/Support/raw_ostream.h"
+
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o){
   int nargsmin =  std::max(1, method.min_args); //no-arg ctor, aka "default ctor" generate elsewhere with direct call to gen_ctor(std::ostream& o, int nindents,
@@ -270,7 +273,7 @@ void FunctionWrapper::build_arg_lists(){
   rvalueref_arg = false;
   for(int i = 0; i < clang_getNumArgTypes(method_type); ++i){
     auto argtype = clang_getArgType(method_type, i);
-    auto argtype_fqn = fully_qualified_name(argtype);
+    auto argtype_fqn = fix_template_type(fully_qualified_name(argtype));
 
     inaccessible_type = inaccessible_type || !isAccessible(argtype);
     if(argtype.kind == CXType_RValueReference) rvalueref_arg = true;
@@ -525,6 +528,9 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
 
 
   if(is_static_){
+    if(templated_)
+      name_jl_ = jl_type_name(pTypeRcd->type_name + "::") + name_jl_suffix;
+    else
     name_jl_ = jl_type_name(class_prefix) + name_jl_suffix;
   } else{
     //FIXME: Add prefix. The namespace?
@@ -583,7 +589,8 @@ FunctionWrapper::validate(){
 
 std::string FunctionWrapper::signature() const{
   std::stringstream buf;
-  buf << fully_qualified_name(return_type_) << " " << class_prefix << name_cxx
+  std::string genuine_classname = pTypeRcd->type_name;
+  buf << fully_qualified_name(return_type_) << " " << genuine_classname << "::" << name_cxx
       << "(" <<  short_arg_list_cxx << ")";
   return buf.str();
 }
@@ -642,12 +649,30 @@ std::string FunctionWrapper::fix_template_type(std::string type_name) const{
 
   std::string genuine_classname = pTypeRcd->type_name;
 
-  std::regex r(std::string("(?=^|::)") + genuine_classname + "(?=$|::)");
+  std::string class_namespace;
+  if(clang_isDeclaration(pTypeRcd->cursor.kind)){
+    auto decl = static_cast<const clang::Decl*>(pTypeRcd->cursor.data[0]);
+    auto named_decl =  llvm::dyn_cast<const clang::NamedDecl>(decl);
+    if(named_decl){
+      std::string buffer_;
+      llvm::raw_string_ostream buffer(buffer_);
+      named_decl->printNestedNameSpecifier(buffer);
+      class_namespace = buffer.str();
 
-  std::string fixed = std::regex_replace(type_name, r, "WrappedType");
-  if(fixed != type_name){
-    fixed = "typename " + fixed;
+      std::string buffer2_;
+      llvm::raw_string_ostream buffer2(buffer2_);
+      named_decl->printName(buffer2);
+      genuine_classname = buffer2.str();
+    }
   }
+  auto param_list = join(pTypeRcd->template_parameters, ", ");
+  genuine_classname = "(?:" + class_namespace + ")?" + genuine_classname;
+
+  std::regex r(std::string("(?=^|::)(const )?(?:") + genuine_classname + ")(?=$|::| [*&])");
+  std::string fixed = std::regex_replace(type_name, r, "$1typename WrappedType");
+
+  std::regex r2(std::string("(?=^|::)(const )?(?:") + genuine_classname + "<" + param_list + ">)(?=$| [*&])");
+  fixed = std::regex_replace(fixed, r2, "$1WrappedType");
 
   return fixed;
 }
