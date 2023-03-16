@@ -18,6 +18,7 @@
 #include "stdio.h"
 
 #include "FunctionWrapper.h"
+#include "libclang-ext.h"
 
 #include "utils.h"
 
@@ -1664,11 +1665,8 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
       combi.push_back(str(clang_getTypeSpelling(param)));
       param_types.push_back("typename");
     } else {
-      const auto *SD =
-        llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(
-            static_cast<const clang::Decl *>(cursor.data[0]));
+      auto TA = get_IntegralTemplateArgument(cursor, i);
       using clang::TemplateArgument;
-      auto TA = SD->getTemplateArgs()[i];
       if (TA.getKind() == TemplateArgument::ArgKind::Integral){
         combi.push_back(std::to_string(TA.getAsIntegral().getSExtValue()));
         param_types.push_back(TA.getIntegralType().getAsString());
