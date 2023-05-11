@@ -186,13 +186,13 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
 
     auto rtype = gen_setters ? non_const_type_or_pod(target_type) : const_type(target_type);
     //types.method("ns!A!x", []() -> T& { return ns::A::x; });
-    indent(o, nindents) << "types.method(\"" << target_name_jl << "\", []()"
+    indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []()"
                         << "-> " << rtype
                         << " { return " << fqn << "; });\n";
 
     if(gen_setters){
       //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
-      indent(o, nindents) << "types.method(\"" << target_name_jl << "!\", []("
+      indent(o, nindents) << varname << ".method(\"" << target_name_jl << "!\", []("
                           << const_type(target_type) << " val)"
                           << "-> " << rtype
                           << " { return " << fqn << " = val; });\n";
@@ -450,11 +450,9 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
 
   if(varname.size() == 0){
     if(pTypeRcd!=0){
-      std::stringstream buf;
-      buf << "t" << pTypeRcd->id;
-      this->varname = buf.str();
+      this->varname = "t";
     } else{
-      this->varname = "types";
+      this->varname = "jlModule";
     }
   }
 
@@ -540,6 +538,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
   is_ctor_ = clang_getCursorKind(method.cursor) == CXCursor_Constructor;
 
   is_abstract_ = pTypeRcd ? clang_CXXRecord_isAbstract(pTypeRcd->cursor) : false;
+
 }
 
 bool

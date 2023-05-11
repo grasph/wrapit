@@ -145,6 +145,245 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
   return data.c;
 }
 
+std::string CodeTree::wrapper_classsname(const std::string& classname) const{
+  std::regex r("::");
+  std::string s = std::regex_replace(classname, r, "_");
+  return s + "Wrapper";
+}
+
+std::ostream&
+CodeTree::generate_template_add_type_cxx(std::ostream& o,
+                                         const TypeRcd& type_rcd,
+                                         std::string& add_type_param){
+
+  if(verbose > 3) std::cerr << __FUNCTION__ << "("
+                            << "..." << ", "
+                            << "{cursor = " << type_rcd.cursor << ",..}" << ")\n";
+
+  //FIXME: support for operators
+
+  //Example
+  //
+  //Class to wrap:
+  //  template<typename T1, typename T2> class A;
+  //  template class A<P1, P2>;
+  //  template class A<P3, P4>;
+  //
+  //Code to generate:
+  //  t1 = types.add_type<Parametric<TypeVar<1>, TypeVar<2>>>("A")
+  //  .apply<A<P1, P2>, A<P3, P4>([](auto){});
+  //
+  const auto& cursor = type_rcd.cursor;
+  const auto& type = clang_getCursorType(cursor);
+  const auto& typename_cxx = type_rcd.type_name;
+  const auto& typename_jl = jl_type_name(typename_cxx);
+  int id = type_rcd.id;
+
+
+//  if(is_type_vetoed(typename_cxx)){
+//    std::cerr << "Info: class/struct " << typename_cxx << " vetoed\n";
+//    return o;
+//  }
+
+  if(type_rcd.template_parameter_combinations.empty()){
+    std::cerr << "Warning: no specialization found for template class "
+              << typename_cxx
+              << " and no wrapper will be generated for this class.\n";
+    return o;
+  }
+
+  ++nwraps_.types;
+  ++nwraps_.type_templates;
+  indent(o, 1) << "// defined in "   << clang_getCursorLocation(cursor) << "\n";
+
+
+  std::stringstream buf;
+  buf << "jlcxx::Parametric<";
+  //TypeVar<1>, TypeVar<2>
+  const unsigned nparams = type_rcd.template_parameter_combinations[0].size();
+  const char* sep = "";
+  for(unsigned i = 1; i <= nparams; ++i){
+    buf << sep << "jlcxx::TypeVar<" << i << ">";
+    sep = ", ";
+  }
+  buf << ">";
+  add_type_param = buf.str();
+
+  //types.add_type<Parametric<...>("TemplateType")
+  indent(o, 2) << "jlcxx::TypeWrapper<" << add_type_param << ">  t = "
+               << " jlModule.add_type<" << add_type_param
+               << ">(\""    << typename_jl << "\");\n";
+
+  indent(o, 2) <<  "type_ = std::unique_ptr<jlcxx::TypeWrapper<"
+               << add_type_param << ">>(new jlcxx::TypeWrapper<"
+               << add_type_param << ">(jlModule, t));\n";
+
+  if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
+
+  return o;
+}
+
+std::ostream&
+CodeTree::generate_cxx_for_type(std::ostream& o,
+                                const TypeRcd& t){
+
+  o << "\nnamespace jlcxx {\n";
+  //generate code that disables mirrored type
+  if(verbose > 2) std::cerr << "Disable mirrored type for type " << t.type_name << "\n";
+  if(t.template_parameter_combinations.size() > 0){
+    for(unsigned i = 0; i < t.template_parameter_combinations.size(); ++i){
+      indent(o, 1) << "template<> struct IsMirroredType<" << t.name(i)<< "> : std::false_type { };\n";
+      indent(o, 1) << "template<> struct DefaultConstructible<" << t.name(i)<< "> : std::false_type { };\n";
+    }
+  } else{
+    indent(o, 1) << "template<> struct IsMirroredType<" << t.type_name << "> : std::false_type { };\n";
+    indent(o, 1) << "template<> struct DefaultConstructible<" << t.type_name << "> : std::false_type { };\n";
+  }
+  
+  //generate inheritance mapping
+  //FIXME: retrieve also parent classes which are not mapped to a super type
+  //       and generate wrapper for the inherited public mehod.
+  //       The whole parent tree must be parsed.
+  CXCursor base = getParentClassForWrapper(t.cursor);
+  if(!clang_Cursor_isNull(base)){
+    o << "template<> struct SuperType<"
+                   << t.type_name
+      << "> { typedef " << fully_qualified_name(base) << " type; };\n";
+  }
+  o << "}\n\n";
+
+  std::string wrapper = wrapper_classsname(t.type_name);
+
+  o << "struct " << wrapper << ": public Wrapper {\n\n";
+
+  //wrapper ctor
+  indent(o, 1) << wrapper << "(jlcxx::Module& jlModule): Wrapper(jlModule){\n";
+
+  std::string add_type_param;
+  if(t.template_parameter_combinations.size() > 0){
+    generate_template_add_type_cxx(o, t, add_type_param);
+  } else if(clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
+    generate_non_template_add_type_cxx(o, t, add_type_param);
+  }
+
+////  indent(o, 2) << "jlcxx::TypeWrapper t = module.add_type<"
+////	       << t.type_name << ">(" << jl_type_name(t.type_name) <<");\n";
+////  indent(o, 2) << "type_ = std::unique_ptr<jlcxx::TypeWrapper<" << t.type_name << ">>"
+////	       << "(new jlcxx::TypeWrapper<" << t.type_name << ">(module, t));\n";
+
+  indent(o, 1) << "}\n\n";
+
+  //add_methods method
+  indent(o, 1) << "void add_methods() const{\n";
+  indent(o, 2) << "auto& t = *type_;\n";
+
+  //extract ctor method name from the class name after
+  //removing the possible namespace specification:
+  std::regex re(".*::([^:]*)|[^:]*");
+  std::cmatch cm;
+  std::regex_match(t.type_name.c_str(), cm, re);
+  std::string ctor(cm[1]);
+
+  //Generate a wrapper for the implicit default ctor if needed
+  if(t.default_ctor){
+    FunctionWrapper::gen_ctor(o, 1, "t", t.template_parameters.empty(),
+                              t.finalize, std::string());
+  }
+
+  //Generate wrappers of the other methods
+  //FIXME: add generation of accessor for templated classes
+  //
+  if(clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
+
+    //Generate wrappers for the class methods
+    for(const auto& m: t.methods){
+      generate_method_cxx(o, m);
+      if(test_build_) test_build(o);
+    }
+
+    //Generate class field accessors
+    if(accessor_generation_enabled()){
+      for(const auto& f: t.fields){
+        auto accessor_gen = check_veto_list_for_var_or_field(f, false);
+        if(accessor_gen != accessor_mode_t::none){
+          generate_accessor_cxx(o, &t, f, accessor_gen == accessor_mode_t::getter, 1);
+        }
+      }
+    }
+  } else if(t.template_parameter_combinations.size() > 0){
+    generate_methods_of_templated_type_cxx(o, t);
+    //FIXME: add class field accessors.
+  }
+
+  indent(o, 1) << "}\n";
+
+  o << "\nprivate:\n";
+  indent(o, 1) <<  "std::unique_ptr<jlcxx::TypeWrapper<" << add_type_param << ">> type_;\n";
+
+  o << "};\n";
+
+  o << "std::shared_ptr<Wrapper> new" << wrapper << "(jlcxx::Module& module){\n";
+  indent(o, 1) << "return std::shared_ptr<Wrapper>(new " << wrapper << "(module));\n";
+  o << "}\n";
+
+  return o;
+}
+
+std::ostream&
+CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
+                                             const TypeRcd& type_rcd,
+                                             std::string&  add_type_param){
+
+  const auto& cursor = type_rcd.cursor;
+  const auto& type = clang_getCursorType(cursor);
+  add_type_param= type_rcd.type_name;
+
+  if(add_type_param.size() == 0){
+    std::cerr << "Bug found. Unexpected empty string for TypeRcd::type_name of cursor "
+              << "'" << type_rcd.cursor << "' defined in "
+              << clang_getCursorLocation(type_rcd.cursor)
+              << "\n";
+  }
+
+  const auto& typename_jl = jl_type_name(type_rcd.type_name);
+  if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
+
+  ++nwraps_.types;
+  indent(o, 2) << "DEBUG_MSG(\"Adding wrapper for type " << type_rcd.type_name
+               << " (\" __HERE__ \")\");\n";
+  indent(o, 2) << "// defined in "   << clang_getCursorLocation(cursor) << "\n";
+
+
+  indent(o, 2) << "jlcxx::TypeWrapper<" << add_type_param << ">  t = "
+               << "jlModule.add_type<" << add_type_param
+               << ">(\"" << typename_jl << "\"";
+
+
+//  auto it = std::find(types_missing_def_.begin(), types_missing_def_.end(), typename_cxx);
+//  if(it!=types_missing_def_.end()){
+//    types_missing_def_.erase(it);
+//  }
+
+  const auto& base = getParentClassForWrapper(cursor);
+
+  if(!clang_Cursor_isNull(base)){
+    const auto& base_type = clang_getCursorType(base);
+    const auto& base_name_cxx = str(clang_getTypeSpelling(base_type));
+
+    //FIXME: should it be base_name_jl ?
+    indent(o, 2) << ", jlcxx::julia_base_type<" << base_name_cxx << ">()";
+  }
+
+  o << ");\n";
+
+  indent(o, 2) <<  "type_ = std::unique_ptr<jlcxx::TypeWrapper<"
+               << add_type_param << ">>(new jlcxx::TypeWrapper<"
+               << add_type_param << ">(jlModule, t));\n";
+
+  return o;
+}
+
+
 std::ostream&
 CodeTree::generate_cxx(std::ostream& o){
   o << "// this file was auto-generated by wrapit " << version << "\n";
@@ -179,165 +418,70 @@ CodeTree::generate_cxx(std::ostream& o){
   //      << t << "\");\n";
   //  }
 
+  o << "struct Wrapper{\n";
+  indent(o, 1) << "Wrapper(jlcxx::Module& module): module_(module) {};\n";
+  indent(o, 1) << "virtual ~Wrapper() {};\n";
+  indent(o, 1) << "virtual void add_methods() const = 0;\n";
+  o << "\nprotected:\n";
+  indent(o, 1) << "jlcxx::Module& module_;\n";
+  o << "};\n";
 
-  std::vector<CXType> no_mirrored_types;
+  std::vector<std::string> wrappers;
 
-  o << "\nnamespace jlcxx {\n";
   for(const auto& c: types_){
     if(!c.to_wrap) continue;
 
     const auto& t = clang_getCursorType(c.cursor);
-    auto type_name_cxx = str(clang_getTypeSpelling(t));
 
     if(is_type_vetoed(c.type_name)) continue;
 
     // Generate the IsMirrorType<> and DefaultConstructible<> statements
     if(t.kind == CXType_Record || c.template_parameter_combinations.size() > 0){
-      auto canonical_type = clang_getCanonicalType(t);
-      bool done = false;
-      if(canonical_type.kind != CXType_Invalid){
-        auto it = std::find_if(no_mirrored_types.begin(), no_mirrored_types.end(),
-                               [canonical_type](const CXType& t){  return clang_equalTypes(t, canonical_type); });
-        if(it == no_mirrored_types.end()){
-          no_mirrored_types.push_back(canonical_type);
-        } else{
-          done = true;
-        }
-      }
-      if(!done){ //no-mirrored statement not yet generated
-        if(verbose > 2) std::cerr << "Disable mirrored type for type " << type_name_cxx << "\n";
-        if(c.template_parameter_combinations.size() > 0){
-          for(unsigned i = 0; i < c.template_parameter_combinations.size(); ++i){
-            indent(o, 1) << "template<> struct IsMirroredType<" << c.name(i)<< "> : std::false_type { };\n";
-            indent(o, 1) << "template<> struct DefaultConstructible<" << c.name(i)<< "> : std::false_type { };\n";
-          }
-        } else{
-          indent(o, 1) << "template<> struct IsMirroredType<" << type_name_cxx << "> : std::false_type { };\n";
-          indent(o, 1) << "template<> struct DefaultConstructible<" << type_name_cxx << "> : std::false_type { };\n";
-        }
-      }
+      wrappers.emplace_back(wrapper_classsname(c.type_name));
+      generate_cxx_for_type(o, c);
     }
   }
 
-  //Specify the class inheritances:
-  for(const auto& t:types_){
-    if(!t.to_wrap) continue;
-    CXCursor base = getParentClassForWrapper(t.cursor);
-    if(!clang_Cursor_isNull(base)){
-      indent(o, 1) << "template<> struct SuperType<"
-                   << t.type_name
-                   << "> { typedef " << fully_qualified_name(base) << " type; };\n";
-    }
+  o << "\n";
+  for(const auto& w: wrappers){
+    o << "class " << w << ";\n";
   }
 
-  o << "}\n"
-    "\n"
-    "JLCXX_MODULE define_julia_module(jlcxx::Module& types){\n";
+  o << "\n";  
+  for(const auto& w: wrappers){
+    o << "std::shared_ptr<Wrapper> new" << w << "(jlcxx::Module&);\n";
+  }
+
+  
+  o << "\n\nJLCXX_MODULE define_julia_module(jlcxx::Module& jlModule){\n";
+
+  indent(o, 1) << "std::vector<std::shared_ptr<Wrapper>> wrappers = {\n";
+  std::string sep;
+  for(const auto& w: wrappers){
+    indent(o << sep, 2) << "std::shared_ptr<Wrapper>(new" << w << "(jlModule))";
+    sep = ",\n";
+  }
+  o << "\n";
+  indent(o, 1) << "};\n";
 
   for(const auto& e: enums_){
     generate_enum_cxx(o, e.cursor);
   }
 
-  for(const auto& t: types_){
-    if(!t.to_wrap) continue;
-    if(is_type_vetoed(t.type_name)){
-      continue;
-    }
-    if(t.template_parameter_combinations.size() > 0){
-      o << "\n";
-      generate_templated_type_cxx(o, t);
-    } else if(clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
-      o << "\n";
-      generate_type_cxx(o, t);
-    }
-  }
+  indent(o, 1) << "for(const auto& w: wrappers) w->add_methods();\n";
 
-  bool comment_header_generated = false;
-
-  comment_header_generated = false;
-  auto gen_comment_header = [&](const TypeRcd& t){
-    if(!comment_header_generated){
-      indent(o << "\n", 1)
-        << "/**********************************************************************/\n";
-      indent(o, 1) << "/* Wrappers for the methods of class " << t.type_name << "\n";
-      indent(o, 1) << " */\n";
-      comment_header_generated = true;
-    }
-  };
-
-  for(const auto& t: types_){
-    if(!t.to_wrap) continue;
-
-    if(is_type_vetoed(t.type_name)){
-      continue;
-    }
-
-    comment_header_generated = false;
-
-    std::regex re(".*::([^:]*)|[^:]*");
-    std::cmatch cm;
-    std::regex_match(t.type_name.c_str(), cm, re);
-    std::string ctor(cm[1]);
-
-    //FIXME: add generation of accessor for templated classes
-    if(/*t.template_parameter_combinations.size() == 0
-         &&*/ clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
-      for(const auto& m: t.methods){
-        gen_comment_header(t);
-        generate_method_cxx(o, m);
-        if(test_build_) test_build(o);
-      }
-      if(accessor_generation_enabled()){
-        for(const auto& f: t.fields){
-          auto accessor_gen = check_veto_list_for_var_or_field(f, false);
-          if(accessor_gen != accessor_mode_t::none){
-            gen_comment_header(t);
-            generate_accessor_cxx(o, &t, f, accessor_gen == accessor_mode_t::getter, 1);
-          }
-        }
-      }
-
-      if(comment_header_generated){
-        indent(o << "\n", 1) << "/* End of " << t.type_name << " class method wrappers\n";
-        indent(o, 1) << " **********************************************************************/\n\n";
-      }
-    }
-  }
-
-
-  // Generate declaration of template class method wrappers
-  // In order to declare the type another type depends on through its template parameters,
-  // we must travel the types_list in reverse order:
-  for(int i = types_.size() - 1; i >= 0; --i){
-    const auto& t = types_[i];
-    if(!t.to_wrap) continue;
-    if(is_type_vetoed(t.type_name)) continue;
-
-    comment_header_generated = false;
-    if(t.template_parameter_combinations.size() > 0){
-      gen_comment_header(t);
-      generate_methods_of_templated_type_cxx(o, t);
-      indent(o << "\n", 1) << "/* End of " << t.type_name << " class method wrappers\n";
-      indent(o, 1) << " **********************************************************************/\n";
-      if(test_build_) test_build(o);
-    }
-  }
-
+  //FIXME: generate a wrapper class for the globals as for the class
   if(functions_.size() > 0 || vars_.size() > 0){
-    indent(o << "\n", 1) << "/**********************************************************************\n";
+    indent(o, 1) << "/**********************************************************************\n";
     indent(o, 1) << " * Wrappers for global functions and variables including\n";
     indent(o, 1) << " * class static members\n";
     indent(o, 1) << " */\n";
-  }
 
+    //    indent(o, 1) << "auto& t = jlModule;\n";
+    indent(o, 1) << "auto& module_ = jlModule;\n";
+  }
   for(const auto& f: functions_){
     generate_method_cxx(o, f);
-    if(test_build_) test_build(o);
-  }
-
-  if(override_base_){
-    indent(o, 1) << "types.unset_override_module();\n";
-    override_base_ = false;
   }
 
   for(const auto& v: vars_){
@@ -389,6 +533,7 @@ std::ostream&
 CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
                                 const CXCursor& cursor, bool getter_only,
                                 int nindents){
+
   FunctionWrapper helper(MethodRcd(cursor), type_rcd, "", "", nindents);
 
   int ngens = 0;
@@ -411,66 +556,6 @@ CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
   return o;
 }
 
-
-std::ostream&
-CodeTree::generate_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
-
-  const auto& cursor = type_rcd.cursor;
-  const auto& type = clang_getCursorType(cursor);
-  const auto& typename_cxx = type_rcd.type_name;
-  const auto& typename_jl = jl_type_name(typename_cxx);
-
-  indent(o,1) << "DEBUG_MSG(\"Adding wrapper for type " << typename_cxx
-              << " (\" __HERE__ \")\");\n";
-  indent(o, 1) << "// defined in "   << clang_getCursorLocation(cursor) << "\n";
-
-  indent(o, 1);
-  std::stringstream buf;
-  buf << "t" << type_rcd.id;
-  std::string varname = buf.str();
-  if(type_rcd.methods.size() > 0
-     || type_rcd.default_ctor
-     || (accessor_generation_enabled() && type_rcd.fields.size() > 0)){
-    o << "auto " << varname << " = ";
-  }
-
-  if(typename_cxx.size() == 0){
-    std::cerr << "Bug found. Unexpected empty string for TypeRcd::type_name of cursor "
-              << "'" << type_rcd.cursor << "' defined in "
-              << clang_getCursorLocation(type_rcd.cursor)
-              << "\n";
-  }
-
-  ++nwraps_.types;
-  o << "types.add_type<" << typename_cxx
-    << ">(\"" << typename_jl << "\"";
-
-  //  if(it!=types_missing_def_.end()){
-  //    types_missing_def_.erase(it);
-  //  }
-
-  const auto& base = getParentClassForWrapper(cursor);
-
-  if(!clang_Cursor_isNull(base)){
-    const auto& base_type = clang_getCursorType(base);
-    const auto& base_name_cxx = str(clang_getTypeSpelling(base_type));
-
-    //FIXME: should it be base_name_jl ?
-    o << ", jlcxx::julia_base_type<" << base_name_cxx << ">()";
-  }
-
-  o << ")";
-  o << ";\n";
-
-  if(type_rcd.default_ctor){
-    FunctionWrapper::gen_ctor(o, 1, varname, type_rcd.template_parameters.empty(),
-                              type_rcd.finalize, std::string());
-  }
-
-  if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
-
-  return o;
-}
 
 //CXType
 //CodeTree::resolve_private_typedef(CXType type) const{
@@ -589,10 +674,10 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   bool new_override_base = wrapper.override_base();
   if(override_base_ && !new_override_base){
-    indent(o << "\n", 1) << "types.unset_override_module();\n";
+    indent(o << "\n", 1) << "module_.unset_override_module();\n";
     override_base_ = new_override_base;
   } else if(!override_base_ && new_override_base){
-    indent(o, 1) << "types.set_override_module(jl_base_module);\n";
+    indent(o, 1) << "module_.set_override_module(jl_base_module);\n";
     override_base_ = new_override_base;
   }
   o << "\n";
@@ -643,8 +728,6 @@ CodeTree::generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
   const auto& type = clang_getCursorType(cursor);
   const auto& typename_cxx = type_rcd.type_name;
   const auto& typename_jl = jl_type_name(typename_cxx);
-  int id = type_rcd.id;
-
 
   //  if(is_type_vetoed(typename_cxx)){
   //    std::cerr << "Info: class/struct " << typename_cxx << " vetoed\n";
@@ -663,7 +746,7 @@ CodeTree::generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd){
   indent(o, 1) << "// defined in "   << clang_getCursorLocation(cursor) << "\n";
 
   //types.add_type<Parametric<
-  indent(o,1) << "auto t" << type_rcd.id
+  indent(o,1) << "t"
               << " = types.add_type<jlcxx::Parametric<";
 
   //TypeVar<1>, TypeVar<2>
@@ -742,7 +825,7 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
 
 
   //t1.apply<
-  indent(o, 1) << "t" << t.id  << ".apply<";
+  indent(o, 1) << "t.apply<";
   const char* sep1 = ""        ;
   //In order to declare the type a type depend on through its template parameters,
   //we must travel the parameter type combination list in reverse order:
@@ -2064,7 +2147,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
              << " (\" __HERE__ \")\");\n";
     indent(o, 1) << "// defined in "   << clang_getCursorLocation(cursor) << "\n";
 
-    indent(o,1) << "types.add_bits<" << type_name << ">(\""
+    indent(o,1) << "jlModule.add_bits<" << type_name << ">(\""
                 << typename_jl << "\", jlcxx::julia_type(\"CppEnum\"));\n";
 
     if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
@@ -2092,7 +2175,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
     if(export_mode_ == export_mode_t::all) to_export_.insert(value_jl);
 
-    indent(o,1) << "types.set_const(\"" << value_jl << "\", "
+    indent(o,1) << "jlModule.set_const(\"" << value_jl << "\", "
                 << value_cpp << ");\n";
   }
   return o;

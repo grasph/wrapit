@@ -120,8 +120,20 @@ namespace codetree{
 
     bool fromMainFiles(const CXCursor& cursor) const;
 
-    std::ostream& generate_cxx(std::ostream&);
+    std::string wrapper_classsname(const std::string& classname) const;
 
+    std::ostream& generate_template_add_type_cxx(std::ostream& o,
+                                                 const TypeRcd& type_rcd,
+                                                 std::string& add_type_param);
+    
+    std::ostream& generate_cxx_for_type(std::ostream& o,
+                                        const TypeRcd& t);
+
+    std::ostream& generate_non_template_add_type_cxx(std::ostream& o,
+                                                     const TypeRcd& type_rcd,
+                                                     std::string&  add_type_param);
+    std::ostream& generate_cxx(std::ostream&);
+    
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
 
@@ -252,7 +264,7 @@ namespace codetree{
 
     CXCursor getParentClassForWrapper(CXCursor cursor) const;
 
-    std::ostream& generate_type_cxx(std::ostream& o, const TypeRcd& cursor);
+//TODELETE//    std::ostream& generate_type_cxx(std::ostream& o, const TypeRcd& cursor);
 
     std::ostream&
     generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
