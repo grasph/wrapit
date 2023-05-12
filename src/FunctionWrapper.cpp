@@ -449,11 +449,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
   }
 
   if(varname.size() == 0){
-    if(pTypeRcd!=0){
-      this->varname = "t";
-    } else{
-      this->varname = "jlModule";
-    }
+    this->varname = "t";
   }
 
   is_static_ = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;

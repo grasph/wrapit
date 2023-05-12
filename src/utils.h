@@ -92,4 +92,6 @@ std::string join(const std::vector<T>& elts, const std::string& sep){
 
 std::vector<std::string> get_template_parameters(CXCursor cursor);
 
+std::string join_paths(const std::string& p1, const std::string& p2);
+
 #endif //UTILS_H not defined

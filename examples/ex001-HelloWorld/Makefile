@@ -5,7 +5,7 @@ CXXFLAGS += $(subst -std=gnu99,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
-CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17
+CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17 -I.
 
 CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3
 
@@ -19,22 +19,22 @@ CC_FILES=jlHello.cxx
 
 .PRECIOUS: $(CC_FILES)
 
-PRODUCTS=jlHello.so jlHello.cxx jlHello.h Hello.jl
+PRODUCTS=libHello/libjlHello.so $(addprefix libHello/src/, jlHello.cxx  jlHello.h  Wrapper.h generated_cxx) Hello/src/Hello.jl 
 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) jlHello.d jlHello.o jlHello-report.txt
+	-$(RM) $(PRODUCTS) -r libHello/build jlHello-report.txt
 
-jl%.cxx: %.wit
+libHello/src/jl%.cxx: %.wit
 	wrapit --force $<
 
-%.o: %.cxx
+libHello/build/%.o: libHello/src/%.cxx
+	-mkdir libHello/build
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-
-jl%.so: jl%.o
-	$(LINK.o) -o $@ --shared -fPIC $< $(ROOT_LIBS)
+libHello/libjlHello.so: libHello/build/jlHello.o
+	$(LINK.o) -o $@ --shared -fPIC $^ $(ROOT_LIBS)
 
 echo_%:
 	@echo $*=$($*)

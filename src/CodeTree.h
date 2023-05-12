@@ -37,9 +37,11 @@ namespace codetree{
 
   class CodeTree{
   public:
-    CodeTree(): auto_veto_(true), include_depth_(1), mainFileOnly_(true), override_base_(false),
+    CodeTree(): module_name_("Module"), out_open_mode_(std::ios_base::app),
+                out_cxx_dir_("src"),
+                auto_veto_(true), include_depth_(1), mainFileOnly_(true), override_base_(false),
                 propagation_mode_(propagation_mode_t::types), export_mode_(export_mode_t::member_functions),
-                unit_(nullptr), index_(nullptr),
+                unit_(nullptr), index_(nullptr), n_classes_per_file_(-1),
                 build_cmd_("echo Build command not defined."),  test_build_(false),
                 ibuild_(0), build_nskips_(0), build_nmax_(-1), build_every_(1),
                 visiting_a_templated_class_(false), accessor_generation_enabled_(false),
@@ -66,13 +68,18 @@ namespace codetree{
     std::vector<std::string> files_to_wrap_;
     std::vector<std::string> files_to_wrap_fullpaths_;
 
+    int n_classes_per_file_;
+    std::string out_cxx_dir_;
+    std::string out_jl_dir_;
+
+    
     std::string build_cmd_;
     bool test_build_;
     int ibuild_;
     int build_nskips_;
     int build_nmax_;
     int build_every_;
-
+    
     void auto_veto(bool val){ auto_veto_ = val; };
     bool auto_veto() { return auto_veto_; }
 
@@ -132,7 +139,7 @@ namespace codetree{
     std::ostream& generate_non_template_add_type_cxx(std::ostream& o,
                                                      const TypeRcd& type_rcd,
                                                      std::string&  add_type_param);
-    std::ostream& generate_cxx(std::ostream&);
+    void generate_cxx();
     
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
@@ -145,8 +152,8 @@ namespace codetree{
     void add_forced_header(const std::string& header){ forced_headers_.push_back(header);}
 
     const std::vector<std::string>& forced_headers() { return forced_headers_; }
-
-    void parse(std::ofstream& header_file, const std::filesystem::path& header_file_path);
+    
+    bool parse();
 
     void parse_vetoes(const fs::path& fname);
 
@@ -209,7 +216,16 @@ namespace codetree{
 
     void add_export_veto_word(const std::string& s) { export_blacklist_.insert(s); }
 
+    void set_n_classes_per_file(int n_classes_per_file) { n_classes_per_file_ = n_classes_per_file; }   
 
+    void set_out_cxx_dir(const std::string& val) { out_cxx_dir_ = val; }
+    
+    void set_out_jl_dir(const std::string& val) { out_jl_dir_ = val; }
+
+    void set_module_name(const std::string& val){ module_name_ = val;}
+
+    void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
+    
   protected:
 
     enum class accessor_mode_t {none, getter, both };
@@ -362,10 +378,22 @@ namespace codetree{
 
     std::ostream& show_stats(std::ostream& o) const;
 
+    void exit_if_wrapper_files_in_the_way();
+    
+    void update_wrapper_filenames();
+
+    std::ostream& generate_type_wrapper_header(std::ostream& o) const;
+
+    std::ofstream checked_open(const std::string& path) const;
+    
   private:
     bool auto_veto_;
 
-    fs::path filename_;
+    std::string header_file_path_;
+    
+    std::string module_name_;
+
+    std::ios_base::openmode out_open_mode_;
 
     bool mainFileOnly_;
 
@@ -407,6 +435,8 @@ namespace codetree{
 
     bool import_setindex_;
 
+    std::vector<std::string> towrap_type_filenames_;
+    std::set<std::string> towrap_type_filenames_set_;
 
     struct {
       unsigned enums = 0;

@@ -1,6 +1,6 @@
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
 CXXFLAGS += $(subst -std=gnu99,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
-#CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
+CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
@@ -16,18 +16,18 @@ ROOT_INC_DIR = $(shell root-config --incdir)
 
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
-CC_FILES=jlROOT.cxx
+.PHONY: all clean run_demo check_root make_lib_from_objs
 
-.PHONY: all clean run_demo check_root
+.PRECIOUS: $(GENERATED_CXX) ROOT-generated.wit
 
-.PRECIOUS: $(CC_FILES)
-
-PRODUCTS=jlROOT.so jlROOT.cxx jlROOT.h ROOT-export.jl ROOT-generated.jl ROOT-generated.wit
+PRODUCTS=libROOT/libjlROOT.so
+GENERATED_CXX:=$(file < libROOT/src/generated_cxx)
+OBJS=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX)))
 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) jlROOT-report.txt jlROOT.o jlROOT.d
+	-$(RM) $(PRODUCTS) jlROOT-report.txt jlROOT.o jlROOT.d $(GENERATED_CXX) libROOT/src/generated_cxx
 
 ROOT-generated.wit: ROOT.wit
 	$(MAKE) check_root
@@ -46,23 +46,29 @@ run_demo2: all
 	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_TGraph.jl
 
 test: all
-	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_ROOT.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_ROOT.jl
 	cmp demo_ROOT.png demo_ROOT-ref.png
-	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_TGraph.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_TGraph.jl
 	cmp demo_TGraph.png demo_TGraph-ref.png
 
-jlROOT.cxx: ROOT-generated.wit jlROOT-veto.h
+libROOT/src/generated_cxx: ROOT-generated.wit jlROOT-veto.h
 	wrapit --force $<
+	$(eval GENERATED_CXX:=$(file < libROOT/src/generated_cxx))
+	$(eval OBJS:=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX))))
 
-%.o: %.cxx
+libROOT/build/%.o: libROOT/src/%.cxx
+	-mkdir -p libROOT/build
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-jl%.so: jl%.o
+libROOT/libjlROOT.so: libROOT/src/generated_cxx
 	$(MAKE) check_root
-	$(LINK.o) -o $@ --shared -fPIC $< $(ROOT_LIBS)
+	$(MAKE) make_lib_from_objs
+
+make_lib_from_objs: $(OBJS)
+	$(LINK.o) -o libROOT/libjlROOT.so --shared -fPIC $(OBJS) $(ROOT_LIBS)
 
 echo_%:
 	@echo "$* = $(subst ",\",$($*))"
 
--include $(addsuffix .d, $(basename $(CC_FILES)))
+-include $(addprefix libROOT/build/, $(addsuffix .d, $(basename $(GENERATED_FILES))))
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env julia
 import TestPropagation1
 
 using Test

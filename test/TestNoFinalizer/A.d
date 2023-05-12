@@ -1,1 +1,1 @@
-A.o: A.cxx A.h
+A.o: A.cc A.h

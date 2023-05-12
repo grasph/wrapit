@@ -4,7 +4,7 @@ import Base.getindex
 import Base.setindex!
 
 using CxxWrap
-@wrapmodule("jlROOT")
+@wrapmodule("libjlROOT")
 
 function __init__()
     @initcxx

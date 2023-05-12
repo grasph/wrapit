@@ -16,6 +16,7 @@
 using namespace std::string_view_literals;
 
 #include "CodeTree.h"
+#include "utils.h"
 
 using namespace codetree;
 
@@ -139,9 +140,10 @@ int main(int argc, char* argv[]){
     auto clang_features = read_vstring("clang_features");
     auto clang_opts     = read_vstring("clang_opts");
 
-    auto lib_basename     = std::string("jl") + module_name;
-    auto out_cpp_fname    = toml_config["out_cpp_fname"].value_or(std::string("jl") + module_name + ".cxx");
-    auto out_h_fname      = toml_config["out_h_fname"].value_or(std::string("jl") + module_name + ".h");
+    auto lib_basename       = toml_config["lib_basename"].value_or(std::string("libjl") + module_name);
+    auto out_cxx_dir        = toml_config["out_cxx_dir"].value_or(join_paths("lib" + module_name, std::string("src")));
+    auto out_jl_dir         = toml_config["out_jl_dir"].value_or(join_paths(module_name, std::string("src")));
+    auto n_classes_per_file = toml_config["n_classes_per_file"].value_or(-1);
     auto out_report_fname = std::string("jl") + module_name + "-report.txt";
 
 
@@ -199,43 +201,20 @@ int main(int argc, char* argv[]){
     auto open_file = [&](const std::string& fname){
       std::ofstream f(fname, open_mode);
       if(f.tellp()!=0){
-        std::cerr << "File " << fname << " is on way, please move it or use the --force option to force its deletion.\n";
+        std::cerr << "File " << fname << " is in the way, please move it or use the --force option to force its deletion.\n";
         in_err = true;
       }
       return f;
     };
 
-    //    std::ofstream out_cpp(out_cpp_fname, open_mode );
-    //    if(out_cpp.tellp()!=0){
-    //      std::cerr << "File " << out_cpp_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-    //      in_err = true;
-    //    }
-    auto out_cpp = open_file(out_cpp_fname);
+    fs::create_directories(out_jl_dir);
+    auto out_jl = open_file(join_paths(out_jl_dir, out_jl_fname));
 
-    //    std::ofstream out_h(out_h_fname, open_mode );
-    //    if(out_h.tellp()!=0){
-    //      std::cerr << "File " << out_h_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-    //      in_err = true;
-    //    }
-    auto out_h = open_file(out_h_fname);
-
-    //    std::ofstream out_jl(out_jl_fname, open_mode);
-    //    if(out_jl.tellp()!=0){
-    //      std::cerr << "File " << out_jl_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-    //      in_err = true;
-    //    }
-    auto out_jl = open_file(out_jl_fname);
-
-    //    std::ofstream out_export_jl(out_export_jl_fname, open_mode);
-    //    if(out_export_jl.tellp()!=0){
-    //      std::cerr << "File " << out_export_jl_fname << " is on way, please move it or use the --force option to force its deletion.\n";
-    //      in_err = true;
-    //    }
     std::ofstream out_export_jl_;
     bool same_ = true;
     if(out_export_jl_fname.size() > 0){
       same_ = false;
-      out_export_jl_ = std::move(open_file(out_export_jl_fname));
+      out_export_jl_ = std::move(open_file(join_paths(out_jl_dir, out_export_jl_fname)));
     }
     auto& out_export_jl = same_ ? out_jl : out_export_jl_;
 
@@ -251,6 +230,8 @@ int main(int argc, char* argv[]){
 
     CodeTree tree;
 
+    tree.set_force_mode(options.count("force") > 0);
+ 
     tree.add_std_option(cxx_std);
 
     tree.auto_veto(auto_veto);
@@ -263,6 +244,14 @@ int main(int argc, char* argv[]){
     tree.vetoed_finalizer_classes(vetoed_finalizer_classes);
     tree.accessor_generation_enabled(fields_and_variables);
 
+    tree.set_n_classes_per_file(n_classes_per_file);
+
+    tree.set_module_name(module_name);
+    
+    tree.set_out_cxx_dir(out_cxx_dir);
+    tree.set_out_jl_dir(out_jl_dir);
+
+    
     if(propagation_mode == "types"){
       tree.propagation_mode(propagation_mode_t::types);
     } else if(propagation_mode == "methods"){
@@ -315,9 +304,9 @@ int main(int argc, char* argv[]){
       tree.add_export_veto_word(k);
     }
 
-    tree.parse(out_h, out_h_fname);
+    tree.parse();
     tree.preprocess();
-    tree.generate_cxx(out_cpp);
+    tree.generate_cxx();
     tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);
 
     tree.report(out_report);
