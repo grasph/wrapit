@@ -4,6 +4,8 @@ The goal of this project is the automatization of the generation of [Julia](http
 
 The WrapIt! tool complements the [CxxWrap.jl](https://github.com/JuliaInterop/CxxWrap.jl) package. It generates automatically the c++ wrapper code needed by CxxWrap.jl from the c++ header files of the library to wrap.
 
+🆕 Support of generation of code in multiple files (now the default) to reduce time and memory needs for compilation in case of large project. See `n_classes_per_file` in [config.md](../doc/config.md).
+
 ## Usage
 
 ```
@@ -111,7 +113,6 @@ The code is experimental, but can already produce ready-to-use code. It has seve
 
   * Support of wrapping of template class is incomplete and typically require manual correction to the code;
   * Wrapping of variadic functions is not supported;
-  * Produce the c++ code in a single source file, which can require large resource to compile in case a large library is to wrapped.
 
 ## Technology
 
