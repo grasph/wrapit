@@ -18,11 +18,13 @@
 #include "stdio.h"
 
 #include "FunctionWrapper.h"
+#include "libclang-ext.h"
 
 #include "utils.h"
 extern const char* version;
 
 #include "clang/AST/Type.h" //FOR DEBUG
+#include "clang/AST/DeclTemplate.h"
 
 extern CXPrintingPolicy pp;
 
@@ -207,10 +209,32 @@ CodeTree::generate_cxx(std::ostream& o){
       if(!done){ //no-mirrored statement not yet generated
         if(verbose > 2) std::cerr << "Disable mirrored type for type " << type_name_cxx << "\n";
         if(c.template_parameter_combinations.size() > 0){
-          for(unsigned i = 0; i < c.template_parameter_combinations.size(); ++i){
-            indent(o, 1) << "template<> struct IsMirroredType<" << c.name(i)<< "> : std::false_type { };\n";
-            indent(o, 1) << "template<> struct DefaultConstructible<" << c.name(i)<< "> : std::false_type { };\n";
+          auto nparams = c.template_parameters.size();
+          std::vector<std::string> param_list;
+          for(decltype(nparams) i = 0; i < nparams; ++i){
+            param_list.emplace_back(c.template_parameter_types[i] + " " + c.template_parameters[i]);
           }
+          auto param_list1 = join(param_list, ", ");
+          auto param_list2 = join(c.template_parameters, ", ");
+          o << "\n";
+          indent(o, 1) << "template<" << param_list1 << ">\n";
+          indent(o, 1) << "struct BuildParameterList<" << c.type_name << "<" << param_list2 << ">>\n";
+          indent(o, 1) << "{\n";
+          indent(o, 2) << "typedef ParameterList<";
+          const char* sep = "";
+          for(decltype(nparams) i = 0; i < nparams; ++i){
+            if (c.template_parameter_types[i] != "typename") {
+              o << sep << "std::integral_constant<" << c.template_parameter_types[i] << ", " << c.template_parameters[i] << ">";
+              sep = ", ";
+            } else {
+              o << sep << c.template_parameters[i];
+              sep = ", ";
+            }
+          }
+          o << "> type;\n";
+          indent(o,1) << "};\n\n";
+          indent(o, 1) << "template<" << param_list1 << "> struct IsMirroredType<" << c.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
+          indent(o, 1) << "template<" << param_list1 << "> struct DefaultConstructible<" << c.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
         } else{
           indent(o, 1) << "template<> struct IsMirroredType<" << type_name_cxx << "> : std::false_type { };\n";
           indent(o, 1) << "template<> struct DefaultConstructible<" << type_name_cxx << "> : std::false_type { };\n";
@@ -711,10 +735,12 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   buf << "t" << t.id << "_decl_methods";
   std::string decl_methods = buf.str();
 
-  auto param_list1 = join(myapply(t.template_parameters,
-                                  [](const std::string& x){
-                                    return std::string("typename ") + x;}),
-                          ", ");
+  auto nparams = t.template_parameters.size();
+  std::vector<std::string> param_list;
+  for(decltype(nparams) i = 0; i < nparams; ++i){
+    param_list.emplace_back(t.template_parameter_types[i] + " " + t.template_parameters[i]);
+  }
+  auto param_list1 = join(param_list, ", ");
   auto param_list2 = join(t.template_parameters, ", ");
 
   //  auto t1_decl_methods = []<typename T1, typename T2>(jlcxx::TypeWrapper<T1, T2> wrapped){
@@ -1634,14 +1660,29 @@ CodeTree::visit_class_template_specialization(CXCursor cursor){
 
 bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
 
+  auto cursor = clang_getTypeDeclaration(type);
   auto nparams = clang_Type_getNumTemplateArguments(type);
   if(nparams <= 0) return false;
 
   std::vector<std::string> combi;
+  std::vector<std::string> param_types;
   for(decltype(nparams) i = 0; i < nparams; ++i){
-    const auto& param_type = clang_Type_getTemplateArgumentAsType(type, i);
-    //FIXME: add support for value template argument
-    combi.push_back(str(clang_getTypeSpelling(param_type)));
+    const auto& param = clang_Type_getTemplateArgumentAsType(type, i);
+    if (param.kind != CXType_Invalid) {
+      combi.push_back(str(clang_getTypeSpelling(param)));
+      param_types.push_back("typename");
+    } else {
+      auto TA = get_IntegralTemplateArgument(cursor, i);
+      using clang::TemplateArgument;
+      if (TA.getKind() == TemplateArgument::ArgKind::Integral){
+        combi.push_back(std::to_string(TA.getAsIntegral().getSExtValue()));
+        param_types.push_back(TA.getIntegralType().getAsString());
+      } else {
+        // The "FIXME" is a message for the user; highlighting that the template argument
+        // is neither a type or an integral parameter
+        combi.push_back("/* FIXME */");
+      }
+    }
   }
 
   auto& combi_list = pTypeRcd->template_parameter_combinations;
@@ -1649,6 +1690,7 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
                                    combi)){
     combi_list.push_back(combi);
   }
+  pTypeRcd->template_parameter_types = param_types;
 
   return true;
 }

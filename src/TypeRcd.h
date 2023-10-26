@@ -14,6 +14,7 @@ struct TypeRcd {
   std::vector<CXCursor> fields;
   std::vector<CXCursor> typedefs;
   std::vector<std::string> template_parameters;
+  std::vector<std::string> template_parameter_types;
   std::vector<std::vector<std::string> > template_parameter_combinations;
   bool to_wrap;
   int id;

@@ -8,6 +8,7 @@
 #define LIBCLANG_EXT_H
 
 #include <clang-c/Index.h>
+#include "clang/AST/Type.h"
 #include <string>
 
 std::string fully_qualified_name(CXCursor c);
@@ -21,5 +22,7 @@ CXType remove_non_builtin_qualifiers(CXType& type);
 CXType base_type(CXType type);
 
 std::string remove_cv(const std::string& type_name);
+
+const clang::TemplateArgument & get_IntegralTemplateArgument(CXCursor cursor, int i);
 
 #endif //LIBCLANG_EXT_H not defined

@@ -225,3 +225,11 @@ get_template_parameters(CXCursor cursor){
   }
   return res;
 }
+
+const clang::TemplateArgument & get_IntegralTemplateArgument(CXCursor cursor, int i) {
+  const auto *SD =
+    llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(
+        static_cast<const clang::Decl *>(cursor.data[0]));
+  return SD->getTemplateArgs()[i];
+
+}
