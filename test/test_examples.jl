@@ -3,6 +3,8 @@ using Test
 
 ex_basedir = normpath(joinpath(pwd(), "../examples"))
 
+nprocs=Sys.CPU_THREADS
+
 @testset "ex001-HelloWorld" begin
 ex_dir = joinpath(ex_basedir, "ex001-HelloWorld")
 cd(ex_dir)
@@ -23,7 +25,9 @@ if run_exroot
     @testset "$ex" begin
         cd(joinpath(ex_basedir, ex))
         run_ex002_ROOT = try
-            run(`make clean test`);
+            run(`make clean`);
+            run(`make -j $nprocs all`);
+            run(`make test`)
             true;
         catch;
             false;

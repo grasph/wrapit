@@ -91,3 +91,8 @@ void replace(std::string& s, const std::string& to_replace,
     s.replace(pos, to_replace.size(), replacement.c_str());
   }
 }
+
+std::string join_paths(const std::string& p1, const std::string& p2){
+  std::string p = p1.size() > 0 ? p1 : ".";
+  return p + "/" + p2;
+}

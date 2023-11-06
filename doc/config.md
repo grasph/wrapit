@@ -24,6 +24,27 @@ include_dirs        = [ "." ]
 cxx-std             = "c++17"
 ```
 
+### Extra options to control the generated code organisation
+
+```
+# Destination directory for the generated c++ code
+# If not set, default to: lib<module_name>/src
+# out_cxx_dir = 
+
+# Destination directory for the generated julia code
+# If not set, default to: <module_name>/src
+# out_jl_dir =
+
+# Number of class wrapper to group in the same source file
+# -1: one steering file, one file for class wrappers, one file 
+#     for global functions and variables
+# 0: all code in a single file
+# 1: one file per class (default)
+# n, n > 1: n classed per file.
+n_classes_per_file = 1
+
+```
+
 ### Extra options to control the wrapper generation
    
 ```
@@ -84,6 +105,11 @@ module_jl_fname     = ""
 # Name of the seperate file for the module export statement
 # If empty, the statement is written directly in the module file
 export_jl_fname     = ""
+
+# Base name (i.e without the file extension) of the shared library
+# the wrapper code is built into and to load
+# If not set, lib<module_name>
+#lib_basename =
 
 # Mode for the generation of the export statement in
 # the julia module code.
