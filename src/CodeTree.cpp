@@ -979,7 +979,7 @@ std::ostream& CodeTree::generate_jl(std::ostream& o,
 
   o <<  "\n"
     "using CxxWrap\n"
-    "@wrapmodule(\"" << shared_lib_basename<< "\")\n"
+    "@wrapmodule(()->\"" << shared_lib_basename<< "\")\n"
     "\n"
     "function __init__()\n"
     "    @initcxx\n"
