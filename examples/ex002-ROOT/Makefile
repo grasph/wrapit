@@ -1,5 +1,5 @@
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
-CXXFLAGS += $(subst -std=gnu99,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
+CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 #CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
@@ -23,11 +23,13 @@ LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 PRODUCTS=libROOT/libjlROOT.so
 GENERATED_CXX:=$(file < libROOT/src/generated_cxx)
 OBJS=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX)))
+DEPS=$(patsubst %.o,%.d, $(OBJS))
 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) jlROOT-report.txt jlROOT.o jlROOT.d $(GENERATED_CXX) libROOT/src/generated_cxx
+	-$(RM) $(PRODUCTS) jlROOT-report.txt jlROOT.o jlROOT.d $(GENERATED_CXX) ROOT-generated.jl ROOT-generated.wit $(OBJS) \
+libROOT/src/generated_cxx
 
 ROOT-generated.wit: ROOT.wit
 	$(MAKE) check_root
@@ -70,5 +72,5 @@ make_lib_from_objs: $(OBJS)
 echo_%:
 	@echo "$* = $(subst ",\",$($*))"
 
--include $(addprefix libROOT/build/, $(addsuffix .d, $(basename $(GENERATED_FILES))))
+-include $(DEPS)
 

@@ -1,9 +1,5 @@
-using CxxWrap
 using ROOT
-import ROOT
 using iROOT
-import Base.convert
-import Base.getproperty
 
 # Help module that provides more transparent support of fit of TH1
 # and TGraph with a julia function.
@@ -32,6 +28,3 @@ Fit(g, tf1)
 
 c = ROOT.TCanvas()
 Draw(g, "A*")
-
-
-
