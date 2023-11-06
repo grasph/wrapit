@@ -613,10 +613,10 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   bool new_override_base = wrapper.override_base();
   if(override_base_ && !new_override_base){
-    indent(o << "\n", 1) << varname << ".module().unset_override_module();\n";
+    indent(o << "\n", 1) << "types.unset_override_module();\n";
     override_base_ = new_override_base;
   } else if(!override_base_ && new_override_base){
-    indent(o, 1) << varname << ".module().set_override_module(jl_base_module);\n";
+    indent(o, 1) << "types.set_override_module(jl_base_module);\n";
     override_base_ = new_override_base;
   }
   o << "\n";
