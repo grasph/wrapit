@@ -232,6 +232,9 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
   //if true, fake type used to hold global functions
   bool notype = t.type_name.size() == 0;
 
+  bool no_copy_ctor = find(copy_ctor_to_veto_.begin(),
+                           copy_ctor_to_veto_.end(), t.type_name) != copy_ctor_to_veto_.end();
+  
   if(!notype){
     o << "\nnamespace jlcxx {\n";
     //generate code that disables mirrored type
@@ -263,9 +266,15 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
       indent(o,1) << "};\n\n";
       indent(o, 1) << "template<" << param_list1 << "> struct IsMirroredType<" << t.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
       indent(o, 1) << "template<" << param_list1 << "> struct DefaultConstructible<" << t.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
+      if(no_copy_ctor){
+        indent(o, 1) << "template<" << param_list1 << "> struct CopyConstructible<" << t.type_name << "<" << param_list2 << ">> : std::false_type { };\n";
+      }
     } else{
       indent(o, 1) << "template<> struct IsMirroredType<" << t.type_name << "> : std::false_type { };\n";
       indent(o, 1) << "template<> struct DefaultConstructible<" << t.type_name << "> : std::false_type { };\n";
+      if(no_copy_ctor){
+        indent(o, 1) << "template<> struct CopyConstructible<" << t.type_name << "> : std::false_type { };\n";
+      }
     }
 
     //generate inheritance mapping
@@ -1395,17 +1404,32 @@ CodeTree::register_type(const CXType& type){
 
 std::tuple<std::vector<CXType>, int>
 CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
-
+  
   const auto& method_type = clang_getCursorType(cursor);
   const auto return_type = clang_getResultType(method_type);
 
+  TypeRcd* pTypeRcd = find_class_of_method(cursor);
+  //TODO: find a more robust way than comparing identifier  names.
+  auto is_class_param = [pTypeRcd](CXType type){
+    if(pTypeRcd==nullptr) return true;
+    auto type_name = remove_cv(str(clang_getTypeSpelling(base_type(type))));
+    std::cerr << "Looking for type_name " << type_name << "\n";
+    auto params = pTypeRcd->template_parameters;
+    return std::find(params.begin(), params.end(), type_name) != params.end();
+  };
+  
   std::vector<CXType> missing_types;
 
   if(return_type.kind != CXType_Void){
-    bool rc = register_type(return_type);
-    if(!rc) missing_types.push_back(return_type);
+    if(verbose > 3) std::cerr << cursor << ", return type: " << return_type << "\n";
+    if(is_class_param(return_type)){
+      if(verbose > 3) std::cerr << cursor << " identified as a parameter of the holding class\n";
+    } else{
+      bool rc = register_type(return_type);
+        if(!rc) missing_types.push_back(return_type);
+    }
   }
-
+  
   for(int i = 0; i < clang_getNumArgTypes(method_type); ++i){
     auto argtype = clang_getArgType(method_type, i);
     if(verbose > 3) std::cerr << cursor << ", arg " << (i+1) << " type: " << argtype << "\n";
@@ -1414,8 +1438,12 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
       bool rc = register_type(eltype);
       if(!rc) missing_types.push_back(argtype);
     } else if(argtype.kind != CXType_Void){
-      bool rc = register_type(argtype);
-      if(!rc) missing_types.push_back(argtype);
+      if(is_class_param(argtype)){
+        if(verbose > 3) std::cerr << cursor << " identified as a parameter of the holding class\n";
+      } else{
+        bool rc = register_type(argtype);
+        if(!rc) missing_types.push_back(argtype);
+      }
     }
   }
 

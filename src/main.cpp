@@ -129,6 +129,7 @@ int main(int argc, char* argv[]){
 
     auto inheritances = read_vstring("inheritances");
     auto vetoed_finalizer_classes  = read_vstring("vetoed_finalizer_classes");
+    auto vetoed_copy_ctor_classes  = read_vstring("vetoed_copy_ctor_classes");
 
     auto module_name = toml_config["module_name"].value_or(std::string("CxxLib"));
     auto out_export_jl_fname = toml_config["export_jl_fname"].value_or(std::string());
@@ -242,6 +243,7 @@ int main(int argc, char* argv[]){
     tree.build_cmd(std::string(build_cmd));
     tree.inheritances(inheritances);
     tree.vetoed_finalizer_classes(vetoed_finalizer_classes);
+    tree.vetoed_copy_ctor_classes(vetoed_copy_ctor_classes);
     tree.accessor_generation_enabled(fields_and_variables);
 
     tree.set_n_classes_per_file(n_classes_per_file);

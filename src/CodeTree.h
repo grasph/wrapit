@@ -204,6 +204,11 @@ namespace codetree{
       finalizers_to_veto_ = val;
     }
 
+    void vetoed_copy_ctor_classes(const std::vector<std::string>& val){
+      for(const auto& k: val) copy_ctor_to_veto_.insert(k);
+    }
+
+    
     void build_cmd(const std::string& val){ build_cmd_ = val; }
 
     void enableTestBuild(bool val){ test_build_ = val; }
@@ -423,6 +428,9 @@ namespace codetree{
     //List of classes whose finalizer has been disabled
     std::set<std::string> vetoed_finalizers_;
 
+    //List of classes whose wrapping of copy constructor has been disabled by configuration
+    std::set<std::string> copy_ctor_to_veto_;
+    
     bool visiting_a_templated_class_;
 
     std::vector<std::string> include_dirs_;

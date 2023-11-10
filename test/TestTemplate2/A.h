@@ -1,13 +1,13 @@
-template<typename T>
+template<typename S>
 class A {
 public: 
   A(): a(0){}
 
-  T getval(){ return a;}
+  S getval(){ return a;}
   
-  void setval(const T& val){ a = val; }
+  void setval(const S& val){ a = val; }
 
-  T a;
+  S a;
 };
 
 template class A<int>;

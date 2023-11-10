@@ -480,6 +480,10 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     override_base_ = false;
   }
 
+  if(name_jl_suffix == "*" && clang_getNumArgTypes(method_type)){
+       name_jl_suffix = "getindex"; //Deferencing operator, *x -> x[]
+  }
+
   std::vector<std::pair<std::string, std::string>> op_map = {
     {"()", "paren"},
     {"+=", "add!"},
@@ -492,6 +496,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     {"^=", "bwxor!"},
     {"|=", "bwor!"},
     {"&=", "bwand!"},
+    {"*", "getindex"} //Deferencing of x written as x[]
   };
 
   for(const auto& m: op_map){
