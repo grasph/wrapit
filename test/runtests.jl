@@ -1,6 +1,9 @@
 #!/usr/bin/env julia
 using Test
-tests = [ "TestCtorDefVal"  "TestAccessAndDelete" "TestNoFinalizer" "TestInheritance"  "TestPropagation"  "TestTemplate1"  "TestTemplate2"  "TestVarField" "TestStdString" ]
+tests = [ "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
+          "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString",
+          "TestOperators"
+          ]
 
 @testset verbose=true "Tests" begin
     for t in tests

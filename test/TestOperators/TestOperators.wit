@@ -1,0 +1,14 @@
+module_name         = "TestOperators"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ]
+
+cxx-std             = "c++20"
+
+clang_opts = [ "-resource-dir=/home/opt/llvm-dev/lib/clang/17" ]
+
+export  = "all"
+
+# all generated code in a single file:
+n_classes_per_file = 0

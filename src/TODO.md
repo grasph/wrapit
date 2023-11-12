@@ -24,3 +24,5 @@
    - [] Integration: put in place automatic run of unit tests by the repository, using tests from the test directory
    - [] Integration: put in place packaging and distribution
    - [] Add support to customize some wrappers. Signature to custom wrapper name mapping could be provided in the file as the veto list, no wrapper being a special case. This feature can be useful when we need to further wrap a method in the module Julia code for the purpose of juliafication. 
+   - [] With auto veto, if an argument with a missing type has a default value, produce the wrapper using the default value.  
+   - Review the return type of the generated accesors, currently return by value for POD and by reference for objects. Should we return by value in both cases? Should it be configurable?

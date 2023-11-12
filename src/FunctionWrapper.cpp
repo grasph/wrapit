@@ -113,6 +113,23 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
     }
   };
 
+  auto copy_return_type = [](CXType type){
+    if(clang_isPODType(type)){
+      bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
+      std::string r(str(clang_getTypeSpelling(type)));
+      if(not_a_pointer){
+        return remove_cv(r);
+      } else{
+        return r;
+      }
+    } else{
+      std::regex r("^(const)?\\s*(.*[^&])\\s*&?");
+      return std::regex_replace(str(clang_getTypeSpelling(type)), r, "$2");
+    }
+  };
+
+  bool return_by_copy = false;
+  
   auto gen_setters = !is_const && !getter_only;
 
   bool wrapper_generated = false;
@@ -138,16 +155,27 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
       auto op = ops[iref];
 
       //tA.method("x", [](const ns::A&  a) -> const T& { return a.x; });
+      // or
+      //tA.method("x", [](const ns::A&  a) -> T { return a.x; });
       indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []("
-                          << "const " << classname << ref << " a) -> " << const_type(target_type)
+                          << "const " << classname << ref << " a) -> "
+                          << (return_by_copy ?
+                              copy_return_type(target_type) :
+                              const_type(target_type))
                           << " { return a" << op << target_name << "; });\n";
-
+      
       if(non_const_getter){
         if(verbose > 0){
           std::cout << "Info: Generating non-const getter for " << classname << "::" << target_name << "\n";
         }
+        //tA.method("x", [](ns::A&  a) -> T& { return a.x; });
+        // or
+        //tA.method("x", [](ns::A&  a) -> T { return a.x; });
         indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []("
-                            <<  classname << ref << " a) -> " << non_const_type_or_pod(target_type)
+                            <<  classname << ref << " a) -> "
+                            << (return_by_copy ?
+                                copy_return_type(target_type)
+                                : non_const_type_or_pod(target_type))
                             << " { return a" << op << target_name << "; });\n";
       }
     }
@@ -465,47 +493,92 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
 
   std::string name_jl_suffix = jl_type_name(name_cxx);
 
-  static std::regex opregex("(^|.*::)operator(.{1,2})$");
+  static std::regex opregex("(^|.*::)operator[[:space:]]*(.*)$");
   std::cmatch m;
   override_base_ = false;
+
+  //number of args including the implicit "this"
+  //of non-statis method
+  int noperands = clang_getNumArgTypes(method_type);
+  if((this->classname.size()) != 0 && !is_static_) noperands += 1;
+  
   if(std::regex_match(name_cxx.c_str(), m, opregex)){
     name_jl_suffix = m[2];
-    override_base_ = true;
   }
-
+  
   //FIXME: check that julia = operator is not already mapped to c++ operator=
   //by CxxWrap. In that case we won't need to define an assign function
   if(name_jl_suffix == "="){
     name_jl_suffix = "assign";
-    override_base_ = false;
   }
 
-  if(name_jl_suffix == "*" && clang_getNumArgTypes(method_type)){
-       name_jl_suffix = "getindex"; //Deferencing operator, *x -> x[]
+  if(name_jl_suffix == "*" && noperands == 1){
+    name_jl_suffix = "getindex"; //Deferencing operator, *x -> x[]
+    override_base_ = true;
+  }
+  
+  if(name_jl_suffix == "[]"){
+    name_jl_suffix = "getindex";
+    override_base_ = true;
   }
 
+  if(name_jl_suffix == "+"){
+    //Base.+ can take an arbitrary number of arguments
+    //including zero, case that corrsponds to the prefix operator
+    override_base_ = true;
+  }
+
+  //prefix operators
+  static std::vector<std::string> prefix_base_ops = { "~", "!", "-", "+" };
+  if(noperands == 1
+     && std::find(prefix_base_ops.begin(), prefix_base_ops.end(),
+                  name_jl_suffix) != prefix_base_ops.end()){
+    override_base_ = true;
+  }
+  
+  static std::vector<std::string> infix_base_ops = { "-", "*", "/",
+    "%", "[]", "&", "|", "^", ">>", ">>>", "<<", ">", "<", "<=", ">=",
+    "==", "!=", "<=>"};
+  
+  if(noperands == 2
+     && std::find(infix_base_ops.begin(), infix_base_ops.end(),
+                  name_jl_suffix) != infix_base_ops.end()){
+    override_base_ = true;
+  }
+  
+  //TODO map cast operator to convert
+  //T A::operator R();
+  
+  //C++ -> Julia operation name map for operators65;6203;1c
+  //When not in the list, operatorOP() is mapped to Base.OP()
   std::vector<std::pair<std::string, std::string>> op_map = {
     {"()", "paren"},
     {"+=", "add!"},
     {"-=", "sub!"},
     {"*=", "mult!"},
     {"/=", "fdiv!"},
-    {"%=", "mod!"},
-    {">>=", "rshift!"},
-    {"<<=", "lshift!"},
-    {"^=", "bwxor!"},
-    {"|=", "bwor!"},
-    {"&=", "bwand!"},
-    {"*", "getindex"} //Deferencing of x written as x[]
+    {"%=", "rem!"},
+    {"^=", "xor!"},
+    {"|=", "or!"},
+    {"&=", "and!"},
+    {"<<=", "lshit!"},
+    {">>=", "rshit!"},
+    {"^", "xor"},
+    {"->", "arrow"}, 
+    {"->*", "arrowstar"},
+    {",", "comma"},
+    {"<=>", "cmp"},
+    {"--", "dec!"},
+    {"++", "inc!"},
+    {"&&", "logicaland"},//&& and ||, to which short-circuit evalution is applied
+    {"||", "logicalor"},//cannot be overloaded in Julia.
   };
 
   for(const auto& m: op_map){
     if(name_jl_suffix == m.first){
       name_jl_suffix = m.second;
-      override_base_ = false;
     }
   }
-
 
   setindex_ = getindex_ = false;
 
@@ -538,8 +611,7 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
 
   is_ctor_ = clang_getCursorKind(method.cursor) == CXCursor_Constructor;
 
-  is_abstract_ = pTypeRcd ? clang_CXXRecord_isAbstract(pTypeRcd->cursor) : false;
-
+  is_abstract_ = pTypeRcd ? clang_CXXRecord_isAbstract(pTypeRcd->cursor) : false;  
 }
 
 bool

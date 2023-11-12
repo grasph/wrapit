@@ -234,7 +234,7 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
 
   bool no_copy_ctor = find(copy_ctor_to_veto_.begin(),
                            copy_ctor_to_veto_.end(), t.type_name) != copy_ctor_to_veto_.end();
-  
+
   if(!notype){
     o << "\nnamespace jlcxx {\n";
     //generate code that disables mirrored type
@@ -297,17 +297,17 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
   std::string add_type_param;
   //wrapper ctor
   indent(o, 1) << wrapper << "(jlcxx::Module& jlModule): Wrapper(jlModule){\n";
-  if(!notype){    
+  if(!notype){
     if(t.template_parameter_combinations.size() > 0){
       generate_template_add_type_cxx(o, t, add_type_param);
     } else if(clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
       generate_non_template_add_type_cxx(o, t, add_type_param);
     }
-    
+
     ////  indent(o, 2) << "jlcxx::TypeWrapper t = module.add_type<"
-    ////	       << t.type_name << ">(" << jl_type_name(t.type_name) <<");\n";
+    ////               << t.type_name << ">(" << jl_type_name(t.type_name) <<");\n";
     ////  indent(o, 2) << "type_ = std::unique_ptr<jlcxx::TypeWrapper<" << t.type_name << ">>"
-    ////	       << "(new jlcxx::TypeWrapper<" << t.type_name << ">(module, t));\n";
+    ////               << "(new jlcxx::TypeWrapper<" << t.type_name << ">(module, t));\n";
   }
   indent(o, 1) << "}\n\n";
 
@@ -326,14 +326,14 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
     std::cmatch cm;
     std::regex_match(t.type_name.c_str(), cm, re);
     std::string ctor(cm[1]);
-    
+
     //Generate a wrapper for the implicit default ctor if needed
     if(t.default_ctor){
       FunctionWrapper::gen_ctor(o, 2, "t", t.template_parameters.empty(),
                                 t.finalize, std::string());
     }
   }
-  
+
   //Generate wrappers of the other methods
   //FIXME: add generation of accessor for templated classes
   //
@@ -342,6 +342,11 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
     //Generate wrappers for the class methods
     for(const auto& m: t.methods){
       generate_method_cxx(o, m);
+    }
+
+    if(override_base_){
+      indent(o << "\n", 2) << "module_.unset_override_module();\n";
+      override_base_ = false;
     }
 
     //Generate class field accessors
@@ -364,7 +369,7 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
     o << "\nprivate:\n";
     indent(o, 1) <<  "std::unique_ptr<jlcxx::TypeWrapper<" << add_type_param << ">> type_;\n";
   }
-  
+
   o << "};\n";
 
   o << "std::shared_ptr<Wrapper> new" << wrapper << "(jlcxx::Module& module){\n";
@@ -465,7 +470,7 @@ CodeTree::generate_cxx(){
 
   o << "#include \"dbg_msg.h\"\n";
   o << "#include \"Wrapper.h\"\n";
-  
+
   std::vector<std::string> wrappers;
 
   std::string type_out_fname(std::string("jl") + module_name_ + ".cxx");
@@ -474,7 +479,7 @@ CodeTree::generate_cxx(){
   //Fall back to current file, not expected to happen apart from a bug
   std::ofstream* pout = &o;
   std::ofstream type_out;
-  
+
   int i_towrap_type = -1;
   for(const auto& c: types_){
     if(!c.to_wrap) continue;
@@ -539,12 +544,12 @@ CodeTree::generate_cxx(){
 //    //FIXME: handle name clash in case a class to wrap has name "globals"
 //    std::string type_out_fpath = join_paths(out_cxx_dir_, "JlGlobals.cxx");
 //    type_out = checked_open(type_out_fpath);
-//    
+//
 //    generate_type_wrapper_header(type_out);
 //    generate_cxx_for_type(type_out, fake_type);
 //  }
 
-  
+
 //  if(functions_.size() > 0 || vars_.size() > 0){
 //    indent(o, 1) << "/**********************************************************************\n";
 //    indent(o, 1) << " * Wrappers for global functions and variables including\n";
@@ -604,7 +609,7 @@ CodeTree::generate_cxx(){
     o2 << " " << fname;
   }
   o2.close();
-  
+
   show_stats(std::cout);
 }
 
@@ -797,10 +802,10 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   bool new_override_base = wrapper.override_base();
   if(override_base_ && !new_override_base){
-    indent(o << "\n", 1) << "module_.unset_override_module();\n";
+    indent(o << "\n", nindents) << "module_.unset_override_module();\n";
     override_base_ = new_override_base;
   } else if(!override_base_ && new_override_base){
-    indent(o, 1) << "module_.set_override_module(jl_base_module);\n";
+    indent(o, nindents) << "module_.set_override_module(jl_base_module);\n";
     override_base_ = new_override_base;
   }
   o << "\n";
@@ -821,7 +826,11 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
   if(!wrapper.is_ctor()
      && (export_mode_ >= export_mode_t::all_functions
          || (export_mode_ >= export_mode_t::member_functions && !wrapper.is_global()))){
-    for(const auto& n: wrapper.generated_jl_functions()) to_export_.insert(n);
+    for(const auto& n: wrapper.generated_jl_functions()){
+      if(!new_override_base){
+        to_export_.insert(n);
+      }
+    }
   }
 
   return o;
@@ -926,9 +935,11 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   auto param_list2 = join(t.template_parameters, ", ");
 
   //  auto t1_decl_methods = []<typename T1, typename T2>(jlcxx::TypeWrapper<T1, T2> wrapped){
-  indent(o,2) << "auto " << decl_methods << " = []<" << param_list1
+  indent(o,2) << "auto " << decl_methods << " = [this]<" << param_list1
               << "> (jlcxx::TypeWrapper<" << t.type_name << "<" << param_list2
               << ">> wrapped){\n";
+  // auto module_ = this->modules_;
+  indent(o, 3) << "auto module_ = this->module_;";
   //        typedef A<T1, T2> T;
   if(t.methods.size() > 0){
     indent(o, 3) << "typedef " <<  t.type_name << "<" << param_list2 << "> WrappedType;\n";
@@ -945,6 +956,12 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   for(const auto& m: t.methods){
     method_cxx_decl(o, m, "wrapped", "WrappedType", 3, /*templated=*/true);
   }
+
+  if(override_base_){
+    indent(o << "\n", 3) << "module_.unset_override_module();\n";
+    override_base_ = false;
+  }
+
   //  };
   indent(o,2) << "};\n";
 
@@ -1404,7 +1421,7 @@ CodeTree::register_type(const CXType& type){
 
 std::tuple<std::vector<CXType>, int>
 CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
-  
+
   const auto& method_type = clang_getCursorType(cursor);
   const auto return_type = clang_getResultType(method_type);
 
@@ -1413,11 +1430,10 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   auto is_class_param = [pTypeRcd](CXType type){
     if(pTypeRcd==nullptr) return true;
     auto type_name = remove_cv(str(clang_getTypeSpelling(base_type(type))));
-    std::cerr << "Looking for type_name " << type_name << "\n";
     auto params = pTypeRcd->template_parameters;
     return std::find(params.begin(), params.end(), type_name) != params.end();
   };
-  
+
   std::vector<CXType> missing_types;
 
   if(return_type.kind != CXType_Void){
@@ -1429,7 +1445,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
         if(!rc) missing_types.push_back(return_type);
     }
   }
-  
+
   for(int i = 0; i < clang_getNumArgTypes(method_type); ++i){
     auto argtype = clang_getArgType(method_type, i);
     if(verbose > 3) std::cerr << cursor << ", arg " << (i+1) << " type: " << argtype << "\n";
@@ -2049,14 +2065,14 @@ std::string CodeTree::resolve_include_path(const std::string& fname){
 
 bool
 CodeTree::parse(){
-  
+
   if(!fs::is_directory(out_cxx_dir_) && !fs::create_directories(out_cxx_dir_)){
     std::cerr << "Failed to create directory " << out_cxx_dir_ << ".\n";
     return false;
   }
 
   header_file_path_ = join_paths(out_cxx_dir_,  std::string("jl") + module_name_ + ".h");
-  
+
   std::ofstream header_file(header_file_path_, out_open_mode_);
   if(header_file.tellp() != 0){
     std::cerr << "File " << header_file_path_
@@ -2282,7 +2298,7 @@ void CodeTree::preprocess(){
     types_.back().fields = vars_;
     types_.back().to_wrap = true;
   }
-  
+
   update_wrapper_filenames();
   if(out_open_mode_ & std::ios_base::app){
     //not overwriting mode (--force option disabled)
@@ -2570,7 +2586,7 @@ void CodeTree::update_wrapper_filenames(){
       towrap_type_filenames_.emplace_back("JlGlobals.cxx");
       continue;
     }
-    
+
     ++igroupedtype;
     std::stringstream buf;
     if(n_classes_per_file_ < 0){

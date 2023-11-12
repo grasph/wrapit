@@ -7,7 +7,7 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
-CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17
+CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++20
 CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3 -I.
 
 CPPFLAGS += -MMD
@@ -31,7 +31,7 @@ clean:
 	[ -d lib$(MODULE_NAME)/src ] && cd lib$(MODULE_NAME)/src && $(RM) $(file < lib$(MODULE_NAME)/src/generated_cxx) dbg_msg.h  generated_cxx  Wrapper.h || true
 	-rmdir -p lib$(MODULE_NAME)/src $(MODULE_NAME)/src 2>/dev/null || true
 
-lib$(MODULE_NAME)/src/jl%.cxx: %.wit
+lib$(MODULE_NAME)/src/jl%.cxx: %.wit $(WRAPIT_INPUTS)
 	wrapit --force $<
 
 lib$(MODULE_NAME)/build/%.o: lib$(MODULE_NAME)/src/%.cxx
