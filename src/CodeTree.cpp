@@ -2296,7 +2296,8 @@ CodeTree::get_prefix(const std::string& type_name) const{
 std::ostream&
 CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
-  bool anonymous_enum = clang_Cursor_isAnonymous(cursor);
+  const bool anonymous_enum = clang_Cursor_isAnonymous(cursor);
+  const bool scoped_enum = clang_EnumDecl_isScoped(cursor);
 
   std::string type_name;
   const auto& type = clang_getCursorType(cursor);
@@ -2313,7 +2314,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
   //extract prefix from a string formatted as 'prefix::type_name':
   auto prefix_cxx = get_prefix(type_name);
-  auto prefix_jl = jl_type_name(prefix_cxx);
+  auto prefix_jl = scoped_enum ? jl_type_name(type_name)+"!" : jl_type_name(prefix_cxx);
 
   if(prefix_cxx.size() > 2){
     const auto& clazz = prefix_cxx.substr(0, prefix_cxx.size() - 2);
@@ -2346,7 +2347,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
   for(const auto& value: values){
     std::string value_cpp;
-    if(clang_EnumDecl_isScoped(cursor)){
+    if(scoped_enum){
       value_cpp = type_name + "::" + value;
     } else{
       value_cpp = prefix_cxx + value;
