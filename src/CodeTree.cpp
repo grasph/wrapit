@@ -2067,6 +2067,8 @@ std::string CodeTree::resolve_include_path(const std::string& fname){
 bool
 CodeTree::parse(){
 
+  set_clang_resource_dir();
+  
   if(!fs::is_directory(out_cxx_dir_) && !fs::create_directories(out_cxx_dir_)){
     std::cerr << "Failed to create directory " << out_cxx_dir_ << ".\n";
     return false;
@@ -2603,5 +2605,48 @@ void CodeTree::update_wrapper_filenames(){
     }
     towrap_type_filenames_set_.insert(buf.str());
     towrap_type_filenames_.emplace_back(buf.str());
+  }
+}
+
+void CodeTree::set_clang_resource_dir(){
+  const char* resource_dir_opt =  "-resource-dir";
+  std::string resource_dir_eq = std::string(resource_dir_opt) + "=";
+  std::string d;
+  bool specified = false;
+  int iopt = 0;
+  for(const auto& opt: opts_){
+    if(opt.rfind(resource_dir_eq.c_str())==0){
+      d = opt.substr(resource_dir_eq.size());
+      specified = true;
+    }
+    if(opt==resource_dir_opt && (iopt+1) < opts_.size()){
+      d = opts_[iopt+1];
+      specified = true;
+    }
+    ++iopt;
+  }
+
+  if(specified && verbose > 0){
+    std::cout << "Clang resource directory (set with clang_opts): " << d << "\n";
+    return;
+  }
+
+  if(!specified){
+    d = get_resource_dir();
+    if(d.size() == 0){
+      std::cout << "WARNING: failed to determine clang resource directory path!\n"
+        "\tThis path is needed if the functions to wrap uses types defined by the "
+        "C++ standard libraries, like std::string or std::vector. Such types will be"
+        " replaced by 'int' in the generated code, which will fail to compile.\n"
+        "\tExecute clang -print-resource-dir to discover the path, where clang is "
+        "the clang compiler command (can be clang-X on some OS distribution where X is the version)."
+        " The path can then be set adding \"-resource-dir\" followed by the "
+        "directory path in the clang_opt parameter (a list of strings) of your "
+        "wrapit configuration file.\n";
+    } else if(verbose>0){
+      opts_.emplace_back(resource_dir_opt);
+      opts_.emplace_back(d);
+      std::cout << "Clang resource directory: " << d << "\n";
+    }
   }
 }

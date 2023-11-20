@@ -25,4 +25,6 @@ std::string remove_cv(const std::string& type_name);
 
 const clang::TemplateArgument & get_IntegralTemplateArgument(CXCursor cursor, int i);
 
+std::string get_resource_dir();
+
 #endif //LIBCLANG_EXT_H not defined

@@ -11,6 +11,7 @@ CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path()
 CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3 -I.
 
 CPPFLAGS += -MMD
+WRAPIT_VERBOSITY=0
 
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
@@ -32,7 +33,7 @@ clean:
 	-rmdir -p lib$(MODULE_NAME)/src $(MODULE_NAME)/src 2>/dev/null || true
 
 lib$(MODULE_NAME)/src/jl%.cxx: %.wit $(WRAPIT_INPUTS)
-	wrapit --force $<
+	wrapit -v $(WRAPIT_VERBOSITY) --force $<
 
 lib$(MODULE_NAME)/build/%.o: lib$(MODULE_NAME)/src/%.cxx
 	[ -d lib$(MODULE_NAME)/build ] || mkdir lib$(MODULE_NAME)/build

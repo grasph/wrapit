@@ -391,6 +391,8 @@ namespace codetree{
 
     std::ofstream checked_open(const std::string& path) const;
     
+    void set_clang_resource_dir();
+
   private:
     bool auto_veto_;
 

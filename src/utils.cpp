@@ -96,3 +96,28 @@ std::string join_paths(const std::string& p1, const std::string& p2){
   std::string p = p1.size() > 0 ? p1 : ".";
   return p + "/" + p2;
 }
+
+#ifdef _WIN32
+#include <windows.h>
+std::string get_so_path(const char* libname, void* func){
+  std::string r;
+  HMODULE moduleHandle = GetModuleHandle(libname);  // Assuming printf is in the msvcrt.dll library
+  if (moduleHandle != NULL) {
+    char modulePath[MAX_PATH];
+    DWORD size = GetModuleFileName(moduleHandle, modulePath, MAX_PATH);
+    modulePath[MAX_PATH-1] = 0;
+    if(size > 0) r = modulePath;
+  }
+  return r;
+}
+#else //assumix *nix
+#include <dlfcn.h>
+std::string get_so_path(const char* libname, void* func){
+  std::string r;
+  Dl_info info;
+  if (dladdr(func, &info)){
+    r = info.dli_fname;
+  }
+  return r;
+}
+#endif

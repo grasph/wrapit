@@ -90,6 +90,6 @@ add_executable(wrapit
 
 add_dependencies(wrapit version)
 
-target_link_libraries(wrapit PRIVATE libclang clangAST cxxopts)
+target_link_libraries(wrapit PRIVATE libclang clangAST cxxopts dl)
 set_target_properties(wrapit PROPERTIES CXX_STANDARD 17 OUTPUT_NAME wrapit)
 install(TARGETS wrapit DESTINATION bin)

@@ -94,4 +94,9 @@ std::vector<std::string> get_template_parameters(CXCursor cursor);
 
 std::string join_paths(const std::string& p1, const std::string& p2);
 
+// Retrieves the path of a linked shared library from the library name
+// (on Windows) or from a function exported by the librart (*nix)
+// WARNING: Windows version has not been tested
+std::string get_so_path(const char* libname, void* func);
+
 #endif //UTILS_H not defined

@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 using Test
-tests = [ "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
+tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString",
           "TestOperators", "TestEnum"
           ]

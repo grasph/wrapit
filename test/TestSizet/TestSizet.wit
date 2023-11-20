@@ -1,0 +1,17 @@
+module_name         = "TestSizet"
+
+include_dirs        = [ ".", "/home/opt/llvm-dev/include/c++/v1/" ]
+
+input               = [ "A.h" ]
+
+#extra_input         = [ "cstdef" ]
+
+cxx-std             = "c++17"
+
+export  = "all"
+
+auto_veto = true
+
+# all generated code in a single file:
+n_classes_per_file = 0
+
