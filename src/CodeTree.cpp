@@ -2626,16 +2626,21 @@ void CodeTree::set_clang_resource_dir(){
     ++iopt;
   }
 
-  if(specified && verbose > 0){
-    std::cout << "Clang resource directory (set with clang_opts): " << d << "\n";
-    return;
-  }
-
-  if(!specified){
+  if(specified){
+    if(verbose > 0){
+      std::cout << "Clang resource directory (set with clang_opts): " << d << "\n";
+    }
+    if(!fs::is_directory(fs::path(d))){
+      std::cout << "WARNING: resource directory '" << d << "' set in clang_opt was not found!.\n";
+    }
+  } else{
     d = get_resource_dir();
-    if(d.size() == 0){
-      std::cout << "WARNING: failed to determine clang resource directory path!\n"
-        "\tThis path is needed if the functions to wrap uses types defined by the "
+    bool dir_exists = !fs::is_directory(fs::path(resource_dir_opt));
+    if(d.size() == 0 || !dir_exists){
+      std::cout << "WARNING: failed to determine clang resource directory path!.\n";
+      std::cout <<  "Tried " << d
+                << ", but this directory does not exists.\n";
+      std::cout << "\tThis path is needed if the functions to wrap uses types defined by the "
         "C++ standard libraries, like std::string or std::vector. Such types will be"
         " replaced by 'int' in the generated code, which will fail to compile.\n"
         "\tExecute clang -print-resource-dir to discover the path, where clang is "
@@ -2648,5 +2653,12 @@ void CodeTree::set_clang_resource_dir(){
       opts_.emplace_back(d);
       std::cout << "Clang resource directory: " << d << "\n";
     }
+  }
+
+  auto stddef_path = join_paths(join_paths(d, "include"), "stddef.h");
+  if(!fs::exists(fs::path(stddef_path))){
+    std::cout << "WARNING: file '" << stddef_path << "' was not found. Please check "
+      "the clang resource directory is set properly: see clang manual and use wrapit "
+      "clang_opts parameter to pass options to clang.\n";
   }
 }

@@ -26,7 +26,7 @@ if(NOT CLANG_JLL)
 else() #Using Clang_jll
    #Clang_jll package lacks the Clang Cmake conifiguration file,
    #Set the clang dependency by  hand:
-   set(STATIC_LIBS clangAST clangLex clangBasic)
+   set(STATIC_LIBS clangAST clangLex clangBasic clangDriver)
    foreach(static_lib IN LISTS STATIC_LIBS) 
        add_library(${static_lib} STATIC IMPORTED)
        set_property(TARGET ${static_lib} PROPERTY
@@ -90,6 +90,6 @@ add_executable(wrapit
 
 add_dependencies(wrapit version)
 
-target_link_libraries(wrapit PRIVATE libclang clangAST cxxopts dl)
+target_link_libraries(wrapit PRIVATE libclang clangAST clangDriver cxxopts dl)
 set_target_properties(wrapit PROPERTIES CXX_STANDARD 17 OUTPUT_NAME wrapit)
 install(TARGETS wrapit DESTINATION bin)

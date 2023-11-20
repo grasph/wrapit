@@ -13,7 +13,7 @@
 #include "clang/AST/PrettyPrinter.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclTemplate.h"
-//#include "clang/Driver/Driver.h"
+#include "clang/Driver/Driver.h"
 #include "clang/Basic/Version.h"
 //#include "clang/Frontend/ASTUnit.h"
 #include "llvm/Support/raw_ostream.h"
@@ -240,11 +240,7 @@ std::string get_resource_dir(){
   if(p.size() == 0){
     return p;
   } else{
-    return join_paths(p, std::string(CLANG_VERSION_STRING));
-    //Alternative implementation that should be more robust wrt to changes
-    //in clang but that adds a dependency on clangDriver:
-    //std::string custom_resource_dir("");
-    //return clang::driver::Driver::GetResourcesPath(p, custom_resource_dir);
-
+    std::string custom_resource_dir("");
+    return clang::driver::Driver::GetResourcesPath(p, custom_resource_dir);
   }
 }
