@@ -1733,7 +1733,8 @@ CodeTree::visit_class_constructor(CXCursor cursor){
 
   FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd);
 
-  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
+  if(in_veto_list(wrapper.signature())){
+  //if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
     }
