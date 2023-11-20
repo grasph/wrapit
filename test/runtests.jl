@@ -2,7 +2,7 @@
 using Test
 tests = [ "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString",
-          "TestOperators"
+          "TestOperators", "TestEnum"
           ]
 
 @testset verbose=true "Tests" begin

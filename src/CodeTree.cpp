@@ -2359,7 +2359,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
   //extract prefix from a string formatted as 'prefix::type_name':
   auto prefix_cxx = get_prefix(type_name);
-  auto prefix_jl = scoped_enum ? jl_type_name(type_name)+"!" : jl_type_name(prefix_cxx);
+  auto prefix_jl = scoped_enum ? jl_type_name(type_name) + "!" : jl_type_name(prefix_cxx);
 
   if(prefix_cxx.size() > 2){
     const auto& clazz = prefix_cxx.substr(0, prefix_cxx.size() - 2);
