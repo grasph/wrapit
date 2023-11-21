@@ -17,6 +17,7 @@ CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -I.
 
 ifeq ($(UNAME),Darwin)
   SO_SUFFIX = .dylib
+  CXXFLAGS += -ferror-limit=3
 else
   CXXFLAGS += -fmax-errors=3
   SO_SUFFIX = .so
@@ -31,7 +32,7 @@ LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
 .PRECIOUS: $(PRODUCTS)
 
-CXX_PRODUCTS=$(addprefix lib$(MODULE_NAME)/src/, jl$(MODULE_NAME).cxx)
+CXX_PRODUCTS+=$(addprefix lib$(MODULE_NAME)/src/, jl$(MODULE_NAME).cxx)
 OBJS=$(patsubst lib$(MODULE_NAME)/src/%,lib$(MODULE_NAME)/build/%, $(addsuffix .o, $(basename $(CXX_PRODUCTS)))) $(EXTRA_OBJS)
 DEPS=$(patsubst %.o,%.d, $(OBJS))
 

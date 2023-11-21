@@ -1,0 +1,19 @@
+module_name         = "TestEmptyClass"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ]
+
+cxx-std             = "c++17"
+
+export  = "all"
+
+veto_list = "vetoTestEmplyClass.txt"
+
+auto_veto = true
+
+# We want to test no files are created for vetoed classes 
+# for which no wrapping code is required.
+# Run in 1 file per class mode:
+n_classes_per_file = -1
+

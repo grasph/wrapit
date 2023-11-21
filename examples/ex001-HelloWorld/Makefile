@@ -13,11 +13,13 @@ LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
 
 ifeq ($(UNAME),Darwin)
   SO_SUFFIX = .dylib
+  CXXFLAGS += -ferror-limit=3
 else
   SO_SUFFIX = .so
+  CXXFLAGS += -fmax-errors=3
 endif
 
-CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3
+CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable
 
 CPPFLAGS += -MMD
 

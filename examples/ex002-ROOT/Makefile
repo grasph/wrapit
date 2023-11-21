@@ -4,16 +4,18 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
-
+WRAPIT = $(shell which wrapit)
 CXXWRAP_CPPFLAGS=-I $(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUID("1f15a43c-97ca-5a2a-ae31-89f07a497df4")) || Pkg.add("CxxWrap"); using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17 -I.
 
 ifeq ($(UNAME),Darwin)
   SO_SUFFIX = .dylib
+  CXXFLAGS += -ferror-limit=3
 else
   SO_SUFFIX = .so
+  CXXFLAGS += -fmax-errors=3
 endif
 
-CXXFLAGS += -fmax-errors=3 -O2
+CXXFLAGS += -O2
 
 CPPFLAGS += -MMD -I $(ROOT_INC_DIR)
 
@@ -22,7 +24,7 @@ ROOT_INC_DIR = $(shell root-config --incdir)
 
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
-.PHONY: all clean run_demo check_root make_lib_from_objs
+.PHONY: all clean run_demo run_demo2 check_root make_lib_from_objs
 
 .PRECIOUS: $(GENERATED_CXX) ROOT-generated.wit
 
@@ -48,10 +50,10 @@ ifeq ($(ROOT_LIBS),)
 endif
 
 run_demo: all
-	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_ROOT.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_ROOT.jl
 
 run_demo2: all
-	LD_LIBRARY_PATH=.:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_TGraph.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_TGraph.jl
 
 test: all
 	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_ROOT.jl
@@ -59,8 +61,8 @@ test: all
 	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_TGraph.jl
 	cmp demo_TGraph.png demo_TGraph-ref.png
 
-libROOT/src/generated_cxx: ROOT-generated.wit jlROOT-veto.h
-	wrapit --force $<
+libROOT/src/generated_cxx: ROOT-generated.wit jlROOT-veto.h $(WRAPIT)
+	$(WRAPIT) --force $<
 	$(eval GENERATED_CXX:=$(file < libROOT/src/generated_cxx))
 	$(eval OBJS:=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX))))
 
