@@ -2648,10 +2648,10 @@ void CodeTree::set_clang_resource_dir(){
         " The path can then be set adding \"-resource-dir\" followed by the "
         "directory path in the clang_opt parameter (a list of strings) of your "
         "wrapit configuration file.\n";
-    } else if(verbose>0){
+    } else{
       opts_.emplace_back(resource_dir_opt);
       opts_.emplace_back(d);
-      std::cout << "Clang resource directory: " << d << "\n";
+      if(verbose>0) std::cout << "Clang resource directory: " << d << "\n";
     }
   }
 

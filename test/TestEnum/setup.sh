@@ -1,3 +1,9 @@
+if [ X`uname`  = XDarwin ]; then
+  linker=DYLD
+else
+  linker=LD
+fi
+
 export JULIA_LOAD_PATH="@:@v#.#:@stdlib:`pwd`/TestEnum/src"
-export LD_LIBRARY_PATH="`pwd`/libTestEnum"
+export ${linker}_LIBRARY_PATH="`pwd`/libTestEnum"
 

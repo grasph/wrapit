@@ -5,7 +5,13 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
-CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17
+CXXWRAP_CPPFLAGS=-I $(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUID("1f15a43c-97ca-5a2a-ae31-89f07a497df4")) || Pkg.add("CxxWrap"); using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17 -I.
+
+ifeq ($(UNAME),Darwin)
+  SO_SUFFIX = .dylib
+else
+  SO_SUFFIX = .so
+endif
 
 CXXFLAGS += -fmax-errors=3 -O2
 
@@ -20,7 +26,7 @@ LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
 .PRECIOUS: $(GENERATED_CXX) ROOT-generated.wit
 
-PRODUCTS=libROOT/libjlROOT.so
+PRODUCTS=libROOT/libjlROOT$(SO_SUFFIX)
 GENERATED_CXX:=$(file < libROOT/src/generated_cxx)
 OBJS=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX)))
 DEPS=$(patsubst %.o,%.d, $(OBJS))
@@ -62,12 +68,12 @@ libROOT/build/%.o: libROOT/src/%.cxx
 	-mkdir -p libROOT/build
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-libROOT/libjlROOT.so: libROOT/src/generated_cxx
+libROOT/libjlROOT$(SO_SUFFIX): libROOT/src/generated_cxx
 	$(MAKE) check_root
 	$(MAKE) make_lib_from_objs
 
 make_lib_from_objs: $(OBJS)
-	$(LINK.o) -o libROOT/libjlROOT.so --shared -fPIC $(OBJS) $(ROOT_LIBS)
+	$(LINK.o) -o libROOT/libjlROOT$(SO_SUFFIX) --shared -fPIC $(OBJS) $(ROOT_LIBS)
 
 echo_%:
 	@echo "$* = $(subst ",\",$($*))"

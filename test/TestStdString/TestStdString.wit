@@ -1,6 +1,6 @@
 module_name         = "TestStdString"
 
-include_dirs        = [ "." ]
+include_dirs        = [ "."  ]
 
 input               = [ "A.h" ]
 

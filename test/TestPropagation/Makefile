@@ -1,3 +1,5 @@
+UNAME = $(shell uname)
+
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
 CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 #CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
@@ -5,9 +7,18 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
-CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17
+CXXWRAP_PREFIX=$(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUID("1f15a43c-97ca-5a2a-ae31-89f07a497df4")) || Pkg.add("CxxWrap"); using CxxWrap; print(CxxWrap.prefix_path())')
 
+CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -std=c++20
+LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
 CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3 -I.
+
+ifeq ($(UNAME),Darwin)
+  SO_SUFFIX = .dylib
+else
+  SO_SUFFIX = .so
+endif
+
 
 CPPFLAGS += -MMD
 
@@ -22,7 +33,7 @@ HEADERS=$(patsubst %.cxx, %.h, $(CXX_PRODUCTS))
 OBJS=$(addsuffix .o, $(basename $(CXX_PRODUCTS)))
 DEPS=$(addsuffix .d, $(basename $(CXX_PRODUCTS)))
 JL_MODULES=$(foreach module,$(MODULE_NAMES), $(module)/src/$(module).jl)
-JL_LIBS=$(foreach module,$(MODULE_NAMES), lib$(module)/libjl$(module).so)
+JL_LIBS=$(foreach module,$(MODULE_NAMES), lib$(module)/libjl$(module)$(SO_SUFFIX))
 BUILD_DIRS=$(foreach module,$(MODULE_NAMES), lib$(module)/build/)
 
 PRODUCTS=$(JL_LIBS) $(CXX_PRODUCTS) $(HEADERS) $(JL_MODULES) 
@@ -57,22 +68,22 @@ libTestPropagation1/build/%.o: libTestPropagation1/src/%.cxx
 
 libTestPropagation2/build/%.o: libTestPropagation2/src/%.cxx
 	[ -d libTestPropagation2/build ] || mkdir libTestPropagation2/build
-	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
+	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $< $(LDLIBS)
 
 libTestPropagation3/build/%.o: libTestPropagation3/src/%.cxx
 	[ -d libTestPropagation3/build ] || mkdir libTestPropagation3/build
-	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
+	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $< $(LDLIBS)
 
-libTestPropagation1/libjl%.so: libTestPropagation1/build/jl%.o
-	$(LINK.o) -o $@ --shared -fPIC $<
+libTestPropagation1/libjl%$(SO_SUFFIX): libTestPropagation1/build/jl%.o
+	$(LINK.o) -o $@ --shared -fPIC $< $(LDLIBS) 
 	touch $*/src/$*.jl
 
-libTestPropagation2/libjl%.so: libTestPropagation2/build/jl%.o
-	$(LINK.o) -o $@ --shared -fPIC $<
+libTestPropagation2/libjl%$(SO_SUFFIX): libTestPropagation2/build/jl%.o
+	$(LINK.o) -o $@ --shared -fPIC $< $(LDLIBS)
 	touch $*/src/$*.jl
 
-libTestPropagation3/libjl%.so: libTestPropagation3/build/jl%.o
-	$(LINK.o) -o $@ --shared -fPIC $<
+libTestPropagation3/libjl%$(SO_SUFFIX): libTestPropagation3/build/jl%.o
+	$(LINK.o) -o $@ --shared -fPIC $< $(LDLIBS)
 	touch $*/src/$*.jl
 
 echo_%:

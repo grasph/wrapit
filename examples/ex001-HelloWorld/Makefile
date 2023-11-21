@@ -1,3 +1,4 @@
+UNAME = $(shell uname)
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
 CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 #CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
@@ -5,7 +6,16 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
-CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17 -I.
+CXXWRAP_PREFIX=$(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUID("1f15a43c-97ca-5a2a-ae31-89f07a497df4")) || Pkg.add("CxxWrap"); using CxxWrap; print(CxxWrap.prefix_path())')
+
+CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
+LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
+
+ifeq ($(UNAME),Darwin)
+  SO_SUFFIX = .dylib
+else
+  SO_SUFFIX = .so
+endif
 
 CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3
 
@@ -19,7 +29,7 @@ CC_FILES=jlHello.cxx
 
 .PRECIOUS: $(CC_FILES)
 
-PRODUCTS=libHello/libjlHello.so $(addprefix libHello/src/, jlHello.cxx  jlHello.h  Wrapper.h generated_cxx) Hello/src/Hello.jl 
+PRODUCTS=libHello/libjlHello$(SO_SUFFIX) $(addprefix libHello/src/, jlHello.cxx  jlHello.h  Wrapper.h generated_cxx) Hello/src/Hello.jl 
 
 all: $(PRODUCTS)
 
@@ -33,8 +43,8 @@ libHello/build/%.o: libHello/src/%.cxx
 	-mkdir libHello/build
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-libHello/libjlHello.so: libHello/build/jlHello.o
-	$(LINK.o) -o $@ --shared -fPIC $^ $(ROOT_LIBS)
+libHello/libjlHello$(SO_SUFFIX): libHello/build/jlHello.o
+	$(LINK.o) -o $@ --shared -fPIC $^ $(ROOT_LIBS) $(LDLIBS)
 
 echo_%:
 	@echo $*=$($*)

@@ -5,4 +5,3 @@ struct A: public std::string{
   std::string f(){ return *this + "_"; }
 };
 
-  
