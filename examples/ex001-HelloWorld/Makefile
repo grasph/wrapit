@@ -34,7 +34,7 @@ PRODUCTS=libHello/libjlHello$(SO_SUFFIX) $(addprefix libHello/src/, jlHello.cxx 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) -r libHello/build jlHello-report.txt
+	-$(RM) -r $(PRODUCTS) libHello/build jlHello-report.txt
 
 libHello/src/jl%.cxx: %.wit
 	wrapit --force $<
