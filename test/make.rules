@@ -13,11 +13,12 @@ CXXWRAP_PREFIX=$(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUI
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -std=c++20
 LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
-CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3 -I.
+CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -I.
 
 ifeq ($(UNAME),Darwin)
   SO_SUFFIX = .dylib
 else
+  CXXFLAGS += -fmax-errors=3
   SO_SUFFIX = .so
 endif
 
@@ -39,7 +40,7 @@ PRODUCTS=lib$(MODULE_NAME)/libjl$(MODULE_NAME)$(SO_SUFFIX) $(CXX_PRODUCTS) $(add
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) -r lib$(MODULE_NAME)/build jl$(MODULE_NAME)-report.txt $(OBJS) $(DEPS)
+	-$(RM) -r $(PRODUCTS) lib$(MODULE_NAME)/build jl$(MODULE_NAME)-report.txt $(OBJS) $(DEPS)
 	[ -d lib$(MODULE_NAME)/src ] && cd lib$(MODULE_NAME)/src && $(RM) $(file < lib$(MODULE_NAME)/src/generated_cxx) dbg_msg.h  generated_cxx  Wrapper.h || true
 	-rmdir -p lib$(MODULE_NAME)/src $(MODULE_NAME)/src 2>/dev/null || true
 

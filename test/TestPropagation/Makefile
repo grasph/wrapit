@@ -11,12 +11,13 @@ CXXWRAP_PREFIX=$(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUI
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -std=c++20
 LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
-CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3 -I.
+CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -I.
 
 ifeq ($(UNAME),Darwin)
   SO_SUFFIX = .dylib
 else
   SO_SUFFIX = .so
+  CXXFLAGS += -fmax-errors=3
 endif
 
 
