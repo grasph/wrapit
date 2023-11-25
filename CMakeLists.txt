@@ -91,5 +91,18 @@ add_executable(wrapit
 add_dependencies(wrapit version)
 
 target_link_libraries(wrapit PRIVATE libclang clangAST clangDriver cxxopts dl)
-set_target_properties(wrapit PROPERTIES CXX_STANDARD 17 OUTPUT_NAME wrapit)
+set_target_properties(wrapit PROPERTIES
+  CXX_STANDARD 17
+  OUTPUT_NAME wrapit
+  POSITION_INDEPENDENT_CODE ON #required for dladdrr on Linux (*) 
+  )
+
 install(TARGETS wrapit DESTINATION bin)
+
+
+#(*) dladdr man page says "On some architectures (notably i386 and x86-64),
+#       dli_fname and dli_fbase may end up pointing back at the object from
+#       which you called dladdr(), even if the function used as an argument
+#       should come from a dynamically linked library." and prescribe to
+#       compile the code as position independent to work around this bug.
+# See also https://github.com/grasph/wrapit/issues/30
