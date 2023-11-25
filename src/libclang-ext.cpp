@@ -235,12 +235,3 @@ const clang::TemplateArgument & get_IntegralTemplateArgument(CXCursor cursor, in
 
 }
 
-std::string get_resource_dir(){
-  std::string p = get_so_path("libclang.dll", reinterpret_cast<void*>(clang_getCursorType));
-  if(p.size() == 0){
-    return p;
-  } else{
-    std::string custom_resource_dir("");
-    return clang::driver::Driver::GetResourcesPath(p, custom_resource_dir);
-  }
-}

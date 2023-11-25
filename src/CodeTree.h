@@ -26,6 +26,7 @@
 #include <clang-c/Index.h>
 
 #include "utils.h"
+#include "config.h"
 
 namespace fs = std::filesystem;
 
@@ -37,7 +38,9 @@ namespace codetree{
 
   class CodeTree{
   public:
-    CodeTree(): module_name_("Module"), out_open_mode_(std::ios_base::app),
+    CodeTree(): clang_resource_dir_(CLANG_RESOURCE_DIR_FULLPATH),
+                module_name_("Module"),
+                out_open_mode_(std::ios_base::app),
                 out_cxx_dir_("src"),
                 auto_veto_(true), include_depth_(1), mainFileOnly_(true), override_base_(false),
                 propagation_mode_(propagation_mode_t::types), export_mode_(export_mode_t::member_functions),
@@ -125,6 +128,10 @@ namespace codetree{
 
     CXType resolve_private_typedef(CXType type) const;
 
+    void set_clang_resource_dir(const std::string path){
+      clang_resource_dir_ = path;
+    }
+        
     bool fromMainFiles(const CXCursor& cursor) const;
 
     std::string wrapper_classsname(const std::string& classname) const;
@@ -259,6 +266,9 @@ namespace codetree{
 
     bool add_type_specialization(TypeRcd* pTypeRcd, const CXType& type);
 
+
+    bool check_resource_dir(bool verbose) const;
+    
     //Finds the definition of a type or the underlying type in case
     //of a pointer or reference. For a templated type,
     //it retrieves also the types of the template parameters.
@@ -390,10 +400,10 @@ namespace codetree{
     std::ostream& generate_type_wrapper_header(std::ostream& o) const;
 
     std::ofstream checked_open(const std::string& path) const;
-    
-    void set_clang_resource_dir();
 
   private:
+    std::string clang_resource_dir_;
+    
     bool auto_veto_;
 
     std::string header_file_path_;

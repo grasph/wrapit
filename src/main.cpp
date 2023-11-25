@@ -79,13 +79,17 @@ int main(int argc, char* argv[]){
                                "Generates wrappers from a c++ header file for Cxx.jl.\n");
   // clang-format off
   option_list.add_options()
-    ("h,help", "display this help and exit")
-    ("v,verbosity", "set verbosity leval",
+    ("h,help", "Display this help and exit")
+    ("v,verbosity", "Set verbosity leval",
      cxxopts::value<int>()->default_value("0"))
-    ("force", "force overwriting output files.")
-    ("cfgfile", "configuration file (in toml format)",
+    ("force", "Force overwriting output files.")
+    ("cfgfile", "Configuration file (in toml format)",
+     cxxopts::value<std::string>())
+    ("resource-dir", "Change the clang resource directory path (see clang "
+     "--help and clang --print-resource-dir). Default: "
+     CLANG_RESOURCE_DIR_FULLPATH ".",
      cxxopts::value<std::string>());
-
+  
   option_list.parse_positional({"cfgfile"});
 
   auto options = option_list.parse(argc, argv);
@@ -288,6 +292,10 @@ int main(int argc, char* argv[]){
       if(name.size() > 0){
         tree.add_clang_opt(name);
       }
+    }
+
+    if(options.count("resource-dir")){
+      tree.set_clang_resource_dir(options["resource-dir"].as<std::string>());
     }
 
     for(const auto& s: extra_headers){

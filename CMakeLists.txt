@@ -23,6 +23,16 @@ set(SEARCH_CLANG_CMAKE TRUE
 if(NOT CLANG_JLL)
    find_package(Clang REQUIRED CONFIG)
    include_directories(${CLANG_INCLUDE_DIRS})
+   if(DEFINED CLANG_RESOURCE_DIR AND NOT CLANG_RESOURCE_DIR STREQUAL "")
+     set(CLANG_RESOURCE_DIR_PATH "${LLVM_TOOLS_BINARY_DIR}/${CLANG_RESOURCE_DIR}")
+   else()
+     set(CLANG_RESOURCE_DIR_PATH "${LLVM_LIBRARY_DIR}/clang/${CLANG_VERSION_MAJOR}")
+   endif()
+
+  execute_process(COMMAND "${LLVM_TOOLS_BINARY_DIR}/clang" -print-resource-dir
+                  OUTPUT_VARIABLE CLANG_RESOURCE_DIR_DISCOVERED_PATH
+                  OUTPUT_STRIP_TRAILING_WHITESPACE)
+                
 else() #Using Clang_jll
    #Clang_jll package lacks the Clang Cmake conifiguration file,
    #Set the clang dependency by  hand:
@@ -57,6 +67,18 @@ else() #Using Clang_jll
          add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
       endif()
     endif()
+endif()
+
+set(CLANG_RESOURCE_DIR_FULLPATH "${CLANG_RESOURCE_DIR_DISCOVERED_PATH}" CACHE
+    FILEPATH
+    "Clang resource directory as returned by clang -print-resource-dir")
+
+if("${CLANG_RESOURCE_DIR_FULLPATH}" STREQUAL "")
+  message(FATAL_ERROR "CLANG_RESOURCE_DIR_FULLPATH needs to be set to the Clang resource directory (see clang -resource-directory). This path is used at runtime by the wrapit executable.")
+else()
+  if(NOT IS_DIRECTORY "${CLANG_RESOURCE_DIR_FULLPATH}")
+    message(WARNING "CLANG_RESOURCE_DIR_FULLPATH value, " "${CLANG_RESOURCE_DIR_FULLPATH}" ",  does not point to an existing directory.")
+  endif()
 endif()
 
 
@@ -97,8 +119,12 @@ set_target_properties(wrapit PROPERTIES
   POSITION_INDEPENDENT_CODE ON #required for dladdrr on Linux (*) 
   )
 
-install(TARGETS wrapit DESTINATION bin)
+configure_file(src/config.h.in config.h @ONLY)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}) #contains the generated config.h header file
 
+target_compile_definitions(wrapit PRIVATE)
+
+install(TARGETS wrapit DESTINATION bin)
 
 #(*) dladdr man page says "On some architectures (notably i386 and x86-64),
 #       dli_fname and dli_fbase may end up pointing back at the object from

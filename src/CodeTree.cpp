@@ -26,6 +26,7 @@ extern const char* version;
 #include "clang/AST/Type.h" //FOR DEBUG
 #include "clang/AST/DeclTemplate.h"
 
+
 extern CXPrintingPolicy pp;
 
 namespace{
@@ -2067,8 +2068,6 @@ std::string CodeTree::resolve_include_path(const std::string& fname){
 bool
 CodeTree::parse(){
 
-  set_clang_resource_dir();
-  
   if(!fs::is_directory(out_cxx_dir_) && !fs::create_directories(out_cxx_dir_)){
     std::cerr << "Failed to create directory " << out_cxx_dir_ << ".\n";
     return false;
@@ -2098,8 +2097,27 @@ CodeTree::parse(){
 
   index_ = clang_createIndex(0, 0);
 
-  std::vector<const char*> opts(opts_.size());
-  for(unsigned i = 0; i < opts_.size(); ++i) opts[i] = opts_[i].c_str();
+  std::vector<const char*> opts(opts_.size() + 2);
+  
+  if(!check_resource_dir(true)){
+    exit(1);
+  }
+
+  opts[0] = "-resource-dir";
+  opts[1] = clang_resource_dir_.c_str();
+
+  for(unsigned i = 0; i < opts_.size(); ++i){
+    if(opts_[i] == "-resource-dir"){
+      std::cerr << "\n----------------------------------------------------------------------\n"
+        "Warning: DEPRECATED -resource-dir option found in the "
+        "clang_opt parameter of the configuration file. This will be ignore or "
+        "results in a fatal error in future releases. Please use the default "
+        "resource directory path or set an alternative one using the command "
+        "line option. See wrapit --help.\n"
+        "----------------------------------------------------------------------\n";
+    }
+    opts[2+i] = opts_[i].c_str();
+  }
 
   if(verbose > 1){
     //Enable clang verbose option
@@ -2608,57 +2626,25 @@ void CodeTree::update_wrapper_filenames(){
   }
 }
 
-void CodeTree::set_clang_resource_dir(){
-  const char* resource_dir_opt =  "-resource-dir";
-  std::string resource_dir_eq = std::string(resource_dir_opt) + "=";
-  std::string d;
-  bool specified = false;
-  int iopt = 0;
-  for(const auto& opt: opts_){
-    if(opt.rfind(resource_dir_eq.c_str())==0){
-      d = opt.substr(resource_dir_eq.size());
-      specified = true;
-    }
-    if(opt==resource_dir_opt && (iopt+1) < opts_.size()){
-      d = opts_[iopt+1];
-      specified = true;
-    }
-    ++iopt;
-  }
+bool CodeTree::check_resource_dir(bool verbose) const{
+  bool rc = std::filesystem::is_directory(std::filesystem::path(clang_resource_dir_));
+  if(!rc && verbose){
+    std::cerr << "ERROR: '" << clang_resource_dir_
+              << "' is not a directory. Use -resource-dir wrapit command line "
+      "option to specify an alternative path for the clang resouce directory: "
+      "see 'clang --help' and 'clang -print-resource-dir'.\n";
+  } 
 
-  if(specified){
-    if(verbose > 0){
-      std::cout << "Clang resource directory (set with clang_opts): " << d << "\n";
-    }
-    if(!fs::is_directory(fs::path(d))){
-      std::cout << "WARNING: resource directory '" << d << "' set in clang_opt was not found!.\n";
-    }
-  } else{
-    d = get_resource_dir();
-    bool dir_exists = !fs::is_directory(fs::path(resource_dir_opt));
-    if(d.size() == 0 || !dir_exists){
-      std::cout << "WARNING: failed to determine clang resource directory path!.\n";
-      std::cout <<  "Tried " << d
-                << ", but this directory does not exists.\n";
-      std::cout << "\tThis path is needed if the functions to wrap uses types defined by the "
-        "C++ standard libraries, like std::string or std::vector. Such types will be"
-        " replaced by 'int' in the generated code, which will fail to compile.\n"
-        "\tExecute clang -print-resource-dir to discover the path, where clang is "
-        "the clang compiler command (can be clang-X on some OS distribution where X is the version)."
-        " The path can then be set adding \"-resource-dir\" followed by the "
-        "directory path in the clang_opt parameter (a list of strings) of your "
-        "wrapit configuration file.\n";
-    } else{
-      opts_.emplace_back(resource_dir_opt);
-      opts_.emplace_back(d);
-      if(verbose>0) std::cout << "Clang resource directory: " << d << "\n";
+  if(rc){
+    auto stddef_path = join_paths(join_paths(clang_resource_dir_, "include"),
+                                  "stddef.h");
+    rc &=  std::filesystem::exists(std::filesystem::path(stddef_path));
+    if(verbose && !rc){
+      std::cerr << "ERROR: file 'include/stddef.h' not found in the resource "
+        "directory '" << clang_resource_dir_ << "'.  Use --resource-dir "
+      "wrapit command line option to specify an alternative path. "
+        "See 'clang --help' and 'clang -print-resource-dir'.\n";
     }
   }
-
-  auto stddef_path = join_paths(join_paths(d, "include"), "stddef.h");
-  if(!fs::exists(fs::path(stddef_path))){
-    std::cout << "WARNING: file '" << stddef_path << "' was not found. Please check "
-      "the clang resource directory is set properly: see clang manual and use wrapit "
-      "clang_opts parameter to pass options to clang.\n";
-  }
+  return rc;
 }
