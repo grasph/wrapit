@@ -13,11 +13,19 @@ CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -std=c++20
 LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
 CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -I.
 
+
+CXX_IS_CLANG=$(shell $(CXX) -dM -E - < /dev/null | grep -c __clang__)
+
 ifeq ($(UNAME),Darwin)
   SO_SUFFIX = .dylib
 else
   SO_SUFFIX = .so
-  CXXFLAGS += -fmax-errors=3
+endif
+
+ifneq ($(CXX_IS_CLANG), 0)
+	CXXFLAGS += -ferror-limit=3
+else #assuming gcc
+	CXXFLAGS += -fmax-errors=3
 endif
 
 

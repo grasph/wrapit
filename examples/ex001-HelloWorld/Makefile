@@ -10,16 +10,21 @@ CXXWRAP_PREFIX=$(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUI
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
 LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
+CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable
+
+CXX_IS_CLANG=$(shell $(CXX) -dM -E - < /dev/null | grep -c __clang__)
 
 ifeq ($(UNAME),Darwin)
   SO_SUFFIX = .dylib
-  CXXFLAGS += -ferror-limit=3
 else
   SO_SUFFIX = .so
-  CXXFLAGS += -fmax-errors=3
 endif
 
-CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable
+ifneq ($(CXX_IS_CLANG), 0)
+	CXXFLAGS += -ferror-limit=3
+else #assuming gcc
+	CXXFLAGS += -fmax-errors=3
+endif
 
 CPPFLAGS += -MMD
 
