@@ -4,6 +4,6 @@ else
   linker=LD
 fi
 
-export JULIA_LOAD_PATH="@:@v#.#:@stdlib:`pwd`/TestVarField/src"
-export ${linker}_LIBRARY_PATH="`pwd`/libTestVarField"
+export JULIA_LOAD_PATH="@:@v#.#:@stdlib:`pwd`/TestVarFieldOn/src:`pwd`/TestVarFieldOff/src"
+export ${linker}_LIBRARY_PATH="`pwd`/libTestVarFieldOn:`pwd`/libTestVarFieldOff"
 

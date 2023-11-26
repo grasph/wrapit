@@ -1,6 +1,6 @@
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
 CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
-#CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
+CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
@@ -17,7 +17,7 @@ endif
 
 CXXFLAGS += -O2
 
-CPPFLAGS += -MMD -I $(ROOT_INC_DIR)
+CPPFLAGS += -MMD -I $(ROOT_INC_DIR) -I.
 
 ROOT_LIBS = $(shell root-config --libs)
 ROOT_INC_DIR = $(shell root-config --incdir)
@@ -33,7 +33,7 @@ GENERATED_CXX:=$(file < libROOT/src/generated_cxx)
 OBJS=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX)))
 DEPS=$(patsubst %.o,%.d, $(OBJS))
 
-all: $(PRODUCTS)
+all: $(PRODUCTS) ROOT/src/ROOT.jl ROOT/src/iROOT.jl ROOT/src/ROOTex.jl
 
 clean:
 	-$(RM) $(PRODUCTS) jlROOT-report.txt jlROOT.o jlROOT.d $(GENERATED_CXX) ROOT-generated.jl ROOT-generated.wit $(OBJS) \
@@ -66,6 +66,9 @@ libROOT/src/generated_cxx: ROOT-generated.wit jlROOT-veto.h $(WRAPIT)
 	$(eval GENERATED_CXX:=$(file < libROOT/src/generated_cxx))
 	$(eval OBJS:=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX))))
 
+libROOT/src/Templates.cxx: Templates.cxx
+	cp -a Templates.cxx $@
+
 libROOT/build/%.o: libROOT/src/%.cxx
 	-mkdir -p libROOT/build
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
@@ -73,6 +76,9 @@ libROOT/build/%.o: libROOT/src/%.cxx
 libROOT/libjlROOT$(SO_SUFFIX): libROOT/src/generated_cxx
 	$(MAKE) check_root
 	$(MAKE) make_lib_from_objs
+
+ROOT/src/%.jl: %.jl
+	cp -a $^ ROOT/src/
 
 make_lib_from_objs: $(OBJS)
 	$(LINK.o) -o libROOT/libjlROOT$(SO_SUFFIX) --shared -fPIC $(OBJS) $(ROOT_LIBS)

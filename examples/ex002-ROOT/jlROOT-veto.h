@@ -16,3 +16,9 @@ Func_t TSystem::DynFindSymbol(const char *, const char *);
 void TF1::TF1(const char *, Double_t (*)(Double_t *, Double_t *), Double_t, Double_t, Int_t, Int_t, TF1::EAddToList);
 
 /void .*::SavePrimitive(std::ostream .*, Option_t .*)/;
+
+TTreeReader::Iterator_t TTreeReader::Iterator_t::operator++(int);
+libROOT/src/JlClasses_008.cxx:379:    t.method("++", static_cast<TTreeReader::Iterator_t (TTreeReader::Iterator_t::*)(int) >(&TTreeReader::Iterator_t::operator++));
+TTreeReader::Iterator_t & TTreeReader::Iterator_t::operator++();
+void ROOT::RDataFrame::RDataFrame(std::unique_ptr<ROOT::RDF::RDataSource>, const ROOT::RDataFrame::ColumnNames_t &);
+/.*ROOT::RDataFrame ROOT::Internal::.*/;

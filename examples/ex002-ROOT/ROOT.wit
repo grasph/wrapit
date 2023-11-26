@@ -2,17 +2,24 @@ module_name         = "ROOT"
 export_jl_fname     = "ROOT-export.jl"
 module_jl_fname     = "ROOT-generated.jl"
 
-include_dirs        = [ "%ROOT_INC_DIR%" ]
+include_dirs        = [ "%ROOT_INC_DIR%", "." ]
 
-input               = [ "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",  "TFile.h", "TNamed.h", "TObject.h", "TGraph.h", "TF1.h" ] 
+input               = [ "TTree.h", "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",  "TDirectoryFile.h", "TFile.h", "TNamed.h", "TObject.h", "TGraph.h", "TF1.h", "TTreeReader.h", "TTreeReaderValue.h", "Templates.h", "TEntryList.h", "ROOT/RDataFrame.hxx" ]
+#input               = [  "TTreeReader.h", "TTreeReaderValue.h", "TTreeReaderArray.h" ]
 extra_headers       = [ "TVectorT.h" ]
 
 veto_list           = "jlROOT-veto.h"
+
+fields_and_variables = false
+
+#auto_veto           = false
+
+vetoed_copy_ctor_classes = [ "TTreeReader", "RDataFrame" ]
 
 cxx-std             = "c++17"
 
 inheritances        = [ "TROOT:" ]
 
-export_blacklist    = [ "Integer", "Set", "Timer", "cd", "mkdir", "pwd" ]
+export_blacklist    = [ "Integer", "Set", "Timer", "cd", "mkdir", "pwd", "begin", "end" ]
 
 n_classes_per_file  = 10

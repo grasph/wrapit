@@ -166,7 +166,7 @@ int main(int argc, char* argv[]){
     auto build_nmax = toml_config["build_nmax"].value_or(-1);
     auto build_every = toml_config["build_every"].value_or(1);
 
-    auto fields_and_variables = toml_config["fields_an_variables"].value_or(true);
+    auto fields_and_variables = toml_config["fields_and_variables"].value_or(true);
 
     auto verbosity = options["verbosity"].as<int>();
     //toml_config["verbosity"].value_or(0);
@@ -248,6 +248,8 @@ int main(int argc, char* argv[]){
     tree.inheritances(inheritances);
     tree.vetoed_finalizer_classes(vetoed_finalizer_classes);
     tree.vetoed_copy_ctor_classes(vetoed_copy_ctor_classes);
+    std::cerr << "Calling tree.accessor_generation_enabled("
+              << fields_and_variables << ");\n";
     tree.accessor_generation_enabled(fields_and_variables);
 
     tree.set_n_classes_per_file(n_classes_per_file);

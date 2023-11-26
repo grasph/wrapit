@@ -1373,7 +1373,7 @@ CodeTree::register_type(const CXType& type){
 
       if(!clang_Cursor_isNull(cc) && !clang_equalCursors(cc, c)){//a template
         i = add_type(cc);
-        if(i == types_.size() -1 ){//new type
+        if(i == types_.size() - 1){//new type
           types_[i].template_parameters = get_template_parameters(cc);
         }
       } else{
@@ -1381,6 +1381,7 @@ CodeTree::register_type(const CXType& type){
       }
 
       types_[i].to_wrap = true;
+
       if(verbose > 3) std::cerr << "Adding " << c
                                 << ", type " << clang_getCursorType(c)
                                 << " to the type list ("
@@ -1388,6 +1389,7 @@ CodeTree::register_type(const CXType& type){
                                 << ". Number of template parameters: "
                                 << clang_Type_getNumTemplateArguments(clang_getCursorType(c))
                                 << ".\n";
+
       add_type_specialization(&types_[i], clang_getCursorType(c));
       incomplete_types_.push_back(types_.size() - 1);
     } else if(type0.kind == CXType_Enum){
@@ -1808,6 +1810,9 @@ CodeTree::visit_typedef(CXCursor cursor){
 void
 CodeTree::visit_field_or_global_variable(CXCursor cursor){
   if(verbose > 3) std::cerr << __FUNCTION__ << "(" << cursor << ")\n";
+
+  if(!accessor_generation_enabled()) return;
+
   disable_owner_mirror(cursor);
 
   auto kind = clang_getCursorKind(cursor);
@@ -1835,6 +1840,9 @@ CodeTree::visit_field_or_global_variable(CXCursor cursor){
     auto type = clang_getCursorType(cursor);
     bool rc  = register_type(type);
     if(!rc) types_missing_def_.insert(fully_qualified_name(base_type(type)));
+    //call to register_type can modify types_ and invalidate rcd,
+    rcd = std::find_if(types_.begin(), types_.end(),
+                       [&](auto a){ return clang_equalCursors(a.cursor, clazz); });
     rcd->fields.push_back(cursor);
   } else if(kind == CXCursor_VarDecl){
     auto type = clang_getCursorType(cursor);
@@ -2099,7 +2107,7 @@ CodeTree::parse(){
   index_ = clang_createIndex(0, 0);
 
   std::vector<const char*> opts(opts_.size() + 2);
-  
+
   if(!check_resource_dir(true)){
     exit(1);
   }
@@ -2634,7 +2642,7 @@ bool CodeTree::check_resource_dir(bool verbose) const{
               << "' is not a directory. Use -resource-dir wrapit command line "
       "option to specify an alternative path for the clang resouce directory: "
       "see 'clang --help' and 'clang -print-resource-dir'.\n";
-  } 
+  }
 
   if(rc){
     auto stddef_path = join_paths(join_paths(clang_resource_dir_, "include"),

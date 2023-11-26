@@ -1,4 +1,4 @@
-module_name         = "TestVarField"
+module_name         = "TestVarFieldOff"
 
 input               = [ "A.h" ] 
 
@@ -6,7 +6,7 @@ include_dirs        = [ "." ]
 
 cxx-std             = "c++17"
 
-export = "all"
-
 # all generated code in a single file:
 n_classes_per_file = 0
+
+fields_and_variables = false

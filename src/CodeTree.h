@@ -75,14 +75,14 @@ namespace codetree{
     std::string out_cxx_dir_;
     std::string out_jl_dir_;
 
-    
+
     std::string build_cmd_;
     bool test_build_;
     int ibuild_;
     int build_nskips_;
     int build_nmax_;
     int build_every_;
-    
+
     void auto_veto(bool val){ auto_veto_ = val; };
     bool auto_veto() { return auto_veto_; }
 
@@ -131,7 +131,7 @@ namespace codetree{
     void set_clang_resource_dir(const std::string path){
       clang_resource_dir_ = path;
     }
-        
+
     bool fromMainFiles(const CXCursor& cursor) const;
 
     std::string wrapper_classsname(const std::string& classname) const;
@@ -139,7 +139,7 @@ namespace codetree{
     std::ostream& generate_template_add_type_cxx(std::ostream& o,
                                                  const TypeRcd& type_rcd,
                                                  std::string& add_type_param);
-    
+
     std::ostream& generate_cxx_for_type(std::ostream& o,
                                         const TypeRcd& t);
 
@@ -147,7 +147,7 @@ namespace codetree{
                                                      const TypeRcd& type_rcd,
                                                      std::string&  add_type_param);
     void generate_cxx();
-    
+
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
 
@@ -159,7 +159,7 @@ namespace codetree{
     void add_forced_header(const std::string& header){ forced_headers_.push_back(header);}
 
     const std::vector<std::string>& forced_headers() { return forced_headers_; }
-    
+
     bool parse();
 
     void parse_vetoes(const fs::path& fname);
@@ -215,7 +215,7 @@ namespace codetree{
       for(const auto& k: val) copy_ctor_to_veto_.insert(k);
     }
 
-    
+
     void build_cmd(const std::string& val){ build_cmd_ = val; }
 
     void enableTestBuild(bool val){ test_build_ = val; }
@@ -228,16 +228,16 @@ namespace codetree{
 
     void add_export_veto_word(const std::string& s) { export_blacklist_.insert(s); }
 
-    void set_n_classes_per_file(int n_classes_per_file) { n_classes_per_file_ = n_classes_per_file; }   
+    void set_n_classes_per_file(int n_classes_per_file) { n_classes_per_file_ = n_classes_per_file; }
 
     void set_out_cxx_dir(const std::string& val) { out_cxx_dir_ = val; }
-    
+
     void set_out_jl_dir(const std::string& val) { out_jl_dir_ = val; }
 
     void set_module_name(const std::string& val){ module_name_ = val;}
 
     void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
-    
+
   protected:
 
     enum class accessor_mode_t {none, getter, both };
@@ -268,7 +268,7 @@ namespace codetree{
 
 
     bool check_resource_dir(bool verbose) const;
-    
+
     //Finds the definition of a type or the underlying type in case
     //of a pointer or reference. For a templated type,
     //it retrieves also the types of the template parameters.
@@ -394,7 +394,7 @@ namespace codetree{
     std::ostream& show_stats(std::ostream& o) const;
 
     void exit_if_wrapper_files_in_the_way();
-    
+
     void update_wrapper_filenames();
 
     std::ostream& generate_type_wrapper_header(std::ostream& o) const;
@@ -403,11 +403,11 @@ namespace codetree{
 
   private:
     std::string clang_resource_dir_;
-    
+
     bool auto_veto_;
 
     std::string header_file_path_;
-    
+
     std::string module_name_;
 
     std::ios_base::openmode out_open_mode_;
@@ -442,7 +442,7 @@ namespace codetree{
 
     //List of classes whose wrapping of copy constructor has been disabled by configuration
     std::set<std::string> copy_ctor_to_veto_;
-    
+
     bool visiting_a_templated_class_;
 
     std::vector<std::string> include_dirs_;

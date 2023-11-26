@@ -1,7 +1,13 @@
-#CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
-#CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
+.PHONY: all clean test
 
-MODULE_NAME=TestVarField
-EXTRA_OBJS=A.o
+all:
+	$(MAKE) -f Makefile.on $@
+	$(MAKE) -f Makefile.off $@
 
--include ../make.rules
+clean:
+	$(MAKE) -f Makefile.on $@
+	$(MAKE) -f Makefile.off $@
+
+test:
+	$(MAKE) -f Makefile.on $@
+	$(MAKE) -f Makefile.off $@
