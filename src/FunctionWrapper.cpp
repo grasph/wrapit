@@ -89,7 +89,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
   auto const_type = [](CXType type){
     if(clang_isPODType(type)){
       bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
-      std::string r(str(clang_getTypeSpelling(type)));
+      std::string r(fully_qualified_name(type));
       if(not_a_pointer){
         return remove_cv(r);
       } else{
@@ -97,26 +97,26 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
       }
     } else{
       std::regex r("^(const)?\\s*(.*[^&])\\s*&?");
-      return std::regex_replace(str(clang_getTypeSpelling(type)), r, "const $2&");
+      return std::regex_replace(fully_qualified_name(type), r, "const $2&");
     }
   };
 
   auto non_const_type_or_pod = [](CXType type){
     if(clang_isPODType(type)){
       bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
-      std::string r(str(clang_getTypeSpelling(type)));
+      std::string r(fully_qualified_name(type));
       if(not_a_pointer) return remove_cv(r);
       else return r;
     } else{
       std::regex r("(.*[^&])\\s*&?");
-      return std::regex_replace(str(clang_getTypeSpelling(type)), r, "$1&");
+      return std::regex_replace(fully_qualified_name(type), r, "$1&");
     }
   };
 
   auto copy_return_type = [](CXType type){
     if(clang_isPODType(type)){
       bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
-      std::string r(str(clang_getTypeSpelling(type)));
+      std::string r(fully_qualified_name(type));
       if(not_a_pointer){
         return remove_cv(r);
       } else{
@@ -124,7 +124,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
       }
     } else{
       std::regex r("^(const)?\\s*(.*[^&])\\s*&?");
-      return std::regex_replace(str(clang_getTypeSpelling(type)), r, "$2");
+      return std::regex_replace(fully_qualified_name(type), r, "$2");
     }
   };
 
