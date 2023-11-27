@@ -28,7 +28,7 @@ The file config.toml contains the parameters for the generation, in particular t
 ### Dependencies:
 
   * Software to be present on the system before running `cmake`:
-    * libclang: packages clang-11 and libclang-11-dev on Debian
+    * libclang: packages `clang-13` and `libclang-13-dev` on Debian
     * On MacOS, you can install `llvm/clang` with brew running the command `brew install llvm` from a terminal
   * Software will be downloaded  by the `cmake` command:
     * [tomlplusplus](https://github.com/marzer/tomlplusplus.git)

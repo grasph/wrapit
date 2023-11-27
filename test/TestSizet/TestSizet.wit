@@ -1,6 +1,6 @@
 module_name         = "TestSizet"
 
-include_dirs        = [ ".", "/home/opt/llvm-dev/include/c++/v1/" ]
+include_dirs        = [ "." ]
 
 input               = [ "A.h" ]
 

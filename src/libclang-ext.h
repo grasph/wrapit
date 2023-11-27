@@ -10,7 +10,6 @@
 #include <clang-c/Index.h>
 #include "clang/AST/Type.h"
 #include <string>
-#include <tuple>
 
 std::string fully_qualified_name(CXCursor c);
 

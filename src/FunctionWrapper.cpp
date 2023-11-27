@@ -10,9 +10,6 @@
 #include <regex>
 #include <sstream>
 
-#include "clang/AST/Decl.h"
-#include "llvm/Support/raw_ostream.h"
-
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o){
   int nargsmin =  std::max(1, method.min_args); //no-arg ctor, aka "default ctor" generate elsewhere with direct call to gen_ctor(std::ostream& o, int nindents,
