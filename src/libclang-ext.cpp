@@ -45,21 +45,6 @@ int hasDefaultConstructor(CXCursor cursor){
 std::string fully_qualified_name(CXCursor cursor) {
   if(clang_isDeclaration(cursor.kind)){
     auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
-
-    //   auto tu = static_cast<const CXTranslationUnitImpl*>(cursor.data[2])->TheASTUnit;
-    //
-    //   std::cerr << "==> typeid(*decl): " << typeid(*decl).name() << "\n";
-    //   auto tmp = llvm::dyn_cast<const clang::TypedefDecl>(decl);
-    //   if(tmp){
-    //     std::cerr << "==> !!!!\n";
-    //     auto tpsi = tmp->getTypeSourceInfo()->getType();
-    //     std::cerr << "type source info: " << tpsi.getAsString()
-    //         << ", type: " << typeid(tpsi).name()
-    //         << ", type: " << typeid(*tpsi.getTypePtr()).name()
-    //         << ", iPOD: " << tpsi.isCXX11PODType(tu->getASTContext())
-    //         << "\n";
-    //   }
-
     auto named_decl =  llvm::dyn_cast<const clang::NamedDecl>(decl);
     if(named_decl){
       std::string buffer_;
