@@ -235,3 +235,27 @@ const clang::TemplateArgument & get_IntegralTemplateArgument(CXCursor cursor, in
 
 }
 
+bool get_namespace_and_type_from_decl(CXCursor cursor,
+                                      std::string& ns,
+                                      std::string& clazz){
+  if(clang_isDeclaration(cursor.kind)){
+    auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
+    auto named_decl =  llvm::dyn_cast<const clang::NamedDecl>(decl);
+    if(named_decl){
+      std::string buffer_;
+      llvm::raw_string_ostream buffer(buffer_);
+      named_decl->printNestedNameSpecifier(buffer);
+      ns = buffer.str();
+
+      std::string buffer2_;
+      llvm::raw_string_ostream buffer2(buffer2_);
+      named_decl->printName(buffer2);
+      clazz = buffer2.str();
+    }
+    return true;
+  } else{
+    ns = "";
+    clazz = "UNKNOWN_CLASS";
+    return false;
+  }
+}

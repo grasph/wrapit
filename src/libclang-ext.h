@@ -10,6 +10,7 @@
 #include <clang-c/Index.h>
 #include "clang/AST/Type.h"
 #include <string>
+#include <tuple>
 
 std::string fully_qualified_name(CXCursor c);
 
@@ -27,4 +28,7 @@ const clang::TemplateArgument & get_IntegralTemplateArgument(CXCursor cursor, in
 
 std::string get_resource_dir();
 
+bool get_namespace_and_type_from_decl(CXCursor cursor,
+                                      std::string& ns,
+                                      std::string& clazz);
 #endif //LIBCLANG_EXT_H not defined
