@@ -75,15 +75,12 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
     data_t& data = *static_cast<data_t*>(p_data);
     const CodeTree& tree = *data.tree;
 
-    //FIXME: do apply after all class wrappers have been defined
-    //       as done for non-template class and calls to method
     const auto& kind = clang_getCursorKind(cursor);
     if(kind == CXCursor_CXXBaseSpecifier){
       std::string parent_name = str(clang_getTypeSpelling(clang_getCursorType(cursor)));
       const auto& inheritance_access = clang_getCXXAccessSpecifier(cursor);
       const auto& t1 = clang_getCursorType(cursor);
       if(inheritance_access == CX_CXXPublic){
-        //         || inheritance_access == CX_CXXProtected){
         if(!clang_Cursor_isNull(data.c)){
           if(verbose > 0){
             std::cerr << "Warning C++ class " << data.clazz
@@ -99,7 +96,7 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
         for(const auto& c: tree.types_){
           //FIXME: support for templates
           const auto& t2 = clang_getCursorType(c.cursor);
-          if(clang_equalTypes(t1, t2)){
+          if(same_type(t1, t2)){
             isBaseWrapped = true;
             break;
           }
@@ -284,9 +281,17 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
     //       The whole parent tree must be parsed.
     CXCursor base = getParentClassForWrapper(t.cursor);
     if(!clang_Cursor_isNull(base)){
-      o << "template<> struct SuperType<"
-        << t.type_name
-        << "> { typedef " << fully_qualified_name(base) << " type; };\n";
+      if(t.template_parameters.size() > 0){
+        if(verbose > 0){
+          std::cerr << "Warning: inheritance " << t.type_name << " <: "
+                    << base << " will not be mapped because it is not yet "
+            " supported for template classes.";
+        }
+      } else{
+        o << "template<> struct SuperType<"
+          << t.type_name
+          << "> { typedef " << fully_qualified_name(base) << " type; };\n";
+      }
     }
     o << "}\n\n";
   }
@@ -421,8 +426,8 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
     const auto& base_type = clang_getCursorType(base);
     const auto& base_name_cxx = str(clang_getTypeSpelling(base_type));
 
-    //FIXME: should it be base_name_jl ?
-    indent(o, 2) << ", jlcxx::julia_base_type<" << base_name_cxx << ">()";
+    indent(o << "\n", 2) << ", jlcxx::julia_base_type<"
+             << base_name_cxx << ">()";
   }
 
   o << ");\n";

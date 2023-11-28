@@ -30,4 +30,6 @@ std::string get_resource_dir();
 bool get_namespace_and_type_from_decl(CXCursor cursor,
                                       std::string& ns,
                                       std::string& clazz);
+
+bool same_type(CXType t1, CXType t2);
 #endif //LIBCLANG_EXT_H not defined

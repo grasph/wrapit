@@ -6,6 +6,7 @@ LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 WRAPIT = $(shell which wrapit)
 CXXWRAP_CPPFLAGS=-I $(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUID("1f15a43c-97ca-5a2a-ae31-89f07a497df4")) || Pkg.add("CxxWrap"); using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17 -I.
+LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
 CXX_IS_CLANG=$(shell $(CXX) -dM -E - < /dev/null | grep -c __clang__)
 

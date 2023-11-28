@@ -244,3 +244,11 @@ bool get_namespace_and_type_from_decl(CXCursor cursor,
     return false;
   }
 }
+
+bool same_type(CXType t1, CXType t2){
+  //For LLVM11, 13 ,15, we were using:
+  //clang_equalTypes(t1, t2)
+  //But fails to recognize same types in LLVM17.
+  //Falling back to name comparison:
+  return (fully_qualified_name(t1) == fully_qualified_name(t2));
+}
