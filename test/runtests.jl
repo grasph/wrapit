@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 using Test
 tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
-          "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString",
+          "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStdVector",
           "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace"
           ]
 
