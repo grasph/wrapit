@@ -1434,9 +1434,9 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   const auto& method_type = clang_getCursorType(cursor);
   const auto return_type = clang_getResultType(method_type);
 
-  TypeRcd* pTypeRcd = find_class_of_method(cursor);
   //TODO: find a more robust way than comparing identifier  names.
-  auto is_class_param = [pTypeRcd](CXType type){
+  auto is_class_param = [cursor, this](CXType type){
+    TypeRcd* pTypeRcd = find_class_of_method(cursor);
     if(pTypeRcd==nullptr) return true;
     auto type_name = remove_cv(str(clang_getTypeSpelling(base_type(type))));
     auto params = pTypeRcd->template_parameters;
@@ -1451,7 +1451,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
       if(verbose > 3) std::cerr << cursor << " identified as a parameter of the holding class\n";
     } else{
       bool rc = register_type(return_type);
-        if(!rc) missing_types.push_back(return_type);
+      if(!rc) missing_types.push_back(return_type);
     }
   }
 
@@ -1471,7 +1471,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
       }
     }
   }
-
+  
   for(auto const& x: missing_types) types_missing_def_.insert(fully_qualified_name(base_type(x)));
 
   int min_args = get_min_required_args(cursor);
