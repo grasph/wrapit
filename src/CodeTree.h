@@ -43,12 +43,16 @@ namespace codetree{
     CodeTree(): module_name_("Module"),
                 out_open_mode_(std::ios_base::app),
                 out_cxx_dir_("src"),
-                auto_veto_(true), include_depth_(1), mainFileOnly_(true), override_base_(false),
-                propagation_mode_(propagation_mode_t::types), export_mode_(export_mode_t::member_functions),
+                auto_veto_(true), update_mode_(true), include_depth_(1),
+                mainFileOnly_(true), override_base_(false),
+                propagation_mode_(propagation_mode_t::types),
+                export_mode_(export_mode_t::member_functions),
                 unit_(nullptr), index_(nullptr), n_classes_per_file_(-1),
-                build_cmd_("echo Build command not defined."),  test_build_(false),
-                ibuild_(0), build_nskips_(0), build_nmax_(-1), build_every_(1),
-                visiting_a_templated_class_(false), accessor_generation_enabled_(false),
+                build_cmd_("echo Build command not defined."),
+                test_build_(false), ibuild_(0), build_nskips_(0),
+                build_nmax_(-1), build_every_(1),
+                visiting_a_templated_class_(false),
+                accessor_generation_enabled_(false),
                 import_getindex_(false),
                 import_setindex_(false)
     {
@@ -141,6 +145,10 @@ namespace codetree{
     //the libclang.so library the program is linked to.
     void set_clang_resource_dir(std::string path){
       clang_resource_dir_ = resolve_clang_resource_dir_path(path);
+    }
+
+    void set_update_mode(bool val){
+      update_mode_ = true;
     }
 
     bool fromMainFiles(const CXCursor& cursor) const;
@@ -431,6 +439,8 @@ namespace codetree{
 
     bool auto_veto_;
 
+    bool update_mode_;
+    
     std::string header_file_path_;
 
     std::string module_name_;

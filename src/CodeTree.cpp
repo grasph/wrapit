@@ -19,9 +19,12 @@
 
 #include "FunctionWrapper.h"
 #include "libclang-ext.h"
-
+#include "FileTimeRestorer.h"
 #include "utils.h"
+
 extern const char* version;
+
+#include "md5sum.h"
 
 #include "clang/AST/Type.h" //FOR DEBUG
 #include "clang/AST/DeclTemplate.h"
@@ -460,7 +463,12 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
 
 void
 CodeTree::generate_cxx(){
-  std::string p(join_paths(out_cxx_dir_, std::string("jl") + module_name_ + ".cxx"));
+
+  //default filename for type wrapper code:
+  std::string type_out_fname = std::string("jl") + module_name_ + ".cxx";
+  
+  std::string p(join_paths(out_cxx_dir_, type_out_fname));
+  FileTimeRestorer otimerstore(p);
   std::ofstream o(p, out_open_mode_);
   if(o.tellp() != 0){
     std::cerr << "File " << p
@@ -496,13 +504,13 @@ CodeTree::generate_cxx(){
 
   std::vector<std::string> wrappers;
 
-  std::string type_out_fname(std::string("jl") + module_name_ + ".cxx");
-
-  //File stream to write type wrapper.
-  //Fall back to current file, not expected to happen apart from a bug
-  std::ofstream* pout = &o;
+  //File stream to write type wrapper,
+  //current file by default
   std::ofstream type_out;
+  std::ofstream* pout = &o;
 
+  int nignoredlines = 1;
+  FileTimeRestorer timerestore;
   int i_towrap_type = -1;
   for(const auto& c: types_){
     if(!c.to_wrap) continue;
@@ -510,13 +518,25 @@ CodeTree::generate_cxx(){
 
     if(towrap_type_filenames_.size() > 0
        && towrap_type_filenames_[i_towrap_type] != type_out_fname){
+
       type_out_fname = towrap_type_filenames_.at(i_towrap_type);
-      std::string type_out_fpath = join_paths(out_cxx_dir_, towrap_type_filenames_[i_towrap_type]);
+      std::string type_out_fpath =
+        join_paths(out_cxx_dir_, towrap_type_filenames_[i_towrap_type]);
+
+      if(pout != &o){
+        pout->close();
+        if(update_mode_){
+          timerestore.settimestamp();
+        }
+      }
+      if(update_mode_) timerestore = FileTimeRestorer(type_out_fpath, nignoredlines);
+                
+      
       type_out = checked_open(type_out_fpath);
       pout = &type_out;
-      generate_type_wrapper_header(type_out);
+      generate_type_wrapper_header(*pout);
     }
-
+    
     const auto& t = clang_getCursorType(c.cursor);
 
     if(is_type_vetoed(c.type_name)) continue;
@@ -526,6 +546,11 @@ CodeTree::generate_cxx(){
       wrappers.emplace_back(wrapper_classsname(c.type_name));
       generate_cxx_for_type((*pout), c);
     }
+  }
+
+  if(pout != (&o)){
+    pout->close();
+    timerestore.settimestamp();
   }
 
   o << "\n";
@@ -602,9 +627,12 @@ CodeTree::generate_cxx(){
   //
   //  indent(o, 1) << "DEBUG_MSG(\"End of wrapper definitions\");\n";
   o << "\n}\n";
+  o.close();
+  otimerstore.settimestamp();
 
-
-  std::ofstream o2 = checked_open(join_paths(out_cxx_dir_, "dbg_msg.h"));
+  auto fname = join_paths(out_cxx_dir_, "dbg_msg.h");
+  timerestore = FileTimeRestorer(fname);
+  std::ofstream o2 = checked_open(fname);
   o2 << "#ifdef VERBOSE_IMPORT\n"
     "#  define DEBUG_MSG(a) std::cerr << a << \"\\n\"\n"
     "#else\n"
@@ -614,8 +642,11 @@ CodeTree::generate_cxx(){
     "#define QUOTE(arg) #arg\n"
     "#define QUOTE2(arg) QUOTE(arg)\n";
   o2.close();
+  timerestore.settimestamp();
 
-  o2 = checked_open(join_paths(out_cxx_dir_, "Wrapper.h"));
+  fname = join_paths(out_cxx_dir_, "Wrapper.h");
+  timeestore = FileTimeRestorer(fname);
+  o2 = checked_open(fname);
   o2 << "#include \"jlcxx/jlcxx.hpp\"\n\n"
     "struct Wrapper{\n";
   indent(o2, 1) << "Wrapper(jlcxx::Module& module): module_(module) {};\n";
@@ -625,6 +656,7 @@ CodeTree::generate_cxx(){
   indent(o2, 1) << "jlcxx::Module& module_;\n";
   o2 << "};\n";
   o2.close();
+  timerestore.settimestamp();
 
   o2 = std::ofstream(join_paths(out_cxx_dir_, "generated_cxx"));
   o2 << "jl" << module_name_ << ".cxx";
@@ -651,8 +683,7 @@ std::ofstream CodeTree::checked_open(const std::string& path) const{
   std::ofstream o(path.c_str(), out_open_mode_);
   if(o.tellp() > 0){
     std::cerr << "File " << path << " in the way. Remove it or use the --force option.\n";
-    abort();
-    //exit(1);
+    exit(1);
   }
   return o;
 }
@@ -1317,7 +1348,7 @@ CodeTree::find_base_type_definition_(const CXType& type0) const{
                 << " of kind "<< type0.kind << "\n";
     }
   }
-  
+
   CXCursor def = clang_getCursorDefinition(decl);
 
   if(clang_isInvalid(clang_getCursorKind(def))){
@@ -1512,7 +1543,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   if(return_type.kind != CXType_Void){
     if(verbose > 3) std::cerr << cursor << ", return type: " << return_type << "\n";
     if(is_class_param(return_type)){
-      if(verbose > 3) std::cerr << return_type 
+      if(verbose > 3) std::cerr << return_type
                                 << " identified as a parameter of the holding class\n";
     } else if(type_map_.is_mapped(return_type, /*as_return=*/ true)){
       if(verbose > 3) std::cerr << return_type << " is mapped to an alternative type.\n";
@@ -1884,7 +1915,7 @@ CodeTree::visit_typedef(CXCursor cursor){
 void
 CodeTree::visit_field_or_global_variable(CXCursor cursor){
   if(!accessor_generation_enabled()) return;
-  
+
   if(verbose > 3) std::cerr << __FUNCTION__ << "(" << cursor << ")\n";
 
   disable_owner_mirror(cursor);
@@ -2157,6 +2188,7 @@ CodeTree::parse(){
   }
 
   header_file_path_ = join_paths(out_cxx_dir_,  std::string("jl") + module_name_ + ".h");
+  FileTimeRestorer timerestore(header_file_path_);
 
   std::ofstream header_file(header_file_path_, out_open_mode_);
   if(header_file.tellp() != 0){
@@ -2177,7 +2209,8 @@ CodeTree::parse(){
   }
 
   header_file.close();
-
+  timerestore.settimestamp();
+  
   index_ = clang_createIndex(0, 0);
 
   std::vector<const char*> opts(opts_.size() + 2);

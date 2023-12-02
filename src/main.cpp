@@ -88,7 +88,12 @@ int main(int argc, char* argv[]){
     ("resource-dir", std::string("Change the clang resource directory path (see clang "
                                  "--help and clang --print-resource-dir). Default: ")
      + CodeTree::resolve_clang_resource_dir_path(CLANG_RESOURCE_DIR) + ".",
-     cxxopts::value<std::string>());
+     cxxopts::value<std::string>())
+    ("u,update", "Enable update mode. In update mode, if a file to generate "
+     "already exist and there is no code changed, then the file including "
+     "its time stamp is preserved. The time stamp can then be used to "
+     "recompile modified files only during wrapper development of "
+     "large projects.");
   
   option_list.parse_positional({"cfgfile"});
 
@@ -298,6 +303,10 @@ int main(int argc, char* argv[]){
       tree.set_clang_resource_dir(options["resource-dir"].as<std::string>());
     }
 
+    if(options.count("update")){
+      tree.set_update_mode(true);
+    }
+    
     for(const auto& s: extra_headers){
       tree.add_forced_header(s);
     }

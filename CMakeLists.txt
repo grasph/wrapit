@@ -7,7 +7,9 @@ project (CxxWrapGen)
 
 include(FetchContent)
 
-find_package(Git)
+find_package(Git REQUIRED)
+
+find_package(OpenSSL REQUIRED)
 
 # Package to parse command line options
 FetchContent_Declare(
@@ -102,12 +104,15 @@ add_executable(wrapit
    src/CodeTree.cpp
    src/main.cpp
    src/toml.hpp
+   src/md5sum.cpp
+   src/FileTimeRestorer.cpp
    version.cpp
 )
 
 add_dependencies(wrapit version)
 
-target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM cxxopts dl)
+target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM cxxopts dl
+                      OpenSSL::Crypto)
 set_target_properties(wrapit PROPERTIES
   CXX_STANDARD 17
   OUTPUT_NAME wrapit

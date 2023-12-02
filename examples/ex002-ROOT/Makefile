@@ -69,7 +69,7 @@ test: all
 	cmp demo_TGraph.png demo_TGraph-ref.png
 
 libROOT/src/generated_cxx: ROOT-generated.wit jlROOT-veto.h $(WRAPIT)
-	$(WRAPIT) --force $<
+	$(WRAPIT) --force --update $<
 	$(eval GENERATED_CXX:=$(file < libROOT/src/generated_cxx))
 	$(eval OBJS:=$(addprefix libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX))))
 

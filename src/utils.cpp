@@ -7,6 +7,7 @@
 #include <regex>
 #include <string>
 #include <sstream>
+#include <fstream>
 
 #include "clang/AST/Decl.h"
 #include "clang/AST/Type.h"
