@@ -8,5 +8,7 @@ cxx-std             = "c++17"
 
 export = "all"
 
+fields_and_variables = false
+
 # all generated code in a single file:
-n_classes_per_file = 0
+#n_classes_per_file = 0

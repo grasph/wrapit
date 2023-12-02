@@ -1,6 +1,6 @@
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
 CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
-CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
+#CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)

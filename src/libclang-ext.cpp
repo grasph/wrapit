@@ -193,7 +193,11 @@ CXType remove_non_builtin_qualifiers(CXType type){
 }
 
 CXType base_type(CXType type){
-  return remove_non_builtin_qualifiers(base_type_(type));
+  auto t = clang_getCanonicalType(remove_non_builtin_qualifiers(base_type_(type)));
+  if(t.kind == CXType_Pointer){
+    t = clang_getPointeeType(t);
+  }
+  return t;
 }
 
 std::vector<std::string>

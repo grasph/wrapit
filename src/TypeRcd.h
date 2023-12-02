@@ -17,6 +17,10 @@ struct TypeRcd {
   std::vector<std::string> template_parameter_types;
   std::vector<std::vector<std::string> > template_parameter_combinations;
   bool to_wrap;
+  bool stl;
+  bool stl_const;
+  bool stl_ptr;
+  bool stl_const_ptr;
   int id;
   static int nRecords;
   bool default_ctor;

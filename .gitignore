@@ -23,7 +23,6 @@ examples/ex002-ROOT/#test.jl#
 examples/ex002-ROOT/ROOT-generated.wit
 examples/ex002-ROOT/ROOT/
 examples/ex002-ROOT/Templates.cxx
-examples/ex002-ROOT/Templates.h
 examples/ex002-ROOT/demo_ROOT.png
 examples/ex002-ROOT/demo_ROOT_out.root
 examples/ex002-ROOT/demo_TGraph.png

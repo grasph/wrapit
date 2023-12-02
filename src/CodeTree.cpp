@@ -52,6 +52,9 @@ namespace codetree{
 
 CXCursor
 CodeTree::getParentClassForWrapper(CXCursor cursor) const{
+  if(verbose > 5) std::cerr << "Calling getParentClassForWrapper("
+                            << cursor << ")\n";
+
   auto null_cursor = clang_getNullCursor();
   auto clazz = str(clang_getTypeSpelling(clang_getCursorType(cursor)));
 
@@ -127,6 +130,7 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
       std::cerr << "Calling clang_visitChildren(" << cursor
                 << ", visitor, &data) from " << __FUNCTION__ << "\n";
     }
+
     clang_visitChildren(cursor, visitor, &data);
 
     if(clang_Cursor_isNull(data.c) && !clang_Cursor_isNull(data.first_parent)){
@@ -180,10 +184,10 @@ CodeTree::generate_template_add_type_cxx(std::ostream& o,
   int id = type_rcd.id;
 
 
-//  if(is_type_vetoed(typename_cxx)){
-//    std::cerr << "Info: class/struct " << typename_cxx << " vetoed\n";
-//    return o;
-//  }
+  //  if(is_type_vetoed(typename_cxx)){
+  //    std::cerr << "Info: class/struct " << typename_cxx << " vetoed\n";
+  //    return o;
+  //  }
 
   if(type_rcd.template_parameter_combinations.empty()){
     std::cerr << "Warning: no specialization found for template class "
@@ -213,6 +217,8 @@ CodeTree::generate_template_add_type_cxx(std::ostream& o,
   indent(o, 2) << "jlcxx::TypeWrapper<" << add_type_param << ">  t = "
                << " jlModule.add_type<" << add_type_param
                << ">(\""    << typename_jl << "\");\n";
+
+  gen_apply_stl(o, 2, type_rcd, add_type_param);
 
   indent(o, 2) <<  "type_ = std::unique_ptr<jlcxx::TypeWrapper<"
                << add_type_param << ">>(new jlcxx::TypeWrapper<"
@@ -280,6 +286,13 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
     //       and generate wrapper for the inherited public mehod.
     //       The whole parent tree must be parsed.
     CXCursor base = getParentClassForWrapper(t.cursor);
+    if(verbose > 4){
+      std::cerr << "Debug: parent of " << t.cursor << ": "
+                << (clang_Cursor_isNull(base) ?
+                    "none"
+                    : str(clang_getCursorSpelling(base)))
+                << "\n";
+    }
     if(!clang_Cursor_isNull(base)){
       if(t.template_parameters.size() > 0){
         if(verbose > 0){
@@ -298,6 +311,8 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
 
   std::string wrapper = wrapper_classsname(t.type_name);
 
+  o << "// Class generating the wrapper for type " << t.type_name << "\n"
+    << "// signature to use in the veto file: "<< t.type_name << "\n";
   o << "struct " << wrapper << ": public Wrapper {\n\n";
 
   std::string add_type_param;
@@ -415,10 +430,10 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
                << ">(\"" << typename_jl << "\"";
 
 
-//  auto it = std::find(types_missing_def_.begin(), types_missing_def_.end(), typename_cxx);
-//  if(it!=types_missing_def_.end()){
-//    types_missing_def_.erase(it);
-//  }
+  //  auto it = std::find(types_missing_def_.begin(), types_missing_def_.end(), typename_cxx);
+  //  if(it!=types_missing_def_.end()){
+  //    types_missing_def_.erase(it);
+  //  }
 
   const auto& base = getParentClassForWrapper(cursor);
 
@@ -426,11 +441,13 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
     const auto& base_type = clang_getCursorType(base);
     const auto& base_name_cxx = str(clang_getTypeSpelling(base_type));
 
-    indent(o << "\n", 2) << ", jlcxx::julia_base_type<"
+    indent(o << ",\n", 3) << "jlcxx::julia_base_type<"
              << base_name_cxx << ">()";
   }
 
   o << ");\n";
+
+  gen_apply_stl(o, 2, type_rcd, add_type_param);
 
   indent(o, 2) <<  "type_ = std::unique_ptr<jlcxx::TypeWrapper<"
                << add_type_param << ">>(new jlcxx::TypeWrapper<"
@@ -540,49 +557,49 @@ CodeTree::generate_cxx(){
   indent(o, 1) << "for(const auto& w: wrappers) w->add_methods();\n";
 
   //FIXME: generate a wrapper class for the globals as for the class
-//  bool global_class = false;
-//  if(functions_.size() > 0 || vars_.size() > 0){
-//    global_class = true;
-//    TypeRcd fake_type;
-//    fake_type.methods = functions_;
-//    fake_type.fields = vars_;
-//    //FIXME: handle name clash in case a class to wrap has name "globals"
-//    std::string type_out_fpath = join_paths(out_cxx_dir_, "JlGlobals.cxx");
-//    type_out = checked_open(type_out_fpath);
-//
-//    generate_type_wrapper_header(type_out);
-//    generate_cxx_for_type(type_out, fake_type);
-//  }
+  //  bool global_class = false;
+  //  if(functions_.size() > 0 || vars_.size() > 0){
+  //    global_class = true;
+  //    TypeRcd fake_type;
+  //    fake_type.methods = functions_;
+  //    fake_type.fields = vars_;
+  //    //FIXME: handle name clash in case a class to wrap has name "globals"
+  //    std::string type_out_fpath = join_paths(out_cxx_dir_, "JlGlobals.cxx");
+  //    type_out = checked_open(type_out_fpath);
+  //
+  //    generate_type_wrapper_header(type_out);
+  //    generate_cxx_for_type(type_out, fake_type);
+  //  }
 
 
-//  if(functions_.size() > 0 || vars_.size() > 0){
-//    indent(o, 1) << "/**********************************************************************\n";
-//    indent(o, 1) << " * Wrappers for global functions and variables including\n";
-//    indent(o, 1) << " * class static members\n";
-//    indent(o, 1) << " */\n";
-//
-//    //    indent(o, 1) << "auto& t = jlModule;\n";
-//    indent(o, 1) << "auto& module_ = jlModule;\n";
-//  }
-//
-//  for(const auto& f: functions_){
-//    generate_method_cxx(o, f);
-//  }
-//
-//  for(const auto& v: vars_){
-//    auto accessor_gen = check_veto_list_for_var_or_field(v, true);
-//    if(accessor_gen != accessor_mode_t::none){
-//      generate_accessor_cxx(o, nullptr, v, accessor_gen == accessor_mode_t::getter, 1);
-//    }
-//  }
-//
-//  if(functions_.size() > 0 || vars_.size() > 0){
-//    indent(o << "\n", 1) << "/* End of global function wrappers\n";
-//    indent(o, 1) << " **********************************************************************/\n\n";
-//  }
-//
-//
-//  indent(o, 1) << "DEBUG_MSG(\"End of wrapper definitions\");\n";
+  //  if(functions_.size() > 0 || vars_.size() > 0){
+  //    indent(o, 1) << "/**********************************************************************\n";
+  //    indent(o, 1) << " * Wrappers for global functions and variables including\n";
+  //    indent(o, 1) << " * class static members\n";
+  //    indent(o, 1) << " */\n";
+  //
+  //    //    indent(o, 1) << "auto& t = jlModule;\n";
+  //    indent(o, 1) << "auto& module_ = jlModule;\n";
+  //  }
+  //
+  //  for(const auto& f: functions_){
+  //    generate_method_cxx(o, f);
+  //  }
+  //
+  //  for(const auto& v: vars_){
+  //    auto accessor_gen = check_veto_list_for_var_or_field(v, true);
+  //    if(accessor_gen != accessor_mode_t::none){
+  //      generate_accessor_cxx(o, nullptr, v, accessor_gen == accessor_mode_t::getter, 1);
+  //    }
+  //  }
+  //
+  //  if(functions_.size() > 0 || vars_.size() > 0){
+  //    indent(o << "\n", 1) << "/* End of global function wrappers\n";
+  //    indent(o, 1) << " **********************************************************************/\n\n";
+  //  }
+  //
+  //
+  //  indent(o, 1) << "DEBUG_MSG(\"End of wrapper definitions\");\n";
   o << "\n}\n";
 
 
@@ -623,7 +640,9 @@ std::ostream& CodeTree::generate_type_wrapper_header(std::ostream& o) const{
     "#include \"Wrapper.h\"\n\n"
     "#include \"jl" << module_name_ << ".h\"\n"
     "#include \"dbg_msg.h\"\n"
-    "#include \"jlcxx/functions.hpp\"\n";
+    "#include \"jlcxx/functions.hpp\"\n"
+    "#include \"jlcxx/stl.hpp\"\n";
+
   return o;
 }
 
@@ -1100,7 +1119,10 @@ CodeTree::visit_class(CXCursor cursor){
     types_[index].to_wrap = true;
   }
 
-  if(verbose > 3) std::cerr << "Calling clang_visitChildren(" << cursor << ", visitor, &data) from " << __FUNCTION__ << "\n";
+  if(verbose > 3) std::cerr << "Calling clang_visitChildren(" << cursor
+                            << ", visitor, &data) from "
+                            << __FUNCTION__ << "\n";
+
   bool save = visiting_a_templated_class_;
   if(kind == CXCursor_ClassTemplate) visiting_a_templated_class_ = true;
   clang_visitChildren(cursor, visit, this);
@@ -1114,8 +1136,16 @@ CodeTree::in_veto_list(const std::string signature) const{
   for(const auto& v: veto_list_){
     if(v.size() == 0) continue;
     if(v[0] == '/'){ //regex
-      //TODO: check that last character is / and throw an error if not.
-      std::regex re(v.substr(1, v.size() - 2));
+      if(v[v.size()-1] != '/'){
+        std::cerr << "ERROR: syntax error in the veto file: missing an ending"
+          "slash on a line starting with a slash (/).\n";
+        exit(1);
+      }
+      auto re_ = v.substr(1, v.size() - 2);
+      if(verbose > 5) std::cerr << "Debug: Comparing " << signature
+                                << " with grep-like regular expression "
+                                << re_ << "\n";
+      std::regex re(re_, std::regex_constants::basic);
       if(std::regex_match(signature, re)){
         r = true;
         break;
@@ -1219,25 +1249,14 @@ CodeTree::find_type_definition(const CXType& type) const{
     return std::make_tuple(usable, definitions);
   }
 
-  //FIXME: definitions_ is empty
-  //-> simplify the code to definitions.push_back(d)
-  ///  auto it = std::find_if(definitions.begin(), definitions.end(),[&d](const auto& c){
-  ///    return clang_equalCursors(c, d);
-  ///  });
-  ///
-  ///  if(it == definitions.end()){
-  ///    definitions.push_back(d);
-  ///  } else{
-  ///    return std::make_tuple(usable, definitions);
-  ///  }
   definitions.push_back(d);
 
-  int nparams = clang_Type_getNumTemplateArguments(type0);
+  int nparams = clang_Type_getNumTemplateArguments(type);
 
   for(int i = 0; i < nparams; ++i){
     bool u;
     std::vector<CXCursor> vd;
-    auto param_type = base_type(clang_Type_getTemplateArgumentAsType(type0, i));
+    auto param_type = base_type(clang_Type_getTemplateArgumentAsType(type, i));
     std::tie(u, vd) = find_type_definition(param_type);
     if(!u){
       std::cerr << "No definition found for " << param_type << "\n";
@@ -1263,10 +1282,12 @@ CodeTree::find_type_definition(const CXType& type) const{
 
 std::tuple<bool, CXCursor>
 CodeTree::find_base_type_definition_(const CXType& type0) const{
-
   bool usable = true;
 
   if(type0.kind == CXType_Invalid || type0.kind == CXType_Unexposed){
+    if(verbose > 4) std::cerr << __FUNCTION__ << "(" << type0
+                              << "): type0.kind = "
+                              << type0.kind << " => failed\n";
     return std::make_tuple(false,
                            clang_getNullCursor());
   }
@@ -1278,25 +1299,33 @@ CodeTree::find_base_type_definition_(const CXType& type0) const{
        && type0.kind != CXType_Enum
        &&*/ type0.kind <= CXType_LastBuiltin
        || type0.kind == CXType_FunctionProto){
+    if(verbose > 4) std::cerr << __FUNCTION__ << "(" << type0
+                              << "): type0.kind = "
+                              << type0.kind << " built-in or function prototype"
+                      " => succeedded\n";
     return std::make_tuple(true,
                            clang_getNullCursor());
   }
 
   auto decl = clang_getTypeDeclaration(type0);
 
-  //  auto tmp = clang_getSpecializedCursorTemplate(decl);
-  //  if(!clang_Cursor_isNull(tmp)){
-  //    decl = tmp;
-  //  }
-
+  if(clang_isInvalid(clang_getCursorKind(decl))){
+    if(verbose>1){
+      std::cerr << "Warning: failed to find declaration of "
+                << "type " << type0
+                << " of kind "<< type0.kind << "\n";
+    }
+  }
+  
   CXCursor def = clang_getCursorDefinition(decl);
 
   if(clang_isInvalid(clang_getCursorKind(def))){
     if(verbose > 1){
-      std::cerr << "Warning: failed to find definition of " << decl << " declared at "
-                << clang_getCursorLocation(decl) << "\n";
+      std::cerr << "Warning: failed to find definition of "
+                << fully_qualified_name(type0)
+                << "\n";
     }
-    usable = false;
+    if(!is_natively_supported(fully_qualified_name(decl))) usable = false;
     def = decl;
   }
 
@@ -1309,6 +1338,51 @@ CodeTree::find_base_type_definition_(const CXType& type0) const{
   return std::make_tuple(usable, def);
 }
 
+void CodeTree::check_for_stl(const CXType& type_){
+  auto type = clang_getCanonicalType(type_);
+  auto btype = base_type_(type);
+  auto btype_name = fully_qualified_name(btype);
+  static std::regex re("std::(vector|valarray)[[:space:]]*<");
+
+  //if not a vector or valrray, our work stops here.
+  if(!std::regex_search(btype_name, re)) return;
+
+  int nparams = clang_Type_getNumTemplateArguments(btype);
+  if(nparams < 1){
+    if(verbose>1){
+      std::cerr << "WARNING: registering container " << type
+                << " without element type specification."
+                << " Julia mapping could be missing.\n";
+    }
+    return;
+  }
+  auto eltype = clang_Type_getTemplateArgumentAsType(btype, 0);
+  auto eltype_name = fully_qualified_name(eltype);
+
+  auto eltype_rcd = std::find_if(types_.begin(), types_.end(),
+                                 [&](auto a){ return eltype_name == a.type_name; });
+
+  if(eltype_rcd == types_.end()){
+    if(verbose > 0){
+      std::cerr << "WARNING: type " << eltype_name << " was not found in "
+        " the type registry. The type " << type << " might miss a julia mappring.\n";
+    }
+    return;
+  }
+
+  eltype_rcd->to_wrap = true;
+
+  bool isconst = clang_isConstQualifiedType(type);
+  bool isptr   = (type.kind == CXType_Pointer);
+  if(isptr){
+    if(isconst) eltype_rcd->stl_const_ptr = true;
+    else        eltype_rcd->stl_ptr = true;
+  } else{//!isptr
+    if(isconst) eltype_rcd->stl_const = true;
+    else        eltype_rcd->stl = true;
+  }
+}
+
 bool
 CodeTree::register_type(const CXType& type){
 
@@ -1316,17 +1390,9 @@ CodeTree::register_type(const CXType& type){
                             << type.kind
                             << ".\n";
 
-  std::string type_name = fully_qualified_name(type);
+  check_for_stl(type);
 
-  std::vector<std::string> natively_supported = {
-    "std::string",
-    "std::wstring",
-    "std::vector",
-    "jlcxx::SafeCFunction",
-    "std::shared_ptr",
-    "std::unique_ptr",
-    "std::weak_ptr"
-  };
+  std::string type_name = fully_qualified_name(type);
 
   bool usable;
   std::vector<CXCursor> defs;
@@ -1346,7 +1412,7 @@ CodeTree::register_type(const CXType& type){
 
     //by retrieving the type from the definition cursor, we discard
     //the qualifiers.
-    std::string type0_name = str(clang_getTypeSpelling(type0));
+    std::string type0_name = fully_qualified_name(type0); ////str(clang_getTypeSpelling(type0));
 
     if(type0_name.size() == 0){
       std::cerr << "Empty spelling for cursor of kind "
@@ -1356,18 +1422,16 @@ CodeTree::register_type(const CXType& type){
                 << ". type: " << type0
                 << " of kind " << type0.kind
                 << "\n";
-      // abort();
     }
 
     std::string type0_name_base = type0_name;
     auto cc = clang_getSpecializedCursorTemplate(c);
+
     if(!clang_Cursor_isNull(cc) && !clang_equalCursors(cc, c)){//a template
       type0_name_base = fully_qualified_name(cc);
-    }
-
-    if(std::find(natively_supported.begin(), natively_supported.end(), type0_name_base)
-       != natively_supported.end()){
-      continue;
+      if(is_natively_supported(type0_name_base)){
+        continue;
+      }
     }
 
     if(type0.kind == CXType_Record){
@@ -1416,7 +1480,6 @@ CodeTree::register_type(const CXType& type){
       auto elab_type =  static_cast<const clang::ElaboratedType*>(type0.data[0]);
       std::cerr << "\t named type: " << elab_type->getNamedType().getAsString() << "\n";
     } else{
-      //abort();
       std::cerr << "Warning: type '" << type0 << "' is of the unsupported kind '"
                 << clang_getTypeKindSpelling(type0.kind)
                 << "'.\n";
@@ -1438,7 +1501,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   auto is_class_param = [cursor, this](CXType type){
     TypeRcd* pTypeRcd = find_class_of_method(cursor);
     if(pTypeRcd==nullptr) return true;
-    auto type_name = remove_cv(str(clang_getTypeSpelling(base_type(type))));
+    auto type_name = remove_cv(str(clang_getTypeSpelling(base_type_(type))));
     auto params = pTypeRcd->template_parameters;
     return std::find(params.begin(), params.end(), type_name) != params.end();
   };
@@ -1448,7 +1511,8 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   if(return_type.kind != CXType_Void){
     if(verbose > 3) std::cerr << cursor << ", return type: " << return_type << "\n";
     if(is_class_param(return_type)){
-      if(verbose > 3) std::cerr << cursor << " identified as a parameter of the holding class\n";
+      if(verbose > 3) std::cerr << return_type 
+                                << " identified as a parameter of the holding class\n";
     } else if(type_map_.is_mapped(return_type, /*as_return=*/ true)){
       if(verbose > 3) std::cerr << return_type << " is mapped to an alternative type.\n";
     } else{
@@ -1475,7 +1539,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
       }
     }
   }
-  
+
   for(auto const& x: missing_types) types_missing_def_.insert(fully_qualified_name(base_type(x)));
 
   int min_args = get_min_required_args(cursor);
@@ -1747,7 +1811,7 @@ CodeTree::visit_class_constructor(CXCursor cursor){
   FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_);
 
   if(in_veto_list(wrapper.signature())){
-  //if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
+    //if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
     }
@@ -2164,7 +2228,9 @@ CodeTree::parse(){
 
   const auto&  cursor = clang_getTranslationUnitCursor(unit);
 
-  if(verbose > 1) std::cerr << "Calling clang_visitChildren(" << cursor << ", CodeTree::visit, &data) from " << __FUNCTION__ << "\n";
+  if(verbose > 1) std::cerr << "Calling clang_visitChildren(" << cursor
+                            << ", CodeTree::visit, &data) from "
+                            << __FUNCTION__ << "\n";
 
   clang_visitChildren(cursor, CodeTree::visit, this);
 
@@ -2464,7 +2530,9 @@ std::vector<std::string> CodeTree::get_enum_constants(CXCursor cursor) const{
     return CXChildVisit_Continue;
   };
 
-  if(verbose > 1) std::cerr << "Calling clang_visitChildren(" << cursor << ", visitor, &data) from " << __FUNCTION__ << "\n";
+  if(verbose > 1) std::cerr << "Calling clang_visitChildren(" << cursor
+                            << ", visitor, &data) from "
+                            << __FUNCTION__ << "\n";
   clang_visitChildren(cursor, visitor, &v);
 
   return v;
@@ -2660,9 +2728,56 @@ bool CodeTree::check_resource_dir(bool verbose) const{
     if(verbose && !rc){
       std::cerr << "ERROR: file 'include/stddef.h' not found in the resource "
         "directory '" << clang_resource_dir_ << "'.  Use --resource-dir "
-      "wrapit command line option to specify an alternative path. "
+        "wrapit command line option to specify an alternative path. "
         "See 'clang --help' and 'clang -print-resource-dir'.\n";
     }
   }
   return rc;
+}
+
+std::ostream&
+CodeTree::gen_apply_stl(std::ostream& o, int indent_depth,
+                        const TypeRcd& type_rcd,
+                        const std::string& add_type_param) const{
+
+  if(type_rcd.stl){
+    indent(o, indent_depth) << "jlcxx::stl::apply_stl<" << add_type_param
+                            << ">(jlModule);\n";
+  }
+  if(type_rcd.stl_const){
+    indent(o, indent_depth) << "jlcxx::stl::apply_stl<const " << add_type_param
+                            << ">(jlModule);\n";
+  }
+  if(type_rcd.stl_ptr){
+    indent(o, indent_depth) << "jlcxx::stl::apply_stl<" << add_type_param << "*"
+                            << ">(jlModule);\n";
+  }
+  if(type_rcd.stl_const_ptr){
+    indent(o, indent_depth) << "jlcxx::stl::apply_stl<const " << add_type_param
+                            << "*>(jlModule);\n";
+  }
+
+  return o;
+}
+
+bool CodeTree::is_natively_supported(const CXType& type) const{
+  return is_natively_supported(fully_qualified_name(type));
+}
+
+bool CodeTree::is_natively_supported(const std::string& type_fqn) const{
+  static std::vector<std::string> natively_supported = {
+    "std::string",
+    "std::wstring",
+    "std::vector",
+    "std::valarray",
+    "jlcxx::SafeCFunction",
+    "std::shared_ptr",
+    "std::unique_ptr",
+    "std::weak_ptr"
+  };
+
+  if(verbose > 4) std::cerr << __FUNCTION__ << "(" << type_fqn << ")\n";
+
+  return std::find(natively_supported.begin(), natively_supported.end(), type_fqn)
+    != natively_supported.end();
 }

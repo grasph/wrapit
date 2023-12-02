@@ -28,9 +28,6 @@ public:
 
   std::string mapped_type(const std::string& from, bool as_return = false,
                           bool* mapped = nullptr) const{
-
-    std::cerr << __FUNCTION__ << "(" << from << "...)\n";
-
     auto it = map_.find(from);
     if(mapped) *mapped = (it != map_.end());
 
@@ -43,7 +40,6 @@ public:
                               bool* mapped = nullptr) const;
 
   bool mutate(std::string& to_change, bool as_return = false){
-    std::cerr << __FUNCTION__ << "(" << to_change << "...)\n";
     auto it = map_.find(to_change);
     if(it == map_.end()){
       return false;
@@ -54,7 +50,6 @@ public:
   }
 
   bool is_mapped(const std::string& from, bool as_return = false) const{
-    std::cerr << __FUNCTION__ << "(" << from << "...)\n";
     auto it =  map_.find(from);
     if(it == map_.end()) return false;
     auto to = as_return ? it->second.as_return : it->second.as_arg;

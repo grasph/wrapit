@@ -246,10 +246,15 @@ namespace codetree{
 
     enum class accessor_mode_t {none, getter, both };
 
-    /// Adds a type to the list of types/classes to wrap.
-    /// Returns the index of the added type in the vector types_
+    // Adds a type to the list of types/classes to wrap.
+    // Returns the index of the added type in the vector types_
     int add_type(const CXCursor& cursor, bool check = true);
 
+    // Checks if type is a std::vector or a std::valarray
+    // and if it is the case, marks the element type as requiring
+    // std::vector and std:valarray support.
+    void check_for_stl(const CXType& type);
+    
     bool in_veto_list(const std::string signature) const;
 
     //Check is a field or variable is veto status for accessor generation
@@ -405,6 +410,15 @@ namespace codetree{
 
     std::ofstream checked_open(const std::string& path) const;
 
+    std::ostream&
+    gen_apply_stl(std::ostream& o, int indent_depth,
+                  const TypeRcd& type_rcd,
+                  const std::string& add_type_param) const;
+
+
+    bool is_natively_supported(const CXType& type) const;
+    bool is_natively_supported(const std::string& type_fqn) const;
+    
   private:
     std::string clang_resource_dir_;
 

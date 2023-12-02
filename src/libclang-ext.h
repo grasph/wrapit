@@ -19,6 +19,8 @@ int hasDefaultConstructor(CXCursor cursor);
 
 CXType remove_non_builtin_qualifiers(CXType& type);
 
+CXType base_type_(CXType type);
+
 CXType base_type(CXType type);
 
 std::string remove_cv(const std::string& type_name);
