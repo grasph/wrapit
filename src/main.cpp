@@ -99,7 +99,7 @@ int main(int argc, char* argv[]){
     toml::parse_result toml_config;
     try{
       toml_config = toml::parse_file(options["cfgfile"].as<std::string>());
-    } catch(const toml::v2::ex::parse_error& ex){
+    } catch(const toml::v3::ex::parse_error& ex){
       std::cerr << "Failed to read the configuration file "
                 <<  options["cfgfile"].as<std::string>()
                 << "\n\t" << ex.what() <<  " at " << ex.source() << ".\n";
