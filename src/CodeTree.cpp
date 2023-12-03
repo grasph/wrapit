@@ -667,7 +667,7 @@ CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
                                 const CXCursor& cursor, bool getter_only,
                                 int nindents){
 
-  FunctionWrapper helper(MethodRcd(cursor), type_rcd, "", "", nindents);
+  FunctionWrapper helper(MethodRcd(cursor), type_rcd, type_map_, "", "", nindents);
 
   int ngens = 0;
   helper.gen_accessors(o, getter_only, &ngens);
@@ -794,7 +794,7 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   TypeRcd* pTypeRcd = find_class_of_method(method.cursor);
 
-  FunctionWrapper wrapper(method, pTypeRcd, varname, classname, nindents,
+  FunctionWrapper wrapper(method, pTypeRcd, type_map_, varname, classname, nindents,
                           templated);
 
   //FIXME: check that code below is needed. Should now be vetoed upstream
@@ -1167,7 +1167,7 @@ CodeTree::visit_global_function(CXCursor cursor){
   }
 
 
-  FunctionWrapper wrapper(MethodRcd(cursor), nullptr);
+  FunctionWrapper wrapper(MethodRcd(cursor), nullptr, type_map_);
   if(in_veto_list(wrapper.signature())){
     //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
@@ -1449,6 +1449,8 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
     if(verbose > 3) std::cerr << cursor << ", return type: " << return_type << "\n";
     if(is_class_param(return_type)){
       if(verbose > 3) std::cerr << cursor << " identified as a parameter of the holding class\n";
+    } else if(type_map_.is_mapped(return_type, /*as_return=*/ true)){
+      if(verbose > 3) std::cerr << return_type << " is mapped to an alternative type.\n";
     } else{
       bool rc = register_type(return_type);
       if(!rc) missing_types.push_back(return_type);
@@ -1465,6 +1467,8 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
     } else if(argtype.kind != CXType_Void){
       if(is_class_param(argtype)){
         if(verbose > 3) std::cerr << cursor << " identified as a parameter of the holding class\n";
+      } else if(type_map_.is_mapped(argtype)){
+        if(verbose > 3) std::cerr << argtype << " is mapped to an alternative type.\n";
       } else{
         bool rc = register_type(argtype);
         if(!rc) missing_types.push_back(argtype);
@@ -1543,7 +1547,7 @@ CodeTree::visit_member_function(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
-  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd);
+  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_);
 
   if(in_veto_list(wrapper.signature())){
     //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
@@ -1641,7 +1645,7 @@ CodeTree::inform_missing_types(std::vector<CXType> missing_types,
   };
 
   if(verbose > 0){
-    std::string funcname =  FunctionWrapper(methodRcd, classRcd).signature();
+    std::string funcname =  FunctionWrapper(methodRcd, classRcd, type_map_).signature();
     std::cerr << "Info: missing definition of type"
               << (missing_types.size() > 1 ? "s" : "")
               << " "
@@ -1740,7 +1744,7 @@ CodeTree::visit_class_constructor(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
-  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd);
+  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_);
 
   if(in_veto_list(wrapper.signature())){
   //if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
@@ -1814,9 +1818,9 @@ CodeTree::visit_typedef(CXCursor cursor){
 
 void
 CodeTree::visit_field_or_global_variable(CXCursor cursor){
-  if(verbose > 3) std::cerr << __FUNCTION__ << "(" << cursor << ")\n";
-
   if(!accessor_generation_enabled()) return;
+  
+  if(verbose > 3) std::cerr << __FUNCTION__ << "(" << cursor << ")\n";
 
   disable_owner_mirror(cursor);
 

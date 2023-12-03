@@ -12,6 +12,9 @@
 #include <iostream>
 #include <set>
 
+
+class TypeMapper;
+
 // Helper class to generate CxxWrap.jl wrapper
 // code for a global or class function.
 //
@@ -24,6 +27,7 @@
 class FunctionWrapper{
 public:
   FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRcd,
+                  const TypeMapper& type_mapper,
                   std::string varname = std::string(),
                   std::string classname = std::string(),
                   int nindents = 0,
@@ -96,7 +100,7 @@ protected:
   gen_getindex(std::ostream& o,
                std::vector<std::string>& get_index_register) const;
 
-  void build_arg_lists();
+  void build_arg_lists(bool& ismapped);
 
 
   // Generates a wrapper for a c++ global or class member function.
@@ -113,7 +117,7 @@ protected:
   // Uses a lambda function indirection to handle
   // overloaded functions and default parameters.
   //
-  // If this->all_lambda is false, only wrappers for call
+  // If this->all_lambda_ is false, only wrappers for call
   // with one or more default parameter values are generated.
   // The standard call is assumed to be generated with
   // gen_func_with_cast
@@ -135,7 +139,7 @@ private:
   std::string class_prefix;
   int nindents;
 
-  bool all_lambda;
+  bool all_lambda_;
 
 
   CXCursor cursor;
@@ -162,11 +166,14 @@ private:
 
   std::string cv;
 
+  std::string short_arg_list_signature;
   std::string short_arg_list_cxx;
   std::string long_arg_list_cxx;
   std::string short_arg_list_jl;
 
   bool templated_;
+
+  const TypeMapper& type_map_;
 };
 
 #endif //FUNCTIONWRAPPER_H not defined

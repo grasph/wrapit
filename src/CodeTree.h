@@ -28,6 +28,8 @@
 #include "utils.h"
 #include "config.h"
 
+#include "TypeMapper.h"
+
 namespace fs = std::filesystem;
 
 
@@ -53,6 +55,8 @@ namespace codetree{
     {
       opts_.push_back("-x");
       opts_.push_back("c++-header");
+      type_map_.add("std::string_view", "const char*", "std::string");
+      type_map_.add("const std::string_view &", "const char*", "std::string");
     }
     CodeTree(CodeTree&&) = default;
 
@@ -458,6 +462,8 @@ namespace codetree{
     std::vector<std::string> towrap_type_filenames_;
     std::set<std::string> towrap_type_filenames_set_;
 
+    TypeMapper type_map_;
+    
     struct {
       unsigned enums = 0;
       unsigned types = 0;

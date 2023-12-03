@@ -101,6 +101,7 @@ add_custom_command(OUTPUT version.cpp
 
 add_executable(wrapit
    src/TypeRcd.cpp
+   src/TypeMapper.cpp
    src/utils.cpp
    src/libclang-ext.cpp
    src/FunctionWrapper.cpp

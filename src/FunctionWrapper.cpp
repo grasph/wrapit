@@ -10,6 +10,8 @@
 #include <regex>
 #include <sstream>
 
+#include "TypeMapper.h"
+
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o){
   int nargsmin =  std::max(1, method.min_args); //no-arg ctor, aka "default ctor" generate elsewhere with direct call to gen_ctor(std::ostream& o, int nindents,
@@ -279,7 +281,7 @@ FunctionWrapper::gen_getindex(std::ostream& o,
 
   indent(o, nindents) <<  varname << ".method(\"getindex\",\n";
   indent(o, nindents + 1) << "[](" << classname
-                          << "& a, " << fix_template_type(short_arg_list_cxx) << " i){\n";
+                          << "& a, " << short_arg_list_cxx << " i){\n";
   indent(o, nindents + 1) << "return a[i];\n";
   indent(o, nindents) << "});\n";
 
@@ -288,25 +290,30 @@ FunctionWrapper::gen_getindex(std::ostream& o,
   return o;
 }
 
-void FunctionWrapper::build_arg_lists(){
+void FunctionWrapper::build_arg_lists(bool& type_mapped){
 
   std::stringstream arg_list_buf_1;
-  //  std::stringstream arg_list_buf_2;
+  std::stringstream arg_list_buf_2;
   std::stringstream arg_list_buf_3;
   std::string sep;
-
+  type_mapped = false;
   rvalueref_arg = false;
   for(int i = 0; i < clang_getNumArgTypes(method_type); ++i){
     auto argtype = clang_getArgType(method_type, i);
-    auto argtype_fqn = fix_template_type(fully_qualified_name(argtype));
-
+    bool mutated;
+    auto argtype_fqn = type_map_.mapped_typename(argtype, /*as_return=*/false,
+                                                 &mutated);
+    auto argtype_fqn_nomap = fully_qualified_name(argtype);
+    type_mapped |= mutated;
     inaccessible_type = inaccessible_type || !isAccessible(argtype);
     if(argtype.kind == CXType_RValueReference) rvalueref_arg = true;
     arg_list_buf_1 << sep <<  argtype_fqn;
+    arg_list_buf_2 << sep << argtype_fqn_nomap;
     arg_list_buf_3 << sep <<  "::" << jl_type_name(argtype_fqn);
     sep = ", ";
   }
   short_arg_list_cxx = arg_list_buf_1.str();
+  short_arg_list_signature = arg_list_buf_2.str();
   short_arg_list_jl = arg_list_buf_3.str();
 }
 
@@ -373,7 +380,7 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
 
   int nargsmin =  method.min_args;
   int nargsmax = clang_getNumArgTypes(method_type);
-  if(!all_lambda) nargsmax -= 1;
+  if(!all_lambda_) nargsmax -= 1;
 
   //  auto const& method_type = clang_getCursorType(method.cursor);
 
@@ -394,17 +401,33 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
         sep = ", ";
       }
       gen_arg_list(o, nargs, sep);
-      o << ")->" << fix_template_type(fully_qualified_name(return_type_ )) << "{ ";
+      bool cast_return;
+      std::string mapped_return_type
+        = fix_template_type(type_map_.mapped_typename(return_type_,
+                                                      /*as_return=*/true,
+                                                      &cast_return)); 
+      o << ")";
+      if(!cast_return) o << "->"<< (mapped_return_type);
+      o << " { ";
       if(clang_getCursorResultType(method.cursor).kind != CXType_Void){
         o << "return ";
+        if(cast_return){
+          o << "(" <<  mapped_return_type << ")";
+        }
       }
 
       if(is_static_) o << classname << "::";
       if(!is_static_ && classname.size() > 0) o << "a" << accessors[itype];
       o << name_cxx << "(";
       sep = "";
+      std::stringstream cast_op;
       for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
-        o << sep << "arg" << iarg;
+        cast_op.str("");
+        const auto& argtype = clang_getArgType(method_type, iarg);
+        if(type_map_.is_mapped(argtype)){
+          cast_op << "(" << fully_qualified_name(argtype) << ")";
+        }
+        o << sep << cast_op.str() << "arg" << iarg;
         sep = ", ";
       }
       o << "); });\n";
@@ -417,7 +440,8 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
 std::string
 FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
   const auto& argtype = clang_getArgType(method_type, iarg);
-  const auto argtypename = fix_template_type(fully_qualified_name(argtype)); //str(clang_getTypeSpelling(argtype));
+  //  const auto argtypename = fully_qualified_name(argtype); //str(clang_getTypeSpelling(argtype));
+  const auto argtypename = type_map_.mapped_typename(argtype);
 
   if(argtypes_only) return argtypename;
 
@@ -444,16 +468,18 @@ FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
 
 
 FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRcd,
+                                 const TypeMapper& type_map,
                                  std::string varname, std::string classname,
                                  int nindents, bool templated):
   method(method),
   varname(varname),
   classname(classname),
   nindents(nindents),
-  all_lambda(false),
+  all_lambda_(false),
   pTypeRcd(pTypeRcd),
   rvalueref_arg(false),
-  templated_(templated){
+  templated_(templated),
+  type_map_(type_map){
 
   cursor = method.cursor;
   method_type = clang_getCursorType(cursor);
@@ -606,8 +632,12 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     name_jl_ = name_jl_suffix;
   }
 
-  build_arg_lists();
+  bool argtype_mapped;
+  build_arg_lists(argtype_mapped);
 
+  all_lambda_ |= (argtype_mapped || type_map_.is_mapped(return_type_,
+                                                        /*as_return=*/true));
+  
   if(clang_CXXMethod_isConst(method.cursor)){
     cv = " const";
   }
@@ -628,7 +658,7 @@ FunctionWrapper::validate(){
 
   if(inaccessible_type){
     std::cerr << "Warning: no wrapper generated for function '"
-              << return_type_ << " " << "(" << short_arg_list_cxx << ")" << cv
+              << signature() << cv
               << "' because it requires a type that is private or protected.\n";
     return false;
   }
@@ -637,7 +667,7 @@ FunctionWrapper::validate(){
     //The code generated for varidadic functions does not compile.
     //Until, it is fixed, skipped these functions
     std::cerr << "Warning: no wrapper will be produced for function '"
-              << name_cxx << "(" << short_arg_list_cxx << ", ...) " << cv
+              << signature() << cv
               << "' because of lack of support for variadic functions.\n";
     return false;
   }
@@ -647,7 +677,7 @@ FunctionWrapper::validate(){
     //reference does not compile.
     //Until, it is fixed, skipped these functions
     std::cerr << "Warning: no wrapper will be produced for function '"
-              << name_cxx << "(" << short_arg_list_cxx << ") " << cv
+              << signature() << cv
               << "' because it contains an argument passed by r-value "
               << "which is not supported yet.\n";
     return false;
@@ -660,7 +690,7 @@ std::string FunctionWrapper::signature() const{
   std::stringstream buf;
   std::string genuine_classname_prefix = pTypeRcd ? (pTypeRcd->type_name + "::") : "";
   buf << fully_qualified_name(return_type_) << " " << genuine_classname_prefix << name_cxx
-      << "(" <<  short_arg_list_cxx << ")";
+      << "(" <<  short_arg_list_signature << ")";
   return buf.str();
 }
 
@@ -691,8 +721,10 @@ FunctionWrapper::generate(std::ostream& o,
 
   indent(o, nindents) << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
 
-  if(!all_lambda) gen_func_with_cast(o);
+  if(!all_lambda_) gen_func_with_cast(o);
 
+  //following will generate all methos if all_lambda_ is true
+  //and methods for default parameter values otherwise.
   gen_func_with_lambdas(o);
 
   return o;
