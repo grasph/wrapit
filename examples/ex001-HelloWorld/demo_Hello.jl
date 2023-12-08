@@ -1,11 +1,8 @@
-#Import the library
+# Import the library
 using Hello
 
-#Create an instance of the class A
+# Create an instance of the class A
 a = Hello.A("World")
 
-#Call the class A member function
+# Call the class A member function
 say_hello(a)
-
-
-
