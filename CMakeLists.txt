@@ -19,7 +19,6 @@ FetchContent_MakeAvailable(cxxopts)
 
 find_package(Clang REQUIRED CONFIG)
 find_package(LLVM REQUIRED CONFIG)
-llvm_map_components_to_libnames(llvm_libs core)
 include_directories(${CLANG_INCLUDE_DIRS})
 if(DEFINED CLANG_RESOURCE_DIR AND NOT CLANG_RESOURCE_DIR STREQUAL "")
    set(CLANG_RESOURCE_DIR_PATH "${LLVM_TOOLS_BINARY_DIR}/${CLANG_RESOURCE_DIR}")
@@ -75,7 +74,7 @@ add_executable(wrapit
 
 add_dependencies(wrapit version)
 
-target_link_libraries(wrapit PRIVATE libclang clang-cpp ${llvm_libs} cxxopts dl)
+target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM cxxopts dl)
 set_target_properties(wrapit PROPERTIES
   CXX_STANDARD 17
   OUTPUT_NAME wrapit
