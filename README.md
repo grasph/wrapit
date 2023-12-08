@@ -29,21 +29,24 @@ The file config.toml contains the parameters for the generation, in particular t
 
   * Software to be present on the system before running `cmake`:
     * libclang: packages `clang-13` and `libclang-13-dev` on Debian
+    * libclang: packages `llvm`, `llvm-devel`, `clang`, `clang-devel` on Alma/Rocky/RHEL
     * On MacOS, you can install `llvm/clang` with brew running the command `brew install llvm` from a terminal
   * Software will be downloaded  by the `cmake` command:
     * [tomlplusplus](https://github.com/marzer/tomlplusplus.git)
 
 ### Build
 
-  * create a build directory
-  ```
-  mkdir build
-  cd build
-  ```
-  * run `cmake ..` in the  build directory. On MacOS, add the prefix of the llvm/clang installation `-DCMAKE_PREFIX_PATH=/usr/local/opt/llvm`  
-  * run `make -j4`
+Build using cmake in the "usual" way. e.g.,
 
-The `make` command will produce the executable `wrapit`. Run `make install` if you'd like to copy it into the system `bin` directory.
+```sh
+mkdir build && cd build
+cmake -S .. -B . -DCMAKE_INSTALL_PREFIX=/opt
+cmake --build .
+```
+
+On OS X it is necessary to add the prefix of the clang/llvm installation, `-DCMAKE_PREFIX_PATH=/opt/homebrew/Cellar/llvm/LLVM_VERSION`
+
+The build process will produce the `wrapit` executable. Install it with `cmake --build . --target install`.
 
 ## A simple example
 
