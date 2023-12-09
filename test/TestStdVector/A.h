@@ -59,7 +59,8 @@ struct EltType7{
 
 std::vector<EltType7*> f7();
 
-class MyString: public std::string{
+struct MyString: public std::string{
+    using std::string::string;
 };
 
 typedef MyString *MyStringPtr;
