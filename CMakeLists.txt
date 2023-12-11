@@ -17,18 +17,56 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cxxopts)
 
-find_package(Clang REQUIRED CONFIG)
-find_package(LLVM REQUIRED CONFIG)
-include_directories(${CLANG_INCLUDE_DIRS})
-if(DEFINED CLANG_RESOURCE_DIR AND NOT CLANG_RESOURCE_DIR STREQUAL "")
-   set(CLANG_RESOURCE_DIR_PATH "${LLVM_TOOLS_BINARY_DIR}/${CLANG_RESOURCE_DIR}")
-else()
-   set(CLANG_RESOURCE_DIR_PATH "${LLVM_LIBRARY_DIR}/clang/${CLANG_VERSION_MAJOR}")
-endif()
+# CLANG_JLL is used by Binary Builder
+# For building the package stand-alone it is not used
+if (NOT CLANG_JLL)
+  find_package(Clang REQUIRED CONFIG)
+  find_package(LLVM REQUIRED CONFIG)
+  include_directories(${CLANG_INCLUDE_DIRS})
+  if(DEFINED CLANG_RESOURCE_DIR AND NOT CLANG_RESOURCE_DIR STREQUAL "")
+    set(CLANG_RESOURCE_DIR_PATH "${LLVM_TOOLS_BINARY_DIR}/${CLANG_RESOURCE_DIR}")
+  else()
+    set(CLANG_RESOURCE_DIR_PATH "${LLVM_LIBRARY_DIR}/clang/${CLANG_VERSION_MAJOR}")
+  endif()
 
-execute_process(COMMAND "${LLVM_TOOLS_BINARY_DIR}/clang" -print-resource-dir
-               OUTPUT_VARIABLE CLANG_RESOURCE_DIR_DISCOVERED_PATH
-               OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND "${LLVM_TOOLS_BINARY_DIR}/clang" -print-resource-dir
+                OUTPUT_VARIABLE CLANG_RESOURCE_DIR_DISCOVERED_PATH
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+else() # Using Clang_jll
+  # Clang_jll package lacks the Clang Cmake conifiguration file,
+  # Set the clang dependency by  hand:
+  set(STATIC_LIBS clangAST clangLex clangBasic clangDriver)
+  foreach(static_lib IN LISTS STATIC_LIBS) 
+      add_library(${static_lib} STATIC IMPORTED)
+      set_property(TARGET ${static_lib} PROPERTY
+                  IMPORTED_LOCATION "${CMAKE_INSTALL_PREFIX}/lib/lib${static_lib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  endforeach()
+
+  set(SHARED_LIBS libclang LLVM)
+  foreach(shared_lib IN LISTS SHARED_LIBS) 
+      add_library(${shared_lib} SHARED IMPORTED)
+      set(lib_path "${CMAKE_INSTALL_PREFIX}/lib/lib${shared_lib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+      string(REPLACE liblib lib lib_path ${lib_path})
+      set_property(TARGET ${shared_lib} PROPERTY
+                  IMPORTED_LOCATION ${lib_path})
+  endforeach()
+
+  set_target_properties(clangBasic PROPERTIES
+                        INTERFACE_LINK_LIBRARIES "LLVM")
+
+  set_target_properties(clangLex PROPERTIES
+                        INTERFACE_LINK_LIBRARIES "clangBasic;LLVM")
+
+  set_target_properties(clangAST PROPERTIES
+                        INTERFACE_LINK_LIBRARIES "clangBasic;clangLex;LLVM")
+
+  if(NOT ($ENV{target} MATCHES "darwin"))
+    execute_process(COMMAND /bin/sh -c "nm -C \$prefix/lib/libclang.so | grep -q abi:cxx11" RESULT_VARIABLE rc)
+    if(NOT (rc EQUAL 0)) #libclang.so compiled with cxx03 ABI
+        add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
+    endif()
+  endif()
+endif()
 
 set(CLANG_RESOURCE_DIR_FULLPATH "${CLANG_RESOURCE_DIR_DISCOVERED_PATH}" CACHE
     FILEPATH
