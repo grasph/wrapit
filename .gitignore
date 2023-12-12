@@ -189,3 +189,4 @@ test/myruntests.jl
 test/not_yet_working_tests/
 test/toto
 
+.vscode/

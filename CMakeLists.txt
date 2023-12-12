@@ -1,6 +1,6 @@
 # Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.12)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project (CxxWrapGen)
@@ -9,7 +9,7 @@ include(FetchContent)
 
 find_package(Git)
 
-#Package to parse command line options
+# Package to parse command line options
 FetchContent_Declare(
     cxxopts
     GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
@@ -17,33 +17,44 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cxxopts)
 
-set(SEARCH_CLANG_CMAKE TRUE
-    CACHE BOOL "If true use the Clang cmake configuration files found on the system.")
+# CLANG_JLL is used by Binary Builder
+# For building the package stand-alone it is not used
+if (NOT CLANG_JLL)
 
-if(NOT CLANG_JLL)
-   find_package(Clang REQUIRED CONFIG)
-   include_directories(${CLANG_INCLUDE_DIRS})
-   if(DEFINED CLANG_RESOURCE_DIR AND NOT CLANG_RESOURCE_DIR STREQUAL "")
-     set(CLANG_RESOURCE_DIR_PATH "${LLVM_TOOLS_BINARY_DIR}/${CLANG_RESOURCE_DIR}")
-   else()
-     set(CLANG_RESOURCE_DIR_PATH "${LLVM_LIBRARY_DIR}/clang/${CLANG_VERSION_MAJOR}")
-   endif()
+  find_package(Clang REQUIRED CONFIG)
+  find_package(LLVM REQUIRED CONFIG)
+  include_directories(${CLANG_INCLUDE_DIRS})
 
   execute_process(COMMAND "${LLVM_TOOLS_BINARY_DIR}/clang" -print-resource-dir
-                  OUTPUT_VARIABLE CLANG_RESOURCE_DIR_DISCOVERED_PATH
-                  OUTPUT_STRIP_TRAILING_WHITESPACE)
-                
-else() #Using Clang_jll
-   #Clang_jll package lacks the Clang Cmake conifiguration file,
-   #Set the clang dependency by  hand:
-   set(STATIC_LIBS clangAST clangLex clangBasic clangDriver)
-   foreach(static_lib IN LISTS STATIC_LIBS) 
-       add_library(${static_lib} STATIC IMPORTED)
-       set_property(TARGET ${static_lib} PROPERTY
-                    IMPORTED_LOCATION "${CMAKE_INSTALL_PREFIX}/lib/lib${static_lib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-   endforeach()
-   
-   set(SHARED_LIBS libclang LLVM)
+                   OUTPUT_VARIABLE CLANG_RESOURCE_DIR_DISCOVERED_PATH
+                   OUTPUT_STRIP_TRAILING_WHITESPACE)
+   set(CLANG_RESOURCE_DIR_FULLPATH "${CLANG_RESOURCE_DIR_DISCOVERED_PATH}" CACHE
+      FILEPATH "Clang resource directory as returned by clang -print-resource-dir")
+
+   if("${CLANG_RESOURCE_DIR_FULLPATH}" STREQUAL "")
+     message(FATAL_ERROR "CLANG_RESOURCE_DIR_FULLPATH needs to be set to the Clang resource directory (see clang -resource-directory). This path is used at runtime by the wrapit executable.")
+   else()
+     if(NOT IS_DIRECTORY "${CLANG_RESOURCE_DIR_FULLPATH}")
+       message(WARNING "CLANG_RESOURCE_DIR_FULLPATH value, " "${CLANG_RESOURCE_DIR_FULLPATH}" ",  does not point to an existing directory.")
+     endif()
+   endif()
+
+else() # Using Clang_jll
+   # find_package(Clang) leads to errors with Clang_jll
+   # due to inconsitency between the lists expected and installed files
+
+   file(GLOB CLANG_RESOURCE_DIR_ "${CMAKE_INSTALL_PREFIX}/lib/clang/*/include/stddef.h")
+   list(GET CLANG_RESOURCE_DIR_ 0 CLANG_RESOURCE_DIR)
+   message("Searching in " "${CMAKE_INSTALL_PREFIX}/lib/clang")
+
+   cmake_path(REMOVE_FILENAME CLANG_RESOURCE_DIR)
+   cmake_path(RELATIVE_PATH CLANG_RESOURCE_DIR
+              BASE_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib")
+
+   set(CLANG_RESOURCE_DIR ${CLANG_RESOURCE_DIR} CACHE STRING
+       "Clang resource directory as returned by clang -print-resource-dir")
+
+   set(SHARED_LIBS libclang clang-cpp LLVM)
    foreach(shared_lib IN LISTS SHARED_LIBS) 
        add_library(${shared_lib} SHARED IMPORTED)
        set(lib_path "${CMAKE_INSTALL_PREFIX}/lib/lib${shared_lib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -51,15 +62,9 @@ else() #Using Clang_jll
        set_property(TARGET ${shared_lib} PROPERTY
                     IMPORTED_LOCATION ${lib_path})
    endforeach()
-   
-   set_target_properties(clangBasic PROPERTIES
-                         INTERFACE_LINK_LIBRARIES "LLVM")
-   
-   set_target_properties(clangLex PROPERTIES
-                         INTERFACE_LINK_LIBRARIES "clangBasic;LLVM")
-   
-   set_target_properties(clangAST PROPERTIES
-                         INTERFACE_LINK_LIBRARIES "clangBasic;clangLex;LLVM")
+
+   #To prevent 'undefined symbol: _ZN4llvm23EnableABIBreakingChecksE' error:
+   add_compile_definitions(LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING)
 
    if(NOT ($ENV{target} MATCHES "darwin"))
       execute_process(COMMAND /bin/sh -c "nm -C \$prefix/lib/libclang.so | grep -q abi:cxx11" RESULT_VARIABLE rc)
@@ -67,18 +72,6 @@ else() #Using Clang_jll
          add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
       endif()
     endif()
-endif()
-
-set(CLANG_RESOURCE_DIR_FULLPATH "${CLANG_RESOURCE_DIR_DISCOVERED_PATH}" CACHE
-    FILEPATH
-    "Clang resource directory as returned by clang -print-resource-dir")
-
-if("${CLANG_RESOURCE_DIR_FULLPATH}" STREQUAL "")
-  message(FATAL_ERROR "CLANG_RESOURCE_DIR_FULLPATH needs to be set to the Clang resource directory (see clang -resource-directory). This path is used at runtime by the wrapit executable.")
-else()
-  if(NOT IS_DIRECTORY "${CLANG_RESOURCE_DIR_FULLPATH}")
-    message(WARNING "CLANG_RESOURCE_DIR_FULLPATH value, " "${CLANG_RESOURCE_DIR_FULLPATH}" ",  does not point to an existing directory.")
-  endif()
 endif()
 
 
@@ -113,7 +106,7 @@ add_executable(wrapit
 
 add_dependencies(wrapit version)
 
-target_link_libraries(wrapit PRIVATE libclang clangAST clangDriver cxxopts dl)
+target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM cxxopts dl)
 set_target_properties(wrapit PROPERTIES
   CXX_STANDARD 17
   OUTPUT_NAME wrapit

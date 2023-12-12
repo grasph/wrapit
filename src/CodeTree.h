@@ -40,8 +40,7 @@ namespace codetree{
 
   class CodeTree{
   public:
-    CodeTree(): clang_resource_dir_(CLANG_RESOURCE_DIR_FULLPATH),
-                module_name_("Module"),
+    CodeTree(): module_name_("Module"),
                 out_open_mode_(std::ios_base::app),
                 out_cxx_dir_("src"),
                 auto_veto_(true), include_depth_(1), mainFileOnly_(true), override_base_(false),
@@ -57,6 +56,7 @@ namespace codetree{
       opts_.push_back("c++-header");
       type_map_.add("std::string_view", "const char*", "std::string");
       type_map_.add("const std::string_view &", "const char*", "std::string");
+      set_clang_resource_dir(CLANG_RESOURCE_DIR_FULLPATH);
     }
     CodeTree(CodeTree&&) = default;
 
@@ -131,10 +131,13 @@ namespace codetree{
     bool isAccessible(CXType type) const;
 
     CXType resolve_private_typedef(CXType type) const;
+    
+    std::string libclangdir() const;
 
-    void set_clang_resource_dir(const std::string path){
-      clang_resource_dir_ = path;
-    }
+    //Set clang resource directory.
+    //Relative paths are relative to the directory containing
+    //the libclang.so library the program is linked to.
+    void set_clang_resource_dir(std::string path);
 
     bool fromMainFiles(const CXCursor& cursor) const;
 

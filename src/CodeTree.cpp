@@ -26,6 +26,7 @@ extern const char* version;
 #include "clang/AST/Type.h" //FOR DEBUG
 #include "clang/AST/DeclTemplate.h"
 
+#include <dlfcn.h>
 
 extern CXPrintingPolicy pp;
 
@@ -2780,4 +2781,22 @@ bool CodeTree::is_natively_supported(const std::string& type_fqn) const{
 
   return std::find(natively_supported.begin(), natively_supported.end(), type_fqn)
     != natively_supported.end();
+}
+
+std::string CodeTree::libclangdir() const{
+  std::string r;
+  Dl_info info;
+  if (dladdr(reinterpret_cast<void*>(clang_getCursorType), &info)){
+    r = fs::path(info.dli_fname).remove_filename().string();
+  }
+  return r;
+}
+
+void CodeTree::set_clang_resource_dir(std::string path){
+  auto p = fs::path(path);
+  if(p.is_relative()){
+    p = fs::path(libclangdir()) / p;
+    path = p.string();
+  }
+  clang_resource_dir_ = path;
 }
