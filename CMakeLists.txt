@@ -28,14 +28,15 @@ if (NOT CLANG_JLL)
   execute_process(COMMAND "${LLVM_TOOLS_BINARY_DIR}/clang" -print-resource-dir
                    OUTPUT_VARIABLE CLANG_RESOURCE_DIR_DISCOVERED_PATH
                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-   set(CLANG_RESOURCE_DIR_FULLPATH "${CLANG_RESOURCE_DIR_DISCOVERED_PATH}" CACHE
+                 
+   set(CLANG_RESOURCE_DIR "${CLANG_RESOURCE_DIR_DISCOVERED_PATH}" CACHE
       FILEPATH "Clang resource directory as returned by clang -print-resource-dir")
 
-   if("${CLANG_RESOURCE_DIR_FULLPATH}" STREQUAL "")
-     message(FATAL_ERROR "CLANG_RESOURCE_DIR_FULLPATH needs to be set to the Clang resource directory (see clang -resource-directory). This path is used at runtime by the wrapit executable.")
+   if("${CLANG_RESOURCE_DIR}" STREQUAL "")
+     message(FATAL_ERROR "CLANG_RESOURCE_DIR needs to be set to the Clang resource directory (see clang -print-resource-directory). This path is used at runtime by the wrapit executable.")
    else()
-     if(NOT IS_DIRECTORY "${CLANG_RESOURCE_DIR_FULLPATH}")
-       message(WARNING "CLANG_RESOURCE_DIR_FULLPATH value, " "${CLANG_RESOURCE_DIR_FULLPATH}" ",  does not point to an existing directory.")
+     if(NOT IS_DIRECTORY "${CLANG_RESOURCE_DIR}")
+       message(WARNING "CLANG_RESOURCE_DIR value, " "${CLANG_RESOURCE_DIR}" ",  does not point to an existing directory.")
      endif()
    endif()
 

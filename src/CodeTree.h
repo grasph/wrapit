@@ -56,7 +56,7 @@ namespace codetree{
       opts_.push_back("c++-header");
       type_map_.add("std::string_view", "const char*", "std::string");
       type_map_.add("const std::string_view &", "const char*", "std::string");
-      set_clang_resource_dir(CLANG_RESOURCE_DIR_FULLPATH);
+      set_clang_resource_dir(CLANG_RESOURCE_DIR);
     }
     CodeTree(CodeTree&&) = default;
 
