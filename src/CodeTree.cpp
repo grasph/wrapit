@@ -2783,7 +2783,7 @@ bool CodeTree::is_natively_supported(const std::string& type_fqn) const{
     != natively_supported.end();
 }
 
-std::string CodeTree::libclangdir() const{
+std::string CodeTree::libclangdir(){
   std::string r;
   Dl_info info;
   if (dladdr(reinterpret_cast<void*>(clang_getCursorType), &info)){
@@ -2792,11 +2792,12 @@ std::string CodeTree::libclangdir() const{
   return r;
 }
 
-void CodeTree::set_clang_resource_dir(std::string path){
+std::string CodeTree::resolve_clang_resource_dir_path(std::string path){
   auto p = fs::path(path);
   if(p.is_relative()){
     p = fs::path(libclangdir()) / p;
     path = p.string();
   }
-  clang_resource_dir_ = path;
+  return path;
 }
+

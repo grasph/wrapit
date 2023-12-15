@@ -85,9 +85,9 @@ int main(int argc, char* argv[]){
     ("force", "Force overwriting output files.")
     ("cfgfile", "Configuration file (in toml format)",
      cxxopts::value<std::string>())
-    ("resource-dir", "Change the clang resource directory path (see clang "
-     "--help and clang --print-resource-dir). Default: "
-     CLANG_RESOURCE_DIR".",
+    ("resource-dir", std::string("Change the clang resource directory path (see clang "
+                                 "--help and clang --print-resource-dir). Default: ")
+     + CodeTree::resolve_clang_resource_dir_path(CLANG_RESOURCE_DIR) + ".",
      cxxopts::value<std::string>());
   
   option_list.parse_positional({"cfgfile"});

@@ -100,6 +100,8 @@ namespace codetree{
       files_to_wrap_.push_back(fname.string());
     }
 
+    static std::string resolve_clang_resource_dir_path(std::string relpath);
+    
     bool has_cursor(const std::vector<CXCursor> vec, const CXCursor& cursor){
       for(const auto& c: vec){
         if(clang_equalCursors(c, cursor)) return true;
@@ -132,12 +134,14 @@ namespace codetree{
 
     CXType resolve_private_typedef(CXType type) const;
     
-    std::string libclangdir() const;
+    static std::string libclangdir();
 
     //Set clang resource directory.
     //Relative paths are relative to the directory containing
     //the libclang.so library the program is linked to.
-    void set_clang_resource_dir(std::string path);
+    void set_clang_resource_dir(std::string path){
+      clang_resource_dir_ = resolve_clang_resource_dir_path(path);
+    }
 
     bool fromMainFiles(const CXCursor& cursor) const;
 
