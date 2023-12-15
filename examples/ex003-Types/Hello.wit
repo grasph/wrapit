@@ -1,0 +1,15 @@
+# This Hello.wit file will work for a standalone build in this directory
+#
+# When used with CMake the Hello.wit.in file is used as a template and
+# appropriate path modifications are made
+
+module_name         = "Hello"
+
+input               = [ "A.h" ] 
+
+include_dirs        = [ "." ]
+
+cxx-std             = "c++17"
+
+# all generated code in a single file:
+n_classes_per_file = 0
