@@ -645,7 +645,7 @@ CodeTree::generate_cxx(){
   timerestore.settimestamp();
 
   fname = join_paths(out_cxx_dir_, "Wrapper.h");
-  timeestore = FileTimeRestorer(fname);
+  timerestore = FileTimeRestorer(fname);
   o2 = checked_open(fname);
   o2 << "#include \"jlcxx/jlcxx.hpp\"\n\n"
     "struct Wrapper{\n";

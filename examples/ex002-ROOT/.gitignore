@@ -1,1 +1,5 @@
-.ipynb_checkpoints
+ROOT-generated.wit
+*.png
+*.root
+ROOT/
+libROOT/
