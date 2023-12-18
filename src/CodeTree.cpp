@@ -995,7 +995,7 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
               << "> (jlcxx::TypeWrapper<" << t.type_name << "<" << param_list2
               << ">> wrapped){\n";
   // auto module_ = this->modules_;
-  indent(o, 3) << "auto module_ = this->module_;";
+  indent(o, 3) << "auto module_ = this->module_;\n";
   //        typedef A<T1, T2> T;
   if(t.methods.size() > 0){
     indent(o, 3) << "typedef " <<  t.type_name << "<" << param_list2 << "> WrappedType;\n";
@@ -1532,7 +1532,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   //TODO: find a more robust way than comparing identifier  names.
   auto is_class_param = [cursor, this](CXType type){
     TypeRcd* pTypeRcd = find_class_of_method(cursor);
-    if(pTypeRcd==nullptr) return true;
+    if(pTypeRcd==nullptr) return false;
     auto type_name = remove_cv(str(clang_getTypeSpelling(base_type_(type))));
     auto params = pTypeRcd->template_parameters;
     return std::find(params.begin(), params.end(), type_name) != params.end();
@@ -2387,6 +2387,7 @@ void CodeTree::preprocess(){
     mainFileOnly_ = savedMainFileOnly;
   }
 
+#if 1
   //Move the class parents to be declared before their children
   for(unsigned i = 0; i < types_.size(); ++i){
     CXCursor parent = getParentClassForWrapper(types_[i].cursor);
@@ -2402,26 +2403,8 @@ void CodeTree::preprocess(){
       }
     }
   }
-
-  ///  //Remove from types_missing_def_ definition found in a different
-  ///  //Translation unit
-  ///  decltype(types_missing_def_)::const_iterator next_it;
-  ///  decltype(types_missing_def_) to_remove;
-  ///  for(decltype(types_missing_def_)::const_iterator it = types_missing_def_.begin();
-  ///      it != types_missing_def_.end(); ++it){ // = ++next_it){
-  ///    const auto& tn = *it;
-  ///
-  ///    for(const auto& t: types_){
-  ///       if(str(clang_getTypeSpelling(clang_getCursorType(t.cursor))) == tn){
-  ///         to_remove.insert(tn);
-  ///         break;
-  ///       }
-  ///    }
-  ///  }
-  ///  for(const auto& t: to_remove){
-  ///     types_missing_def_.erase(t);
-  ///  }
-
+#endif
+  
   if(verbose > 2){
     std::cerr << "\nType list at end of preprocess:\n";
     for(const auto& t: types_){

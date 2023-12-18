@@ -63,9 +63,9 @@ run_demo2: all
 	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_TGraph.jl
 
 test: all
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_ROOT.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=`pwd`/ROOT/src:@:@v#.#:@stdlib julia demo_ROOT.jl
 	cmp demo_ROOT.png demo_ROOT-ref.png
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia demo_TGraph.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=`pwd`/ROOT/src:@:@v#.#:@stdlib julia demo_TGraph.jl
 	cmp demo_TGraph.png demo_TGraph-ref.png
 
 libROOT/src/generated_cxx: ROOT-generated.wit jlROOT-veto.h $(WRAPIT)
