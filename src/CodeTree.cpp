@@ -1501,7 +1501,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   //TODO: find a more robust way than comparing identifier  names.
   auto is_class_param = [cursor, this](CXType type){
     TypeRcd* pTypeRcd = find_class_of_method(cursor);
-    if(pTypeRcd==nullptr) return true;
+    if(pTypeRcd==nullptr) return false;
     auto type_name = remove_cv(str(clang_getTypeSpelling(base_type_(type))));
     auto params = pTypeRcd->template_parameters;
     return std::find(params.begin(), params.end(), type_name) != params.end();
