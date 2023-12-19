@@ -48,3 +48,22 @@ std::vector<std::string> TypeRcd::names() const{
     return r;
   }
 }
+
+std::ostream& TypeRcd::specialization_list(std::ostream& o) const{
+  const char* sep1 = "";
+  for(int i = template_parameter_combinations.size() - 1; i >= 0; --i){
+    const auto& combi = template_parameter_combinations[i];
+    //TemplateType<
+    o << sep1 << type_name << "<";
+    sep1 = ", ";
+
+    //P1, P2
+    const char* sep2 ="";
+    for(const auto& arg_typename: combi){
+      o << sep2 << arg_typename;
+      sep2 = ", ";
+    }
+    o << ">";
+  }
+  return o;
+}

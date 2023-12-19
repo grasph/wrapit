@@ -29,6 +29,7 @@
 #include "config.h"
 
 #include "TypeMapper.h"
+#include "Graph.h"
 
 namespace fs = std::filesystem;
 
@@ -69,6 +70,7 @@ namespace codetree{
     std::vector<std::string> include_files;
 
     std::vector<TypeRcd> types_;
+    std::vector<unsigned> types_sorted_indices_; 
     std::vector<MethodRcd> functions_;
     std::vector<TypeRcd> enums_;
     std::vector<CXCursor> typedefs_;
@@ -165,6 +167,8 @@ namespace codetree{
     std::ostream& generate_non_template_add_type_cxx(std::ostream& o,
                                                      const TypeRcd& type_rcd,
                                                      std::string&  add_type_param);
+
+    //the preprocess method must be called before invoking this function
     void generate_cxx();
 
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
@@ -218,8 +222,6 @@ namespace codetree{
       propagation_mode_ = val;
     }
 
-    std::ostream&
-    generate_templated_type_cxx(std::ostream& o, const TypeRcd& type_rcd);
 
     std::ostream&
     generate_methods_of_templated_type_cxx(std::ostream& o, const TypeRcd& t);
@@ -319,8 +321,6 @@ namespace codetree{
 
     CXCursor getParentClassForWrapper(CXCursor cursor) const;
 
-//TODELETE//    std::ostream& generate_type_cxx(std::ostream& o, const TypeRcd& cursor);
-
     std::ostream&
     generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
                           const CXCursor& cursor, bool getter_only, int nindents);
@@ -410,8 +410,12 @@ namespace codetree{
 
     ///Register a type. Returns true if the type
     ///definition is known, false if we have only
-    ///a declaration
-    bool register_type(const CXType& type);
+    ///a declaration.
+    ///if pItype (resp. pIenum) is not null and a type was added to types_
+    ///(resp. enums_) assign the index to *pItype (resp. pIenum).
+    bool register_type(const CXType& type,
+                       int* pItype = nullptr,
+                       int* pIenum = nullptr);
 
     int get_min_required_args(CXCursor cursor) const;
 
@@ -419,6 +423,8 @@ namespace codetree{
 
     void exit_if_wrapper_files_in_the_way();
 
+    //the types_sorted_indices_ must be set and up to date
+    //before calling this function
     void update_wrapper_filenames();
 
     std::ostream& generate_type_wrapper_header(std::ostream& o) const;
@@ -431,8 +437,10 @@ namespace codetree{
                   const std::string& add_type_param) const;
 
 
-    bool is_natively_supported(const CXType& type) const;
-    bool is_natively_supported(const std::string& type_fqn) const;
+    bool is_natively_supported(const CXType& type, int* params = nullptr) const;
+    
+    bool is_natively_supported(const std::string& type_fqn,
+                               int* nparams = nullptr) const;
     
   private:
     std::string clang_resource_dir_;
@@ -490,6 +498,8 @@ namespace codetree{
 
     bool import_setindex_;
 
+    Graph type_dependencies_;
+    
     std::vector<std::string> towrap_type_filenames_;
     std::set<std::string> towrap_type_filenames_set_;
 

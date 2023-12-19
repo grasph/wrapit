@@ -106,6 +106,7 @@ add_executable(wrapit
    src/toml.hpp
    src/md5sum.cpp
    src/FileTimeRestorer.cpp
+   src/Graph.cpp
    version.cpp
 )
 

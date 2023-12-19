@@ -30,6 +30,7 @@ struct TypeRcd {
 
   std::string name(int combi) const;
   std::vector<std::string> names() const;
+  std::ostream& specialization_list(std::ostream& o) const;
 };
 
 #endif //TYPERCD_H not defined

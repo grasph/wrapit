@@ -74,5 +74,5 @@ echo_%:
 test:
 	$(MAKE) all && . ./setup.sh && julia run$(MODULE_NAME).jl
 
-#-include $(DEPS)
+-include $(DEPS)
 

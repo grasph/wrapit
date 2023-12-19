@@ -5,6 +5,7 @@ struct B1{
 
 struct B2{
   B2(const B1& b1): b1_(b1){}
+  //  void nottowrap(){}
   B1 b1_;
 };
 

@@ -3,6 +3,8 @@
 
 #include "B.h"
 
+struct B5{};
+
 B2 f(const B1& b1){ return B2(b1); }
 
 struct A{
