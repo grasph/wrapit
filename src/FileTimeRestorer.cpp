@@ -10,6 +10,10 @@
 
 extern int verbose;
 
+#if defined(__APPLE__)
+  #define st_atim st_atimespec
+#endif
+
 FileTimeRestorer::FileTimeRestorer(const std::string& fname, int nskiplines):
   fname_(fname), nskiplines_(nskiplines){
   md5sum(md5_, fname_, nskiplines_);
