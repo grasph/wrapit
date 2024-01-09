@@ -1,6 +1,6 @@
-#include <openssl/md5.h>
 #include <fstream>
 #include "md5sum.h"
+#include <openssl/evp.h>
 
 void md5sum(std::vector<unsigned char>& md5, const std::string& filename,
             int nlineskip){
@@ -13,14 +13,20 @@ void md5sum(std::vector<unsigned char>& md5, const std::string& filename,
     ++iline;
     if(c < 0) break;
   }
-  
-  MD5_CTX md5Context;
-  MD5_Init(&md5Context);
+
+  auto hash_algo = EVP_md5();
+  auto md5Context = EVP_MD_CTX_new();
+
+  //  MD5_Init(&md5Context);
+  EVP_DigestInit_ex(md5Context, hash_algo, NULL);
   char buf[1024 * 16];
   while (file.good()) {
     file.read(buf, sizeof(buf));
-    MD5_Update(&md5Context, buf, file.gcount());
+     EVP_DigestUpdate(md5Context, buf, file.gcount());
   }
-  md5.resize(MD5_DIGEST_LENGTH);
-  MD5_Final(md5.data(), &md5Context);
+  md5.resize(EVP_MAX_MD_SIZE);
+  
+  unsigned length;
+  EVP_DigestFinal_ex(md5Context, md5.data(), &length);
+  md5.resize(length);
 }
