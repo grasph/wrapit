@@ -1,5 +1,9 @@
 using Test
 
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+
 @testset "ex001-HelloWorld" begin
     @test begin
         include("build.jl")

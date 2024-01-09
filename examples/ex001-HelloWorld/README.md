@@ -21,6 +21,9 @@ e.g.,
 julia --project=. build.jl
 ```
 
+Here you will need to setup the project environment using the supplied
+`Project.toml`.
+
 ## Use of the wrapper
 
 ### Shell environment
@@ -56,4 +59,6 @@ the CxxWrap module internally and run the basic tests, in a self-contained way.
 
 ### Build and test
 
-The `runtests.jl` script will build the wrapper and test it.
+The `runtests.jl` script will build the wrapper and test it. N.B. this script will
+also instantiate the project environment, so that the whole test can be run
+automatically.
