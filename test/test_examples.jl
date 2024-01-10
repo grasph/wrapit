@@ -8,8 +8,7 @@ nprocs=Sys.CPU_THREADS
 @testset "ex001-HelloWorld" begin
 ex_dir = joinpath(ex_basedir, "ex001-HelloWorld")
 cd(ex_dir)
-run(`make clean all`)
-    @test readchomp(`/bin/sh -c '. ./setup.sh && julia demo_Hello.jl'`) == "Hello World!"
+run(`julia --project=. runtests.jl`)
 end
 
 run_exroot = false

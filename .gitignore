@@ -3,3 +3,4 @@
 jl*-report.txt
 build/
 .vscode/
+Manifest.toml
