@@ -1,12 +1,10 @@
 #!/usr/bin/env julia
 using Test
-<<<<<<< HEAD
 tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
 	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace",
           "TestOrder"
         ]
-=======
 using CxxWrap
 
 cxxwrap_prefix = CxxWrap.prefix_path()
@@ -15,8 +13,7 @@ cxxwrap_prefix = CxxWrap.prefix_path()
 #           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
 # 	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace"
 #         ]
-tests = [ "TestStdString" ]
->>>>>>> 053f2de (Example for how to run test with CMake)
+tests = [ "TestAccessAndDelete", "TestStdString" ]
 
 @testset verbose=true "Tests" begin
     for t in tests
