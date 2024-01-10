@@ -1,4 +1,4 @@
-module_name         = "TestStdString"
+module_name         = "@CMAKE_PROJECT_NAME@"
 
 include_dirs        = [ "@CMAKE_SOURCE_DIR@"  ]
 

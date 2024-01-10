@@ -1,6 +1,4 @@
-# Test the wrapped library for the wrapit hello example
-#
-
+# Test the wrapped library
 using Test
 
 # Inline definition of the module
