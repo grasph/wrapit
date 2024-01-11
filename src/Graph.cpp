@@ -1,4 +1,3 @@
-using namespace std;
 #include "Graph.h"
 void Graph::extend(unsigned n){
   if(n > edges_.size()){
