@@ -2,3 +2,4 @@
 *.d
 jl*-report.txt
 build/
+.gdb_history
