@@ -1,4 +1,10 @@
 #!/usr/bin/env julia
+#
+# Bootstrap environment for the first run
+using Pkg
+Pkg.activate(@__DIR__)
+Pkg.instantiate()
+
 using Test
 tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
@@ -13,7 +19,7 @@ cxxwrap_prefix = CxxWrap.prefix_path()
 #           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
 # 	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace"
 #         ]
-tests = [ "TestAccessAndDelete", "TestStdString" ]
+tests = [ "TestAccessAndDelete", "TestCtorDefVal", "TestStdString" ]
 
 @testset verbose=true "Tests" begin
     for t in tests
