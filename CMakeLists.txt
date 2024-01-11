@@ -137,3 +137,4 @@ install(TARGETS wrapit DESTINATION bin)
 # Enable unit testing capabilities
 include(CTest)
 add_test(NAME ex001-HelloWorld WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/ex001-HelloWorld COMMAND julia --project=. runtests.jl)
+add_test(NAME unittests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test COMMAND julia --project=. runtests.jl)
