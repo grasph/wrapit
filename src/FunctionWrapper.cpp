@@ -733,7 +733,7 @@ FunctionWrapper::generate(std::ostream& o,
 bool FunctionWrapper::isAccessible(CXType type) const{
   CXType type1 = {CXType_Invalid, nullptr};
   while((type.kind == CXType_Pointer || type.kind == CXType_LValueReference)
-        && !clang_equalTypes(type, type1)){
+        && !same_type(type, type1)){
     type1 = type;
     type = clang_getPointeeType(type);
   }

@@ -3,6 +3,6 @@
 
 #include <cstddef>
 
-size_t f() { return 2; }
+std::size_t f() { return 2; }
 
 #endif //A_H not defined
