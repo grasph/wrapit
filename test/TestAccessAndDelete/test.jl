@@ -1,7 +1,7 @@
 
 module TestAccessAndDelete
 
-export A, B, C, D, f, g, h, i_, i_!
+export AccessDeleteA, AccessDeleteB, AccessDeleteC, AccessDeleteD, f, g, h, i_, i_!
 
 using CxxWrap
 using Libdl
@@ -20,14 +20,14 @@ using Test
 
 @testset "Access and deleted method test" begin
     #Deleted contructors:
-    @test_throws MethodError a = A()
-    @test_throws MethodError b = B()
+    @test_throws MethodError a = AccessDeleteA()
+    @test_throws MethodError b = AccessDeleteB()
 
     #Private constructor:
-    @test_throws MethodError b = B(1)
+    @test_throws MethodError b = AccessDeleteB(1)
 
-    a = A(1)
-    b = B(1, 2)
+    a = AccessDeleteA(1)
+    b = AccessDeleteB(1, 2)
 
     #public field
     @test i_(a) == 1
@@ -54,9 +54,9 @@ using Test
     @test h(b) == 12
 
     #Both C and C(int) are deleted
-    @test_throws MethodError c = C()
-    @test_throws MethodError c = C(1)
+    @test_throws MethodError c = AccessDeleteC()
+    @test_throws MethodError c = AccessDeleteC(1)
 
     #D is private
-    @test_throws MethodError d = D()
+    @test_throws MethodError d = AccessDeleteD()
 end

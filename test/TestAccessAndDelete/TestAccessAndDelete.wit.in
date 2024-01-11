@@ -2,7 +2,7 @@ module_name         = "@CMAKE_PROJECT_NAME@"
 
 include_dirs        = [ "@CMAKE_SOURCE_DIR@" ]
 
-input               = [ "A.h" ] 
+input               = [ "TestAccessAndDelete.h" ] 
 
 cxx-std             = "c++17"
 

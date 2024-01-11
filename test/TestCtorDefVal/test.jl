@@ -21,9 +21,9 @@ using .TestCtorDefVal
 using CxxWrap
 
 @testset "Constructor argument default value" begin
-    a = TestCtorDefVal.A()
+    a = TestCtorDefVal.CtorDefVal()
     @test i_(a) == 0
-    a = TestCtorDefVal.A(11)
+    a = TestCtorDefVal.CtorDefVal(11)
     @test i_(a) == 11
     i_!(a, 10)
     @test i_(a) == 10
