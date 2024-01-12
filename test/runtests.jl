@@ -26,14 +26,18 @@ tests = [ "TestAccessAndDelete", "TestCtorDefVal", "TestStdString" ]
         @testset "$t" begin
             source_dir = t
             build_dir = joinpath(source_dir, "build")
-            test_script = joinpath(source_dir, "test.jl")
+            test_script = joinpath(source_dir, "runtests.jl")
             @test begin
                 try
                     # Configure and build with CMake
 	                run(`cmake -S $source_dir -B $build_dir -DCMAKE_PREFIX_PATH=$cxxwrap_prefix`)
                     run(`cmake --build $build_dir`)
-                    # Tests run in Julia
+                    # Tests run in this Julia instance directly
                     include(test_script)
+                    # Alternative test run, using a subprocess
+                    # cd(source_dir)
+                    # run(`julia --project=.. test.jl`)
+                    # cd("..")
                     true
                 catch
                     false

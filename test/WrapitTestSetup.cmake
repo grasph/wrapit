@@ -1,5 +1,13 @@
 ## Standard pieces for setting up WrapIt tests with CMake
 
+# Path for CxxWrap cmake files:
+execute_process(
+  COMMAND "${CMAKE_CURRENT_LIST_DIR}/print-cxxwrap-path.jl"
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE CXXWRAP_PREFIX
+)
+list(APPEND CMAKE_PREFIX_PATH ${CXXWRAP_PREFIX})
+
 # Some standard options and paths
 set(CMAKE_MACOSX_RPATH 1)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -46,3 +54,7 @@ install(TARGETS
 LIBRARY DESTINATION lib
 ARCHIVE DESTINATION lib
 RUNTIME DESTINATION lib)
+
+# Setup the CTest
+include(CTest)
+add_test(NAME ${CMAKE_PROJECT_NAME} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} COMMAND julia --project=.. runtests.jl)
