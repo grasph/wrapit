@@ -15,10 +15,7 @@ using CxxWrap
 
 cxxwrap_prefix = CxxWrap.prefix_path()
 
-# tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance",
-#           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
-# 	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace"
-#         ]
+# Temporary override for converted tests
 tests = [ "TestAccessAndDelete", "TestCtorDefVal", "TestStdString" ]
 
 @testset verbose=true "Tests" begin
