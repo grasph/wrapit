@@ -1,8 +1,10 @@
-module_name         = "@CMAKE_PROJECT_NAME@"
+module_name         = "TestCtorDefVal"
 
-include_dirs        = [ "@CMAKE_SOURCE_DIR@" ]
+lib_basename        = "$(@__DIR__)/../deps/libjlTestCtorDefVal"
 
-input               = [ "TestCtorDefVal.h" ] 
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ] 
 
 cxx-std             = "c++17"
 

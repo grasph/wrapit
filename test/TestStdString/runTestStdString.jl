@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 
-TEST_SCRIPT="testStdVector.jl"
+TEST_SCRIPT="testStdString.jl"
 
 # Generate the wrapper and build the shared library:
 run(`cmake -B build`)

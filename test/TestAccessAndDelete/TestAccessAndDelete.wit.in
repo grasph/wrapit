@@ -1,6 +1,8 @@
-module_name         = "@CMAKE_PROJECT_NAME@"
+module_name         = "TestAccessAndDelete"
 
-include_dirs        = [ "@CMAKE_SOURCE_DIR@" ]
+lib_basename        = "$(@__DIR__)/../deps/libjlTestAccessAndDelete"
+
+include_dirs        = [ "." ]
 
 input               = [ "TestAccessAndDelete.h" ] 
 

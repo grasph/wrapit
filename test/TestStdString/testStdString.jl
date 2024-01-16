@@ -1,28 +1,8 @@
-# Test the wrapped library
 using Test
+using TestStdString
+using Serialization
 
-# Inline definition of the module
-module TestStdString
-
-using CxxWrap
-using Libdl
-
-export String, getenv, getenvString, getenvstd, getenvstd_1, getenvstd_2, getenvstd_3, getenvstd_std, setenvstd
-
-# Make this work in the source or the build area
-wrapped_lib_path = joinpath(@__DIR__, "build", "lib")
-
-@wrapmodule(()->joinpath(wrapped_lib_path, "libjlTestStdString.$(Libdl.dlext)"))
-
-function __init__()
-    @initcxx
-end
-
-end
-
-# Import the library
-using .TestStdString
-
+function runtest()
 @testset "StdString test" begin
     varname = "TEST"
     val = "Hello"
@@ -44,4 +24,13 @@ using .TestStdString
     varname_ = TestStdString.String(varname)
     @test TestStdString.getenvString(varname_) == newval
     
+    end
 end
+
+if "-s" in ARGS #Serialize mode
+    Test.TESTSET_PRINT_ENABLE[] = false
+    serialize(stdout, runtest())
+else
+    runtest()
+end
+

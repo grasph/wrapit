@@ -1,5 +1,7 @@
 module_name         = "TestStdVector"
 
+lib_basename        = "$(@__DIR__)/../deps/libjlTestStdVector"
+
 include_dirs        = [ "."  ]
 
 input               = [ "A.h" ]

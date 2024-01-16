@@ -5,6 +5,8 @@
 
 module_name         = "Hello"
 
+lib_basename        = "$(@__DIR__)/../deps/libjlHello"
+
 input               = [ "A.h" ] 
 
 include_dirs        = [ "." ]
