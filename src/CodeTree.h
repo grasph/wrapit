@@ -93,8 +93,13 @@ namespace codetree{
     int build_nmax_;
     int build_every_;
 
-    void auto_veto(bool val){ auto_veto_ = val; };
+    void auto_veto(bool val){ auto_veto_ = val; }
     bool auto_veto() { return auto_veto_; }
+
+    //if not empty a file with this created to be included
+    //in CMake build base configuration files
+    void cmake(const std::string& val){ cmake_ = val; }
+    std::string cmake() { return cmake_; }
 
     bool accessor_generation_enabled() const { return accessor_generation_enabled_;}
 
@@ -429,6 +434,9 @@ namespace codetree{
 
     std::ostream& generate_type_wrapper_header(std::ostream& o) const;
 
+    //Try to open file path for writing. Exit application if
+    //either an existing file is in the way and the force mode is disabled
+    //or the file opening failed.
     std::ofstream checked_open(const std::string& path) const;
 
     std::ostream&
@@ -446,6 +454,8 @@ namespace codetree{
     std::string clang_resource_dir_;
 
     bool auto_veto_;
+
+    std::string cmake_;
 
     bool update_mode_;
     

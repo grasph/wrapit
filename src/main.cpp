@@ -85,6 +85,12 @@ int main(int argc, char* argv[]){
     ("force", "Force overwriting output files.")
     ("cfgfile", "Configuration file (in toml format)",
      cxxopts::value<std::string>())
+    ("cmake", "Generate a wrapit.cmake file to be included in a CMake "
+     "configuration file. It defines two variables WRAPIT_INPUTS and "
+     "WRAPIT_PRODUCTS repectively with the list of input header files "
+     "the result depends on and the list of produced files")
+    ("output-prefix", "Prefix inserted to output paths",
+     cxxopts::value<std::string>()->default_value(""))
     ("resource-dir", std::string("Change the clang resource directory path (see clang "
                                  "--help and clang --print-resource-dir). Default: ")
      + CodeTree::resolve_clang_resource_dir_path(CLANG_RESOURCE_DIR) + ".",
@@ -151,10 +157,24 @@ int main(int argc, char* argv[]){
     auto clang_opts     = read_vstring("clang_opts");
 
     auto lib_basename       = toml_config["lib_basename"].value_or(std::string("libjl") + module_name);
-    auto out_cxx_dir        = toml_config["out_cxx_dir"].value_or(join_paths("lib" + module_name, std::string("src")));
-    auto out_jl_dir         = toml_config["out_jl_dir"].value_or(join_paths(module_name, std::string("src")));
+
+    std::string output_prefix = options["output-prefix"].as<std::string>();
+        
+    auto resolve_out_dir = [&](const std::string & dir){
+      if(output_prefix.size() == 0 || fs::path(dir).is_absolute()) return dir;
+      else return (std::string)(fs::path(output_prefix) / fs::path(dir));
+    };
+    
+    auto out_cxx_dir        = resolve_out_dir(toml_config["out_cxx_dir"].value_or(join_paths("lib" + module_name, std::string("src"))));
+    auto out_jl_dir         = resolve_out_dir(toml_config["out_jl_dir"].value_or(join_paths(module_name, std::string("src"))));
+    auto out_report_fpath   = resolve_out_dir(std::string("jl") + module_name + "-report.txt");
+    std::string out_cmake_fpath;
+    if(options.count("cmake") > 0){
+      out_cmake_fpath = resolve_out_dir("wrapit.cmake");
+    }
+    
     auto n_classes_per_file = toml_config["n_classes_per_file"].value_or(-1);
-    auto out_report_fname = std::string("jl") + module_name + "-report.txt";
+
 
 
     auto veto_list = toml_config["veto_list"].value_or(""sv);
@@ -205,7 +225,6 @@ int main(int argc, char* argv[]){
     }
 
 
-
     bool in_err = false;
 
     auto open_file = [&](const std::string& fname){
@@ -217,6 +236,7 @@ int main(int argc, char* argv[]){
       return f;
     };
 
+    
     fs::create_directories(out_jl_dir);
     auto out_jl = open_file(join_paths(out_jl_dir, out_jl_fname));
 
@@ -228,9 +248,10 @@ int main(int argc, char* argv[]){
     }
     auto& out_export_jl = same_ ? out_jl : out_export_jl_;
 
-    std::ofstream out_report(out_report_fname, open_mode);
+    std::ofstream out_report(out_report_fpath, open_mode);
     if(out_report.tellp()!=0){
-      std::cerr << "File " << out_report_fname << " is on way, please move it or use the --force option to force its deletion.\n";
+      std::cerr << "File " << out_report_fpath
+                << " is in the way, please move it or use the --force option to force its deletion.\n";
       in_err = true;
     }
 
@@ -245,6 +266,7 @@ int main(int argc, char* argv[]){
     tree.add_std_option(cxx_std);
 
     tree.auto_veto(auto_veto);
+    tree.cmake(out_cmake_fpath);
     tree.enableTestBuild(test_build);
     tree.build_nskips(build_nskips);
     tree.build_nmax(build_nmax);
@@ -261,7 +283,6 @@ int main(int argc, char* argv[]){
     
     tree.set_out_cxx_dir(out_cxx_dir);
     tree.set_out_jl_dir(out_jl_dir);
-
     
     if(propagation_mode == "types"){
       tree.propagation_mode(propagation_mode_t::types);
@@ -298,7 +319,7 @@ int main(int argc, char* argv[]){
         tree.add_clang_opt(name);
       }
     }
-
+    
     if(options.count("resource-dir")){
       tree.set_clang_resource_dir(options["resource-dir"].as<std::string>());
     }

@@ -4,3 +4,5 @@ jl*-report.txt
 build/
 .vscode/
 Manifest.toml
+.gdb_history
+
