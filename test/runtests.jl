@@ -11,29 +11,41 @@ tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer
           "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
 	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace",
           "TestOrder"
-        ]
-using CxxWrap
+          ]
 
-cxxwrap_prefix = CxxWrap.prefix_path()
+#Switch to test examples
+testExamples = true
 
-# Temporary override for converted tests
-tests = [ "TestAccessAndDelete" , "TestCtorDefVal", "TestStdString", "TestStdVector" ]
-#tests = [ "TestStdVector" ]
+#List of test can also be specified on the command line
+if length(ARGS) > 0
+    tests = filter(x->x ≠ "examples", ARGS)
+    if length(ARGS) == length(tests)
+        testExamples = false
+    end
+end
 
-#Julia module of each test are stored in the build directory:
-ENV["JULIA_LOAD_PATH"] = ":build"
+#Number of CPU cores to use to compile the code
+ncores=Sys.CPU_THREADS
 
 @testset verbose=true "Tests" begin
     for t in tests
         @testset "$t" failfast=true begin
             source_dir = t
             build_dir = joinpath(source_dir, "build")
-            test_script = lowercasefirst(t) * ".jl"
+            test_script = "run" * t * ".jl"
             @test begin
                 try
-                    # Configure and build with CMake
-	            run(`cmake -S $source_dir -B $build_dir`)
-                    run(`cmake --build $build_dir`)
+                    if isfile(joinpath(source_dir, "CMakeLists.txt"))
+                        println("Try to run cmake...")
+                        #cmake based build
+                        # Configure and build with CMake
+	                run(`cmake -S $source_dir -B $build_dir`)
+                        run(`cmake --build $build_dir -j $ncores`)
+                    else
+                        println("source_dir:", source_dir)
+                        #assumes plain make build
+                        run(`make -C $source_dir -j $ncores`)
+                    end
                     true
                 catch
                     false
@@ -42,5 +54,5 @@ ENV["JULIA_LOAD_PATH"] = ":build"
             Test.record(Test.get_testset(), deserialize(open(Cmd(`julia --project=.. $test_script -s`, dir=source_dir))))
         end
     end
-    include("test_examples.jl")
+    testExamples && include("test_examples.jl")
 end

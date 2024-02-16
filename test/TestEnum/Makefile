@@ -4,4 +4,3 @@
 MODULE_NAME=TestEnum
 
 -include ../make.rules
-

@@ -10,7 +10,7 @@
 # Assumptions:
 #
 # - the test script is named run<PROJECT_NAME>.jl, with <PROJECT_NAME> the cmake projet name
-# - the wit file is named <PROJECT_NAME>.wit.in.
+# - the wit file is named <PROJECT_NAME>.wit
 # - the module_name defined in the wit file is the same as <PROJECT_NAME>
 # - the produced wrapper shared library must be named libjl<PROJECT_NAME>, placed in the
 #   <PROJECT_NAME>/deps folder and the lib_basename wit parameter is set to
@@ -21,7 +21,6 @@
 # the actual .wit file from the .wit.in
 
 # Path for CxxWrap cmake files:
-
 find_program(PRINT_CXXWRAP_PATH print-cxxwrap-path.jl
   PATHS "${CMAKE_CURRENT_LIST_DIR}/../buildtools")
 
@@ -54,6 +53,11 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;${JlCxx_location}")
 
 message(STATUS "Found JlCxx at ${JlCxx_location}")
 
+# C++ standard
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CXX_EXTENSIONS OFF)
+
 # Wrapit verbosity
 set(WRAPIT_VERBOSITY 1 CACHE STRING "Define verbosity level of the wrapit command. An integer, 0 for a quiet mode, 1 for a normal mode, higher numbers for a verbosity that increases with the number.")
 
@@ -70,15 +74,15 @@ endif()
 # Define target file names based on the project name for the test
 # Then write the .wit file in the build area
 # This then makes sure we find the correct header from the example sources
-set(WRAPIT_WIT_FILE "${CMAKE_PROJECT_NAME}.wit")
+set(WRAPIT_WIT_FILE "${CMAKE_SOURCE_DIR}/${CMAKE_PROJECT_NAME}.wit")
 set(WRAPPER_LIB "jl${CMAKE_PROJECT_NAME}")
 set(WRAPPER_JULIA_PACKAGE_DIR "${CMAKE_PROJECT_NAME}")
 set(WRAPPER_JULIA_PACKAGE_FILE "${CMAKE_PROJECT_NAME}.jl")
-configure_file(${CMAKE_SOURCE_DIR}/${CMAKE_PROJECT_NAME}.wit.in ${CMAKE_BINARY_DIR}/${WRAPIT_WIT_FILE} @ONLY)
+#configure_file(${CMAKE_SOURCE_DIR}/${CMAKE_PROJECT_NAME}.wit.in ${CMAKE_BINARY_DIR}/${WRAPIT_WIT_FILE} @ONLY)
 
 # Generate the wrapper code. This is done at configure time.
 execute_process(
-  COMMAND "${WRAPIT}" -v "${WRAPIT_VERBOSITY}" --force --update --cmake --output-prefix "${CMAKE_BINARY_DIR}" "${CMAKE_BINARY_DIR}/${WRAPIT_WIT_FILE}"
+  COMMAND "${WRAPIT}" -v "${WRAPIT_VERBOSITY}" --force --update --cmake --output-prefix "${CMAKE_BINARY_DIR}" "${WRAPIT_WIT_FILE}"
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   COMMAND_ECHO STDERR
   RESULT_VARIABLE result)

@@ -1,3 +1,5 @@
+BUILD_DIR=build
+
 UNAME = $(shell uname)
 
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
@@ -37,69 +39,64 @@ MODULE_NAMES=TestPropagation1 TestPropagation2 TestPropagation3
 
 .PHONY: all clean test
 
-CXX_PRODUCTS=$(foreach module,$(MODULE_NAMES), lib$(module)/src/jl$(module).cxx)
+CXX_PRODUCTS=$(foreach module,$(MODULE_NAMES), $(BUILD_DIR)/lib$(module)/src/jl$(module).cxx)
+OBJS=$(foreach module,$(MODULE_NAMES), $(BUILD_DIR)/lib$(module)/build/jl$(module).o)
 HEADERS=$(patsubst %.cxx, %.h, $(CXX_PRODUCTS))
-OBJS=$(addsuffix .o, $(basename $(CXX_PRODUCTS)))
-DEPS=$(addsuffix .d, $(basename $(CXX_PRODUCTS)))
-JL_MODULES=$(foreach module,$(MODULE_NAMES), $(module)/src/$(module).jl)
-JL_LIBS=$(foreach module,$(MODULE_NAMES), lib$(module)/libjl$(module)$(SO_SUFFIX))
-BUILD_DIRS=$(foreach module,$(MODULE_NAMES), lib$(module)/build/)
+DEPS=$(addsuffix .d, $(basename $(OBJS)))
+JL_MODULES=$(foreach module,$(MODULE_NAMES), $(BUILD_DIR)/$(module)/src/$(module).jl)
+JL_LIBS=$(foreach module,$(MODULE_NAMES), $(BUILD_DIR)/$(module)/deps/libjl$(module)$(SO_SUFFIX))
 
 PRODUCTS=$(JL_LIBS) $(CXX_PRODUCTS) $(HEADERS) $(JL_MODULES) 
 
 .PRECIOUS: $(PRODUCTS)
 
-
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) -r $(BUILD_DIRS) $(patsubst %,jl%-report.txt,$(MODULE_NAMES)) $(OBJS) $(DEPS)
-	[ -d libTestPropagation1/src ] && cd libTestPropagation1/src && $(RM) $(file < libTestPropagation1/src/generated_cxx) dbg_msg.h  generated_cxx  Wrapper.h || true
-	-rmdir -p libTestPropagation1/src TestPropagation1/src 2>/dev/null || true
-	[ -d libTestPropagation2/src ] && cd libTestPropagation2/src && $(RM) $(file < libTestPropagation2/src/generated_cxx) dbg_msg.h  generated_cxx  Wrapper.h || true
-	-rmdir -p libTestPropagation2/src TestPropagation2/src 2>/dev/null || true
-	[ -d libTestPropagation3/src ] && cd libTestPropagation3/src && $(RM) $(file < libTestPropagation3/src/generated_cxx) dbg_msg.h  generated_cxx  Wrapper.h || true
-	-rmdir -p libTestPropagation3/src TestPropagation3/src 2>/dev/null || true
+	-$(RM) -r $(BUILD_DIR)
 
+#use of % instead of $(BUILD_DIR) prevents make to run the recipee multiple times when running with -j
+%/libTestPropagation1/src/jlTestPropagation1.cxx %/libTestPropagation1/src/jlTestPropagation1.h %/TestPropagation1/src/TestPropagation1.jl: TestPropagation1.wit
+	wrapit --force --output-prefix $* $<
 
-libTestPropagation1/src/jl%.cxx: %.wit
-	wrapit --force $<
+%/libTestPropagation2/src/jlTestPropagation2.cxx %/libTestPropagation2/src/jlTestPropagation2.h %/TestPropagation2/src/TestPropagation2.jl: TestPropagation2.wit
+	wrapit --force --output-prefix $* $<
 
-libTestPropagation2/src/jl%.cxx: %.wit
-	wrapit --force $<
+%/libTestPropagation3/src/jlTestPropagation3.cxx %/libTestPropagation3/src/jlTestPropagation3.h %/TestPropagation3/src/TestPropagation3.jl: TestPropagation3.wit
+	wrapit --force --output-prefix $* $<
 
-libTestPropagation3/src/jl%.cxx: %.wit
-	wrapit --force $<
-
-libTestPropagation1/build/%.o: libTestPropagation1/src/%.cxx
-	[ -d libTestPropagation1/build ] || mkdir libTestPropagation1/build
+$(BUILD_DIR)/libTestPropagation1/build/%.o: $(BUILD_DIR)/libTestPropagation1/src/%.cxx
+	[ -d $(@D) ] || mkdir -p $(@D)
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-libTestPropagation2/build/%.o: libTestPropagation2/src/%.cxx
-	[ -d libTestPropagation2/build ] || mkdir libTestPropagation2/build
+$(BUILD_DIR)/libTestPropagation2/build/%.o: $(BUILD_DIR)/libTestPropagation2/src/%.cxx
+	[ -d $(@D) ] || mkdir -p $(@D)
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $< $(LDLIBS)
 
-libTestPropagation3/build/%.o: libTestPropagation3/src/%.cxx
-	[ -d libTestPropagation3/build ] || mkdir libTestPropagation3/build
+$(BUILD_DIR)/libTestPropagation3/build/%.o: $(BUILD_DIR)/libTestPropagation3/src/%.cxx
+	[ -d $(@D) ] || mkdir -p $(@D)
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $< $(LDLIBS)
 
-libTestPropagation1/libjl%$(SO_SUFFIX): libTestPropagation1/build/jl%.o
+$(BUILD_DIR)/TestPropagation1/deps/libjl%$(SO_SUFFIX): $(BUILD_DIR)/libTestPropagation1/build/jl%.o
+	[ -d $(@D) ] || mkdir -p $(@D)
 	$(LINK.o) -o $@ --shared -fPIC $< $(LDLIBS) 
-	touch $*/src/$*.jl
+	touch $(BUILD_DIR)/$*/src/$*.jl
 
-libTestPropagation2/libjl%$(SO_SUFFIX): libTestPropagation2/build/jl%.o
+$(BUILD_DIR)/TestPropagation2/deps/libjl%$(SO_SUFFIX): $(BUILD_DIR)/libTestPropagation2/build/jl%.o
+	[ -d $(@D) ] || mkdir -p $(@D)
 	$(LINK.o) -o $@ --shared -fPIC $< $(LDLIBS)
-	touch $*/src/$*.jl
+	touch $(BUILD_DIR)/$*/src/$*.jl
 
-libTestPropagation3/libjl%$(SO_SUFFIX): libTestPropagation3/build/jl%.o
+$(BUILD_DIR)/TestPropagation3/deps/libjl%$(SO_SUFFIX): $(BUILD_DIR)/libTestPropagation3/build/jl%.o
+	[ -d $(@D) ] || mkdir -p $(@D)
 	$(LINK.o) -o $@ --shared -fPIC $< $(LDLIBS)
-	touch $*/src/$*.jl
+	touch $(BUILD_DIR)/$*/src/$*.jl
 
 echo_%:
 	 @echo $*=$($*)
 
-test:
-	$(MAKE) all && . ./setup.sh && { julia runTestPropagation1.jl; julia runTestPropagation2.jl; julia runTestPropagation3.jl; }
+test: all
+	julia runTestPropagation.jl
 
 -include $(DEPS)
 

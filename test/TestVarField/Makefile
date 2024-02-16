@@ -8,6 +8,5 @@ clean:
 	$(MAKE) -f Makefile.on $@
 	$(MAKE) -f Makefile.off $@
 
-test:
-	$(MAKE) -f Makefile.on $@
-	$(MAKE) -f Makefile.off $@
+test: all
+	julia runTestVarField.jl

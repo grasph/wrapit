@@ -1,0 +1,5 @@
+#!/bin/bash
+
+ncores=`nproc`
+
+make -j "$ncores" test

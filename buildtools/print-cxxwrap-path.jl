@@ -1,7 +1,6 @@
 #!/usr/bin/env julia
 #
 using Pkg
-Pkg.activate(@__DIR__)
 
 # Bootstrap environment for the first run
 redirect_stdio(stdout=stderr) do
