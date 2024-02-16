@@ -8,7 +8,7 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
-
+WRAPIT = $(shell which wrapit)
 CXXWRAP_PREFIX=$(shell ../../buildtools/print-cxxwrap-path.jl)
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
@@ -47,7 +47,7 @@ clean:
 	-$(RM) -r $(PRODUCTS)
 
 $(BUILD_DIR)/libHello/src/jl%.cxx: %.wit
-	wrapit --force --output-prefix $(BUILD_DIR) $<
+	$(WRAPIT) --force --output-prefix $(BUILD_DIR) $<
 
 $(BUILD_DIR)/%.o: $(BUILD_DIR)/libHello/src/%.cxx
 	-mkdir -p $(BUILD_DIR)

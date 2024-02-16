@@ -11,6 +11,17 @@ The list of parameters with their defaut value is provided below.
 # Name of the julia module to generate
 module_name         = "CxxLib"
 
+# UUID to assign to the generated Julia project. It will
+# be copied into the Project.toml file. If empty a new
+# uuid is generated.
+uuid                 = ""
+
+# version to assign to the generated Julia project. If
+# not empty, it will be copied into the Project.toml file
+# of the julia project.
+version               = ""
+
+
 # List of input header files containing the classes to wrap
 # See also include_dirs
 input               = [ ]
@@ -31,8 +42,10 @@ cxx-std             = "c++17"
 # If not set, default to: lib<module_name>/src
 # out_cxx_dir = 
 
-# Destination directory for the generated julia code
-# If not set, default to: <module_name>/src
+# Destination directory for the generated julia package
+# If not set, default to: <module_name>. The julia module code
+# is written in a src subdirectory and Project.toml file
+# at the root of the directory.
 # out_jl_dir =
 
 # Number of class wrapper to group in the same source file
@@ -108,8 +121,10 @@ export_jl_fname     = ""
 
 # Base name (i.e without the file extension) of the shared library
 # the wrapper code is built into and to load
-# If not set, lib<module_name>
-#lib_basename =
+# If not set, $(@__DIR__)/../deps/lib<module_name>, assuming the
+# shared library will be place in a deps subdirectory of the 
+# julia project directory specified with the out_jl_dir parameter.
+#lib_basename
 
 # Mode for the generation of the export statement in
 # the julia module code.

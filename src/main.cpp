@@ -17,6 +17,7 @@ using namespace std::string_view_literals;
 
 #include "CodeTree.h"
 #include "utils.h"
+#include "uuid_utils.h"
 
 using namespace codetree;
 
@@ -75,6 +76,9 @@ find_include_path(const fs::path& p, const std::vector<fs::path>& inc_dirs){
 
 
 int main(int argc, char* argv[]){
+
+  std::srand(std::time(nullptr));
+  
   cxxopts::Options option_list("wrapit",
                                "Generates wrappers from a c++ header file for Cxx.jl.\n");
   // clang-format off
@@ -100,7 +104,7 @@ int main(int argc, char* argv[]){
      "its time stamp is preserved. The time stamp can then be used to "
      "recompile modified files only during wrapper development of "
      "large projects.");
-  
+
   option_list.parse_positional({"cfgfile"});
 
   auto options = option_list.parse(argc, argv);
@@ -152,27 +156,29 @@ int main(int argc, char* argv[]){
     if(out_jl_fname.size() == 0) out_jl_fname = module_name + ".jl";
     auto cxx_std = toml_config["cxx-std"].value_or(std::string("c++17"));
 
+    auto out_project_fname = toml_config["project_toml_fname"].value_or(std::string("Project.toml"));
+
     auto macro_definitions = read_vstring("macro_definitions");
     auto clang_features = read_vstring("clang_features");
     auto clang_opts     = read_vstring("clang_opts");
 
-    auto lib_basename       = toml_config["lib_basename"].value_or(std::string("libjl") + module_name);
+    auto lib_basename       = toml_config["lib_basename"].value_or(std::string("$(@__DIR__)/../deps/libjl") + module_name);
 
     std::string output_prefix = options["output-prefix"].as<std::string>();
-        
+
     auto resolve_out_dir = [&](const std::string & dir){
       if(output_prefix.size() == 0 || fs::path(dir).is_absolute()) return dir;
       else return (std::string)(fs::path(output_prefix) / fs::path(dir));
     };
-    
+
     auto out_cxx_dir        = resolve_out_dir(toml_config["out_cxx_dir"].value_or(join_paths("lib" + module_name, std::string("src"))));
-    auto out_jl_dir         = resolve_out_dir(toml_config["out_jl_dir"].value_or(join_paths(module_name, std::string("src"))));
+    auto out_jl_dir         = resolve_out_dir(toml_config["out_jl_dir"].value_or(module_name));
     auto out_report_fpath   = resolve_out_dir(std::string("jl") + module_name + "-report.txt");
     std::string out_cmake_fpath;
     if(options.count("cmake") > 0){
       out_cmake_fpath = resolve_out_dir("wrapit.cmake");
     }
-    
+
     auto n_classes_per_file = toml_config["n_classes_per_file"].value_or(-1);
 
 
@@ -236,15 +242,16 @@ int main(int argc, char* argv[]){
       return f;
     };
 
-    
-    fs::create_directories(out_jl_dir);
-    auto out_jl = open_file(join_paths(out_jl_dir, out_jl_fname));
+
+    auto out_jl_src = join_paths(out_jl_dir, "src");
+    fs::create_directories(out_jl_src);
+    auto out_jl = open_file(join_paths(out_jl_src, out_jl_fname));
 
     std::ofstream out_export_jl_;
     bool same_ = true;
     if(out_export_jl_fname.size() > 0){
       same_ = false;
-      out_export_jl_ = std::move(open_file(join_paths(out_jl_dir, out_export_jl_fname)));
+      out_export_jl_ = std::move(open_file(join_paths(out_jl_src, out_export_jl_fname)));
     }
     auto& out_export_jl = same_ ? out_jl : out_export_jl_;
 
@@ -255,14 +262,42 @@ int main(int argc, char* argv[]){
       in_err = true;
     }
 
+    auto out_project_fpath = join_paths(out_jl_dir, out_project_fname);
+    std::ofstream out_project_toml(out_project_fpath, open_mode);
+    if(out_project_toml.tellp()!=0){
+      std::cerr << "File " << out_project_fpath
+                << " is in the way, please move it or use the --force option to force its deletion.\n";
+      in_err = true;
+    }
+
     if(in_err) return -1;
+
+
+    auto uuid = toml_config["uuid"].value_or(std::string());
+
+    if(uuid.size() == 0){
+      uuid = gen_uuid();
+      std::cerr << "The configuration file misses the uuid parameter. Folloing "
+        "generated uuid will be used for the generate Julia project. Add the "
+        "following line in the .wit configuration file to use same uuid "
+        "for next versions of the code.\n"
+        "uuid = \"" << uuid << "\"\n\n";
+    } else if (!validate_uuid(uuid)){
+      std::cerr << "The value \"" << uuid << "\" of the uuid parameter found in "
+        "the .wit configuration file is not valid. You can run first with an "
+        "empty string to generate a new uuid, which will be displayed to the "
+        "output (stderr).\n";
+        return 1;
+    }
+
+    auto version = toml_config["version"].value_or(std::string());
 
     verbose = verbosity;
 
     CodeTree tree;
 
     tree.set_force_mode(options.count("force") > 0);
- 
+
     tree.add_std_option(cxx_std);
 
     tree.auto_veto(auto_veto);
@@ -280,10 +315,10 @@ int main(int argc, char* argv[]){
     tree.set_n_classes_per_file(n_classes_per_file);
 
     tree.set_module_name(module_name);
-    
+
     tree.set_out_cxx_dir(out_cxx_dir);
     tree.set_out_jl_dir(out_jl_dir);
-    
+
     if(propagation_mode == "types"){
       tree.propagation_mode(propagation_mode_t::types);
     } else if(propagation_mode == "methods"){
@@ -319,7 +354,7 @@ int main(int argc, char* argv[]){
         tree.add_clang_opt(name);
       }
     }
-    
+
     if(options.count("resource-dir")){
       tree.set_clang_resource_dir(options["resource-dir"].as<std::string>());
     }
@@ -327,7 +362,7 @@ int main(int argc, char* argv[]){
     if(options.count("update")){
       tree.set_update_mode(true);
     }
-    
+
     for(const auto& s: extra_headers){
       tree.add_forced_header(s);
     }
@@ -348,6 +383,7 @@ int main(int argc, char* argv[]){
     tree.preprocess();
     tree.generate_cxx();
     tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);
+    tree.generate_projet_file(out_project_toml, uuid, version);
 
     tree.report(out_report);
   }

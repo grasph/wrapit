@@ -4,40 +4,20 @@ This directory contains a very simple example to show how WrapIt! works.
 
 ## Code generation and compilation of the shared library
 
-The `CMakeLists.txt` file configures the build process, which in essence is
+To compile the code and install the julia package, run `julia install.jl`. Use the `--project` julia command line option to install the package in a different environment than your default one.
 
-1. Run the `wrapit` executable over the simple source header `A.h`
+For illustration, both configuration file for `cmake` (`CMakeLists.txt`) and plain `make` (`Makefile`) are provided. The `install.jl` script uses the first option.
+
+The build process will perform two steps:
+
+1. Running the `wrapit` executable over the simple source header `A.h`
     1. The output can be examined in `libHello/src/jlHello.cxx`
     2. The Julia CxxWrap loader module is written to `Hello/src/Hello.jl`
-2. Compile the shared library into `lib`
+2. Compilation of the shared library into `lib`
 
-As CMake needs to know the location of CxxWrap, this is best driven from
-`build.jl` (use the `Project.toml` file, or any other project where the
-`CxxWrap` module is available). This will perform the build in `./build`.
-
-e.g.,
-
-```sh
-julia --project=. build.jl
-```
-
-Here you will need to setup the project environment using the supplied
-`Project.toml`.
+💡 If you modify the code, you don't need to install the package again, because the `install.jl` script install the package in the `dev` mode. Just rebuild the library runing `make` in the build directory. Make sure to restart julia after this, unless you use `Revise.jl`.
 
 ## Use of the wrapper
-
-### Shell environment
-
-As the package is not installed in the system and is only in the current
-directory, you can add this directory to `LD_LIBRARY_PATH` or
-`DYLD_LIBRARY_PATH` (used for the shared library) and `JULIA_LOAD_PATH` (used
-for the Julia module) environment variables. You can source the `setup.sh` file
-in the build area to perform this.
-
-```sh
-cd build
-source setup.sh
-```
 
 The file [demo_Hello.jl](demo_Hello.jl) reproduced below shows how to use the C++ library from Julia.
 
@@ -52,13 +32,5 @@ a = Hello.A("World")
 say_hello(a)
 ```
 
-### Julia script
+⚠ If you specified a project directory when running `install.jl`, you need to specify the same directory when running `demo_Hello.jl` in order for the script to find the installed `Hello` package.
 
-Instead of the environment modifications above, the `test.jl` script will define
-the CxxWrap module internally and run the basic tests, in a self-contained way.
-
-### Build and test
-
-The `runtests.jl` script will build the wrapper and test it. N.B. this script will
-also instantiate the project environment, so that the whole test can be run
-automatically.

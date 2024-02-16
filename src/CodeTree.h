@@ -178,6 +178,10 @@ namespace codetree{
 
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
+    void generate_projet_file(std::ostream&o,
+                              const std::string& uuid,
+                              const std::string& version);
+    
 
     //To be called before the generate_xx functions.
     //Sorts the types such that a parent type appears in the list
@@ -263,7 +267,7 @@ namespace codetree{
     void set_module_name(const std::string& val){ module_name_ = val;}
 
     void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
-
+    
   protected:
 
     enum class accessor_mode_t {none, getter, both };
