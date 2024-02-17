@@ -1,6 +1,7 @@
 using Test
 using Serialization
 
+push!(LOAD_PATH, "$(@__DIR__)/build")
 using TestOperators
 
 # Test an operator executing exp.

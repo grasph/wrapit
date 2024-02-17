@@ -76,9 +76,9 @@ test: all
 	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=`pwd`/ROOT/src:@:@v#.#:@stdlib julia demo_TGraph.jl
 	cmp demo_TGraph.png demo_TGraph-ref.png
 
-$(BUILD_DIR)/libROOT/src/generated_cxx $(BUILD_DIR)/ROOT/Project.toml $(BUILD_DIR)/ROOT/src/ROOT-export.jl: $(BUILD_DIR)/ROOT-generated.wit jlROOT-veto.h $(WRAPIT)
-	$(MAKE) $(BUILD_DIR)/ROOT-generated.wit
-	$(WRAPIT) --force --update --output-prefix $(BUILD_DIR) $<
+%/libROOT/src/generated_cxx %/ROOT/Project.toml %/ROOT/src/ROOT-export.jl: %/ROOT-generated.wit jlROOT-veto.h $(WRAPIT)
+	$(MAKE) $*/ROOT-generated.wit
+	$(WRAPIT) --force --update --output-prefix $* $<
 	$(eval GENERATED_CXX:=$(file < $(BUILD_DIR)/libROOT/src/generated_cxx))
 	$(eval OBJS:=$(addprefix $(BUILD_DIR)/libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX))))
 

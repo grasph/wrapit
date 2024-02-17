@@ -1,4 +1,5 @@
 using Test
+using Serialization
 
 push!(LOAD_PATH, "$(@__DIR__)/build")
 using TestPointers
