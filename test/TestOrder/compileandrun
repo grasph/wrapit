@@ -1,0 +1,13 @@
+#!/usr/bin/env julia
+
+TEST_SCRIPT="runTestOrder.jl"
+
+#number of cores to use for code compilation
+ncores=Sys.CPU_THREADS
+
+# Generate the wrapper and build the shared library:
+run(`cmake -B build .`)
+run(`cmake --build build -j $ncores`)
+
+# Execute the test
+include(TEST_SCRIPT)

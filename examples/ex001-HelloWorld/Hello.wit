@@ -1,4 +1,12 @@
+# This Hello.wit file will work for a standalone build in this directory
+#
+# When used with CMake the Hello.wit.in file is used as a template and
+# appropriate path modifications are made
+
 module_name         = "Hello"
+uuid                = "76931fac-9dab-2b36-c248-b87d6ae33f9a"
+
+lib_basename        = "$(@__DIR__)/../deps/libjlHello"
 
 input               = [ "A.h" ] 
 

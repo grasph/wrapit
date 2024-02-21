@@ -2,7 +2,7 @@ module_name         = "TestStdString"
 
 include_dirs        = [ "."  ]
 
-input               = [ "A.h" ]
+input               = [ "TestStdString.h" ]
 
 cxx-std             = "c++17"
 

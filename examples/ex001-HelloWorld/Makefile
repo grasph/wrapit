@@ -1,12 +1,15 @@
 UNAME = $(shell uname)
+
+BUILD_DIR=build
+
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
 CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 #CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
-
-CXXWRAP_PREFIX=$(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUID("1f15a43c-97ca-5a2a-ae31-89f07a497df4")) || Pkg.add("CxxWrap"); using CxxWrap; print(CxxWrap.prefix_path())')
+WRAPIT = $(shell which wrapit)
+CXXWRAP_PREFIX=$(shell ../../buildtools/print-cxxwrap-path.jl)
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
 LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia -lcxxwrap_julia_stl
@@ -36,27 +39,28 @@ CC_FILES=jlHello.cxx
 
 .PRECIOUS: $(CC_FILES)
 
-PRODUCTS=libHello/libjlHello$(SO_SUFFIX) $(addprefix libHello/src/, jlHello.cxx  jlHello.h  Wrapper.h generated_cxx) Hello/src/Hello.jl 
+PRODUCTS=$(addprefix $(BUILD_DIR)/, Hello/deps/libjlHello$(SO_SUFFIX) $(addprefix libHello/src/, jlHello.cxx  jlHello.h  Wrapper.h generated_cxx) Hello/src/Hello.jl jlHello-report.txt)
 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) -r $(PRODUCTS) libHello/build jlHello-report.txt
+	-$(RM) -r $(PRODUCTS)
 
-libHello/src/jl%.cxx: %.wit
-	wrapit --force $<
+$(BUILD_DIR)/libHello/src/jl%.cxx: %.wit
+	$(WRAPIT) --force --output-prefix $(BUILD_DIR) $<
 
-libHello/build/%.o: libHello/src/%.cxx
-	-mkdir libHello/build
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/libHello/src/%.cxx
+	-mkdir -p $(BUILD_DIR)
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-libHello/libjlHello$(SO_SUFFIX): libHello/build/jlHello.o
+$(BUILD_DIR)/Hello/deps/libjlHello$(SO_SUFFIX): $(BUILD_DIR)/jlHello.o
+	-mkdir -p $(BUILD_DIR)/Hello/deps
 	$(LINK.o) -o $@ --shared -fPIC $^ $(ROOT_LIBS) $(LDLIBS)
 
 echo_%:
 	@echo $*=$($*)
 
 run_demo: all
-	. ./setup.sh && julia demo_Hello.jl
+	JULIA_LOAD_PATH=:$(BUILD_DIR) julia demo_Hello.jl
 
--include $(addsuffix .d, $(basename $(CC_FILES)))
+-include $(addprefix $(BUILD_DIR)/, $(addsuffix .d, $(basename $(CC_FILES))))

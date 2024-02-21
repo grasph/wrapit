@@ -1,6 +1,10 @@
 using Test
+using Serialization
+
+push!(LOAD_PATH, "build")
 using TestStdString
 
+function runtest()
 @testset "StdString test" begin
     varname = "TEST"
     val = "Hello"
@@ -22,5 +26,13 @@ using TestStdString
     varname_ = TestStdString.String(varname)
     @test TestStdString.getenvString(varname_) == newval
     
+    end
+end
+
+if "-s" in ARGS #Serialize mode
+    Test.TESTSET_PRINT_ENABLE[] = false
+    serialize(stdout, runtest())
+else
+    runtest()
 end
 

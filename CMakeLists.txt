@@ -99,6 +99,7 @@ add_executable(wrapit
    src/TypeRcd.cpp
    src/TypeMapper.cpp
    src/utils.cpp
+   src/uuid_utils.cpp
    src/libclang-ext.cpp
    src/FunctionWrapper.cpp
    src/CodeTree.cpp
@@ -133,3 +134,8 @@ install(TARGETS wrapit DESTINATION bin)
 #       should come from a dynamically linked library." and prescribe to
 #       compile the code as position independent to work around this bug.
 # See also https://github.com/grasph/wrapit/issues/30
+
+# Enable unit testing capabilities
+include(CTest)
+add_test(NAME ex001-HelloWorld WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/ex001-HelloWorld COMMAND julia --project=. runtests.jl)
+add_test(NAME unittests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test COMMAND julia --project=. runtests.jl)

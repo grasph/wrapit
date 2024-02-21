@@ -1,6 +1,10 @@
 module_name         = "ROOT"
+uuid                = "b0506e13-49c2-4ce6-b48c-bb2bc691fb3e"
+version             = "0.0.1"
+
 export_jl_fname     = "ROOT-export.jl"
 module_jl_fname     = "ROOT-generated.jl"
+lib_basename        = "$(@__DIR__)/../deps/libjlROOT"
 
 include_dirs        = [ "%ROOT_INC_DIR%", "." ]
 
