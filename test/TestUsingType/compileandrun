@@ -1,5 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env julia
 
-ncores=`nproc`
+TEST_SCRIPT="runTestUsingType.jl"
 
-make -j "$ncores" test
+#number of cores to use for code compilation
+ncores=Sys.CPU_THREADS
+
+# Generate the wrapper and build the shared library:
+run(`cmake -B build .`)
+run(`cmake --build build -j $ncores`)
+
+# Execute the test
+include(TEST_SCRIPT)

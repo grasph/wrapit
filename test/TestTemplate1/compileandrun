@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 
-TEST_SCRIPT="runTestAccessAndDelete.jl"
+TEST_SCRIPT="runTestTemplate1.jl"
 
 #number of cores to use for code compilation
 ncores=Sys.CPU_THREADS
