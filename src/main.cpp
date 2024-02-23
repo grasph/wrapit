@@ -121,11 +121,14 @@ int main(int argc, char* argv[]){
       return 1;
     }
 
-    auto read_vstring = [toml_config](const char* datacard){
+    auto read_vstring = [toml_config](const char* datacard, std::vector<std::string> defVal = std::vector<std::string>()){
       auto config_ = toml_config.get_as<toml::array>(datacard);
       std::vector<std::string> values;
       if(config_){
         for(const auto& v: *config_) values.push_back(**(v.as<std::string>()));
+      } else{
+        values.resize(defVal.size());
+        std::copy(defVal.begin(), defVal.end(), values.begin());
       }
       return values;
     };
@@ -158,7 +161,7 @@ int main(int argc, char* argv[]){
 
     auto out_project_fname = toml_config["project_toml_fname"].value_or(std::string("Project.toml"));
 
-    auto macro_definitions = read_vstring("macro_definitions");
+    auto macro_definitions = read_vstring("macro_definitions", std::vector<std::string>(1, std::string("WRAPIT")));
     auto clang_features = read_vstring("clang_features");
     auto clang_opts     = read_vstring("clang_opts");
 

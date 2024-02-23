@@ -147,7 +147,8 @@ export_blacklist    = []
 
 ```
 # List of macros to define when intrepreting the header files
-macro_definitions   = [ ]
+# default: [ WRAPIT ]
+macro_definitions   = [ WRAPIT ]
 
 # List of clang features to enable. See the -x option
 # of clang
