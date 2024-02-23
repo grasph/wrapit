@@ -8,7 +8,7 @@ lib_basename        = "$(@__DIR__)/../deps/libjlROOT"
 
 include_dirs        = [ "%ROOT_INC_DIR%", "." ]
 
-input               = [ "TTree.h", "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",  "TDirectoryFile.h", "TFile.h", "TNamed.h", "TObject.h", "TGraph.h", "TF1.h", "TTreeReader.h", "TTreeReaderValue.h", "Templates.h", "TEntryList.h", "ROOT/RDataFrame.hxx", "TVectorT.h", "TVectorDfwd.h", "TVectorFfwd.h" ]
+input               = [ "TTree.h", "TBranchPtr.h", "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",  "TDirectoryFile.h", "TFile.h", "TNamed.h", "TObject.h", "TGraph.h", "TF1.h", "TTreeReader.h", "TTreeReaderValue.h", "TTreeReaderArray.h", "Templates.h", "TEntryList.h", "ROOT/RDataFrame.hxx", "TVectorT.h", "TVectorDfwd.h", "TVectorFfwd.h" ]
 #input               = [  "TTreeReader.h", "TTreeReaderValue.h", "TTreeReaderArray.h" ]
 extra_headers       = [ "TVectorT.h" ]
 
@@ -27,3 +27,5 @@ inheritances        = [ "TROOT:" ]
 export_blacklist    = [ "Integer", "Set", "Timer", "cd", "mkdir", "pwd", "begin", "end" ]
 
 n_classes_per_file  = 10
+
+vetoed_finalizer_classes = [ "TTree" ]

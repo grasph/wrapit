@@ -14,5 +14,6 @@ end
 
 export gROOT, gSystem
 include("ROOT-export.jl")
+export SetAddress
 
 end #module

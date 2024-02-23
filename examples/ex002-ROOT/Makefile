@@ -49,12 +49,13 @@ DEPS=$(patsubst %.o,%.d, $(OBJS))
 all: $(PRODUCTS) 
 
 clean:
-	-$(RM) $(PRODUCTS) $(LOGS)  $(addprefix $(BUILD_DIR)/libROOT/src/, $(GENERATED_CXX) dbg_msg.h  generated_cxx  jlROOT.h  Wrapper.h $(DEPS) ROOT/src/ROOT-generated.jl)  ROOT-generated.wit $(OBJS)
-	-rmdir $(BUILD_DIR)/libROOT/src $(BUILD_DIR)/libROOT/build $(BUILD_DIR)/libROOT $(BUILD_DIR)/ROOT/src $(BUILD_DIR)/ROOT/deps $(BUILD_DIR)/ROOT
+	-$(RM) -r build
 
+$(BUILD_DIR):
+	@mkdir $(BUILD_DIR)
+	@echo 'all:\n\n%:\n\t$$(MAKE) -C .. $$@\nclean:\n\t$$(MAKE) -C .. clean build\n' > $(BUILD_DIR)/Makefile
 
-$(BUILD_DIR)/ROOT-generated.wit: ROOT.wit
-	[ -d $(BUILD_DIR) ] || mkdir $(BUILD_DIR)
+$(BUILD_DIR)/ROOT-generated.wit: ROOT.wit $(BUILD_DIR)
 	$(MAKE) check_root
 	$(shell echo "#\n# Warning: file generated automatically from $<\n#" > $@)
 	$(shell sed "s@%ROOT_INC_DIR%@$(ROOT_INC_DIR)@" $< >> $@ || rm $@)
@@ -71,22 +72,26 @@ run_demo2: all
 	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_TGraph.jl
 
 test: all
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=`pwd`/ROOT/src:@:@v#.#:@stdlib julia demo_ROOT.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia demo_ROOT.jl
 	cmp demo_ROOT.png demo_ROOT-ref.png
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=`pwd`/ROOT/src:@:@v#.#:@stdlib julia demo_TGraph.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia demo_TGraph.jl
 	cmp demo_TGraph.png demo_TGraph-ref.png
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/write_tree1.jl \
+&& JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/read_tree1.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/write_tree2.jl \
+&& JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/read_tree2.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/write_tree3.jl \
+&& JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/read_tree3.jl
 
-%/libROOT/src/generated_cxx %/ROOT/Project.toml %/ROOT/src/ROOT-export.jl: %/ROOT-generated.wit jlROOT-veto.h $(WRAPIT)
+%/libROOT/src/generated_cxx %/ROOT/Project.toml %/ROOT/src/ROOT-export.jl: %/ROOT-generated.wit jlROOT-veto.h $(WRAPIT) TBranchPtr.h Templates.h
 	$(MAKE) $*/ROOT-generated.wit
 	$(WRAPIT) --force --update --output-prefix $* $<
 	$(eval GENERATED_CXX:=$(file < $(BUILD_DIR)/libROOT/src/generated_cxx))
 	$(eval OBJS:=$(addprefix $(BUILD_DIR)/libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX))))
+#	cp -a TBranchPtr.h $(BUILD_DIR)/libROOT/src
 
-$(BUILD_DIR)/libROOT/src/Templates.cxx: Templates.cxx
-	[ -d $(BUILD_DIR)/libROOT/src ] || mkdir -p $(BUILD_DIR)/libROOT/src
-	cp -a Templates.cxx $@
 
-$(BUILD_DIR)/libROOT/build/%.o: $(BUILD_DIR)/libROOT/src/%.cxx
+$(BUILD_DIR)/libROOT/build/%.o: $(BUILD_DIR)/libROOT/src/%.cxx $(BUILD_DIR)
 	[ -d $(BUILD_DIR)/libROOT/build ] || mkdir -p $(BUILD_DIR)/libROOT/build
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
@@ -95,12 +100,12 @@ $(BUILD_DIR)/ROOT/deps/libjlROOT$(SO_SUFFIX): $(BUILD_DIR)/libROOT/src/generated
 	$(MAKE) $<
 	$(MAKE) make_lib_from_objs
 
-$(BUILD_DIR)/ROOT/src/%.jl: %.jl
+$(BUILD_DIR)/ROOT/src/%.jl: %.jl  $(BUILD_DIR)
 	[ -d $(BUILD_DIR)/ROOT/src ] || mkdir -p $(BUILD_DIR)/ROOT/src
-	cp -a $^ $(BUILD_DIR)/ROOT/src/
+	cp -a $< $(BUILD_DIR)/ROOT/src/
 
 
-make_lib_from_objs: $(OBJS)
+make_lib_from_objs: $(OBJS) $(BUILD_DIR)
 	[ -d $(BUILD_DIR)/ROOT/deps ] || mkdir -p $(BUILD_DIR)/ROOT/deps
 	$(LINK.o) -o $(BUILD_DIR)/ROOT/deps/libjlROOT$(SO_SUFFIX) --shared -fPIC $(OBJS) $(ROOT_LIBS)
 

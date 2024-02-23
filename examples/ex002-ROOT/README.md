@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This directory contains an advanced usage example of WrapIt!.
+This directory contains an advanced usage example of WrapIt!. You will also find examples, that write and read TTree, in [TTree_examples](TTree_examples).
 
 The [ROOT](https://root.cern.ch/) software is a central software framework in High energy physics research developed in C++ at [CERN](http://www.cern.ch). The framework has some similarities with Julia although it is not a programming language: its provide a REPL with a C++ interpreter based on [LLVM](http://llvm.org); like Julia it can also be used from Jupyter notebooks. It has a Python interface, [PyROOT](https://root.cern.ch/manual/python/) which is very popular among the physicist. The [ROOT.jl](https://github.com/JuliaHEP/ROOT.jl) provides an interface for old Julia versions (<=1.3.0) using the [Cxx.jl](https://github.com/JuliaInterop/Cxx.jl) interface. 
 

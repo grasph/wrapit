@@ -23,4 +23,20 @@ TTreeReader::Iterator_t & TTreeReader::Iterator_t::operator++();
 void ROOT::RDataFrame::RDataFrame(std::unique_ptr<ROOT::RDF::RDataSource>, const ROOT::RDataFrame::ColumnNames_t &);
 /ROOT::RDataFrame ROOT::Internal::.*/;
 
+TLeaf::GetValueHelper;
+// 
+//Quad precision float not supported:
+/.*LongDouble_t.*/;
+
 /void TROOT::RegisterModule(.*)/;
+
+//Duplicate uses with TBranch * TTree::Branch(const char *, void*, const char *, Int_t, Int_t);
+//and the one with 2nd arg as int is giving a warning about duplicate methods.
+TBranch * TTree::Branch(const char *, int, const char *, Int_t);
+TBranch * TTree::Branch(const char *, Longptr_t, const char *, Int_t);
+
+///.*operator new.*/;
+///.*operator delete.*/;
+//Version_t TObjArrayIter::Class_Version();
+//const char * TObjArrayIter::DeclFileName();
+///.*TObject::.*/;
