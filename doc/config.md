@@ -11,17 +11,6 @@ The list of parameters with their defaut value is provided below.
 # Name of the julia module to generate
 module_name         = "CxxLib"
 
-# UUID to assign to the generated Julia project. It will
-# be copied into the Project.toml file. If empty a new
-# uuid is generated.
-uuid                 = ""
-
-# version to assign to the generated Julia project. If
-# not empty, it will be copied into the Project.toml file
-# of the julia project.
-version               = ""
-
-
 # List of input header files containing the classes to wrap
 # See also include_dirs
 input               = [ ]
@@ -38,6 +27,10 @@ cxx-std             = "c++17"
 ### Extra options to control the generated code organisation
 
 ```
+# Root directory for the output file. Path of all
+# output with be prefix with this value a /-sign.
+output-prefix = ""
+
 # Destination directory for the generated c++ code
 # If not set, default to: lib<module_name>/src
 # out_cxx_dir = 
@@ -115,6 +108,19 @@ inheritances        = [ "" ]
 # If empty, use the module name with .jl extension added
 module_jl_fname     = ""
 
+# UUID to assign to the generated Julia project. It will
+# be copied into the Project.toml file. If empty a new
+# uuid is generated.
+uuid                 = ""
+
+# version to assign to the generated Julia project. If
+# not empty, it will be copied into the Project.toml file
+# of the julia project.
+version               = ""
+
+# Name to be used for the generated project toml file
+project_toml_fname = "Project.toml"
+
 # Name of the seperate file for the module export statement
 # If empty, the statement is written directly in the module file
 export_jl_fname     = ""
@@ -147,7 +153,6 @@ export_blacklist    = []
 
 ```
 # List of macros to define when intrepreting the header files
-# default: [ WRAPIT ]
 macro_definitions   = [ WRAPIT ]
 
 # List of clang features to enable. See the -x option
