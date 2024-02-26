@@ -105,7 +105,7 @@ add_library(${WRAPPER_LIB} SHARED ${WRAPIT_PRODUCTS} ${WRAPPER_EXTRA_SRCS})
 set_target_properties(${WRAPPER_LIB}
   PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${WRAPPER_JULIA_PACKAGE_DIR}/deps)
 target_include_directories(${WRAPPER_LIB} PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(${WRAPPER_LIB} JlCxx::cxxwrap_julia)
+target_link_libraries(${WRAPPER_LIB} JlCxx::cxxwrap_julia JlCxx::cxxwrap_julia_stl) 
 
 # Installation paths:
 set(WRAPPER_INSTALL_DIR "share/wrapit" CACHE FILEPATH "Installation path for the test modules")
