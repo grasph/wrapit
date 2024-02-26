@@ -46,7 +46,7 @@ GENERATED_CXX:=$(file < $(BUILD_DIR)/libROOT/src/generated_cxx)
 OBJS=$(addprefix $(BUILD_DIR)/libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX)))
 DEPS=$(patsubst %.o,%.d, $(OBJS))
 
-all: $(PRODUCTS) 
+all: $(PRODUCTS)
 
 clean:
 	-$(RM) -r build
@@ -95,7 +95,7 @@ $(BUILD_DIR)/libROOT/build/%.o: $(BUILD_DIR)/libROOT/src/%.cxx $(BUILD_DIR)
 	[ -d $(BUILD_DIR)/libROOT/build ] || mkdir -p $(BUILD_DIR)/libROOT/build
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-$(BUILD_DIR)/ROOT/deps/libjlROOT$(SO_SUFFIX): $(BUILD_DIR)/libROOT/src/generated_cxx
+$(BUILD_DIR)/ROOT/deps/libjlROOT$(SO_SUFFIX): $(BUILD_DIR)/libROOT/src/generated_cxx $(OBJS)
 	$(MAKE) check_root
 	$(MAKE) $<
 	$(MAKE) make_lib_from_objs

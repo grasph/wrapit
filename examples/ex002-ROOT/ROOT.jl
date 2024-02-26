@@ -9,7 +9,6 @@ using CxxWrap
 function __init__()
     @initcxx
     global gROOT = ROOT!GetROOT()
-    push!(LOAD_PATH, @__DIR__)
 end
 
 export gROOT, gSystem
