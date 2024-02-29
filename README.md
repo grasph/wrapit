@@ -131,3 +131,8 @@ The code is experimental, but can already produce ready-to-use code. It has seve
 
 The code uses [Clang](https://clang.llvm.org/) from the [LLVM](https://llvm.org/) compiler infrastructure to interpret the C++ code. It uses mainly its high level C API [libclang](https://clang.llvm.org/docs/Tooling.html#libclang). The C++ clang AST library is accessed directly for the required features not exposed by libclang (see `libclang-ex.h` and `libclang-ex.cpp` files). These direct calls aim to be dropped whenever the corresponding features will be added to the libclang API.
 
+## Contributing to the project
+
+Enthousiastic developers will find in the [src/TODO.md](src/TODO.md) file a list of identified tasks for improving WrapIt!. If you are interested in working on a task, contact us in the Discussion section.
+
+A [Google Summer of Code](https://buildyourfuture.withgoogle.com/programs/summer-of-code) project within the [CERN-HSF organization](https://summerofcode.withgoogle.com/programs/2024/organizations/cern-hsf) on WrapIt! and its application is proposed this year 2024 to students. Desciption of the project: [GSoC Julia-C++ project](https://hepsoftwarefoundation.org/gsoc/2024/proposal_Julia-HEP-Cpp.html).
