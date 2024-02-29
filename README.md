@@ -4,7 +4,9 @@ The goal of this project is the automatization of the generation of [Julia](http
 
 The WrapIt! tool complements the [CxxWrap.jl](https://github.com/JuliaInterop/CxxWrap.jl) package. It generates automatically the c++ wrapper code needed by CxxWrap.jl from the c++ header files of the library to wrap.
 
-🆕 Support of generation of code in multiple files (now the default) to reduce time and memory needs for compilation in case of large project. See `n_classes_per_file` in [config.md](../doc/config.md).
+Support of generation of code in multiple files (now the default) to reduce time and memory needs for compilation in case of large project. See `n_classes_per_file` in [config.md](../doc/config.md).
+
+🆕 Installation using the Julia package manager and execution of the tool from the Julia REPL: [WrapIt.jl](https://github.com/grasph/WrapIt.jl/).
 
 ## Usage
 
@@ -23,9 +25,17 @@ The file config.toml contains the parameters for the generation, in particular t
 
 (*) In case of a class inheriting from several classes, only one inheritance is mapped. Choice of the parent class is configurable, with a default that takes the first specified in the c++ class definition.
 
-## Build and installation
+## Installation
 
-### Dependencies:
+### Pre-built package
+
+WrapIt! is available from the Julia binary repository. Follow the instructions from this [README](https://github.com/grasph/WrapIt.jl/blob/main/README.md) to install the pre-built package using Julia. Note that it does not install the examples and tests, which must be downloaded from this repository.
+
+### Build from source
+
+An alternative to the installation of the pre-built executable is to build it from the source. This project uses [CMake](https://cmake.org) as build tool.
+
+#### Dependencies:
 
   * Software to be present on the system before running `cmake`:
     * libclang: packages `clang-13` and `libclang-13-dev` on Debian
@@ -34,7 +44,7 @@ The file config.toml contains the parameters for the generation, in particular t
   * Software will be downloaded  by the `cmake` command:
     * [tomlplusplus](https://github.com/marzer/tomlplusplus.git)
 
-### Build
+#### Build
 
 Build using cmake in the "usual" way. e.g.,
 
@@ -54,7 +64,7 @@ A simple example can be found in the example/ex001-Hello directory.
 
 ## A more complex example
 
-This project is being conducted in the contex of High energy physics (HEP) research, that used a large software ecosystem, with a lot of code written in C++. We will find in the directory examples/ex002-ROOT an example generating bindings for more than 1600 functions and 60 types from the [ROOT Data analysis framework](http://root.cern.ch).
+This project is being conducted in the contex of High energy physics (HEP) research, that used a large software ecosystem, with a lot of code written in C++. We will find in the directory examples/ex002-ROOT an example generating bindings for more than 2000 functions and 80 types from the [ROOT Data analysis framework](http://root.cern.ch).
 
 ## Mapping conventions
 
