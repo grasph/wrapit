@@ -21,6 +21,8 @@ using namespace std::string_view_literals;
 
 using namespace codetree;
 
+extern const char* version;
+
 namespace fs = std::filesystem;
 
 extern int verbose;
@@ -103,13 +105,17 @@ int main(int argc, char* argv[]){
      "already exist and there is no code changed, then the file including "
      "its time stamp is preserved. The time stamp can then be used to "
      "recompile modified files only during wrapper development of "
-     "large projects.");
+     "large projects.")
+    ("V,version", "Display the software version")
+    ;
 
   option_list.parse_positional({"cfgfile"});
 
   auto options = option_list.parse(argc, argv);
   if (options.count("help")){
     print_help(option_list);
+  } else if(options.count("version")){
+    std::cout << "WrapIt! version " << version << "\n";
   } else {
     toml::parse_result toml_config;
     try{
