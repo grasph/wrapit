@@ -1,0 +1,116 @@
+#include <type_traits>
+#include "jlcxx/jlcxx.hpp"
+#include "jlcxx/functions.hpp"
+#include "jlcxx/stl.hpp"
+
+#include "jlTestTemplateInheritance.h"
+
+#ifdef VERBOSE_IMPORT
+#  define DEBUG_MSG(a) std::cerr << a << "\n"
+#else
+#  define DEBUG_MSG(a)
+#endif
+#define __HERE__  __FILE__ ":" QUOTE2(__LINE__)
+#define QUOTE(arg) #arg
+#define QUOTE2(arg) QUOTE(arg)
+
+namespace jlcxx {
+  template<> struct IsMirroredType<B1> : std::false_type { };
+  template<> struct IsMirroredType<A_typedef> : std::false_type { };
+  template<> struct IsMirroredType<B2<int>> : std::false_type { };
+  template<> struct IsMirroredType<A_template> : std::false_type { };
+  template<> struct IsMirroredType<A_typedef_template> : std::false_type { };
+  template<> struct SuperType<A_typedef> { typedef C1 type; };
+  template<> struct SuperType<A_template> { typedef B2<int> type; };
+  template<> struct SuperType<A_typedef_template> { typedef C2 type; };
+}
+
+JLCXX_MODULE define_julia_module(jlcxx::Module& types){
+
+  DEBUG_MSG("Adding wrapper for type B1 (" __HERE__ ")");
+  // defined in ./A.h:7:8
+  auto t0 = types.add_type<B1>("B1");
+
+  DEBUG_MSG("Adding wrapper for type A_typedef (" __HERE__ ")");
+  // defined in ./A.h:13:7
+  auto t1 = types.add_type<A_typedef>("A_typedef", jlcxx::julia_base_type<C1>());
+
+  // defined in ./A.h:19:7
+  auto t2 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>("B2");
+  t2.apply<B2<int>>([]<typename T> (jlcxx::TypeWrapper<B2<T>> wrapped){});
+ 
+  DEBUG_MSG("Adding wrapper for type A_template (" __HERE__ ")");
+  // defined in ./A.h:28:7
+  auto t3 = types.add_type<A_template>("A_template", jlcxx::julia_base_type<B2<int>>());
+
+  DEBUG_MSG("Adding wrapper for type A_typedef_template (" __HERE__ ")");
+  // defined in ./A.h:33:7
+  auto t4 = types.add_type<A_typedef_template>("A_typedef_template", jlcxx::julia_base_type<C2>());
+
+  /**********************************************************************/
+  /* Wrappers for the methods of class B1
+   */
+
+  DEBUG_MSG("Adding wrapper for bool B1::isB1() (" __HERE__ ")");
+  // signature to use in the veto list: bool B1::isB1()
+  // defined in ./A.h:8:8
+  t0.method("isB1", static_cast<bool (B1::*)() >(&B1::isB1));
+
+  /* End of B1 class method wrappers
+   **********************************************************************/
+
+
+  /**********************************************************************/
+  /* Wrappers for the methods of class A_typedef
+   */
+
+  DEBUG_MSG("Adding wrapper for int A_typedef::f() (" __HERE__ ")");
+  // signature to use in the veto list: int A_typedef::f()
+  // defined in ./A.h:15:7
+  t1.method("f", static_cast<int (A_typedef::*)() >(&A_typedef::f));
+
+  /* End of A_typedef class method wrappers
+   **********************************************************************/
+
+
+  /**********************************************************************/
+  /* Wrappers for the methods of class A_template
+   */
+
+  DEBUG_MSG("Adding wrapper for int A_template::f() (" __HERE__ ")");
+  // signature to use in the veto list: int A_template::f()
+  // defined in ./A.h:30:7
+  t3.method("f", static_cast<int (A_template::*)() >(&A_template::f));
+
+  /* End of A_template class method wrappers
+   **********************************************************************/
+
+
+  /**********************************************************************/
+  /* Wrappers for the methods of class A_typedef_template
+   */
+
+  DEBUG_MSG("Adding wrapper for int A_typedef_template::f() (" __HERE__ ")");
+  // signature to use in the veto list: int A_typedef_template::f()
+  // defined in ./A.h:35:7
+  t4.method("f", static_cast<int (A_typedef_template::*)() >(&A_typedef_template::f));
+
+  /* End of A_typedef_template class method wrappers
+   **********************************************************************/
+
+
+    /**********************************************************************/
+  /* Wrappers for the methods of class B2
+   */
+  /// [f](T& obj, ArgsT... args) -> R { return (obj.*f)(args...); } );
+  types.method("isB2", [](B2<int>& obj) -> bool { return obj.isB2(); });
+  types.method("isB2", [](B2<int>* obj) -> bool { return obj->isB2(); });
+ 
+  /* End of B2 class method wrappers
+   **********************************************************************/
+
+
+
+  DEBUG_MSG("End of wrapper definitions");
+
+}

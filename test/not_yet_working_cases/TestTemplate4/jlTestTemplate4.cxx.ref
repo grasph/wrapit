@@ -1,0 +1,104 @@
+#include <type_traits>
+#include "jlcxx/jlcxx.hpp"
+#include "jlcxx/functions.hpp"
+#include "jlcxx/stl.hpp"
+
+#include "jlTestTemplate4.h"
+
+#ifdef VERBOSE_IMPORT
+#  define DEBUG_MSG(a) std::cerr << a << "\n"
+#else
+#  define DEBUG_MSG(a)
+#endif
+#define __HERE__  __FILE__ ":" QUOTE2(__LINE__)
+#define QUOTE(arg) #arg
+#define QUOTE2(arg) QUOTE(arg)
+
+template<typename, typename = void>
+constexpr bool is_type_complete_v = false;
+
+template<typename T>
+constexpr bool is_type_complete_v<T, std::void_t<decltype(sizeof(T))>> = true;
+
+
+namespace jlcxx {
+  template<> struct IsMirroredType<std::basic_string<char>> : std::false_type { };
+  template<> struct IsMirroredType<std::less<std::basic_string<char>>> : std::false_type { };
+  template<> struct IsMirroredType<std::allocator<std::basic_string<char>>> : std::false_type { };
+  template<> struct IsMirroredType<std::set<std::basic_string<char>,
+					    std::less<std::basic_string<char>>,
+					    std::allocator<std::basic_string<char>>>> : std::false_type { };
+
+
+
+  template<> struct IsMirroredType<std::less<std::set<std::basic_string<char>,
+						      std::less<std::basic_string<char>>,
+						      std::allocator<std::basic_string<char>>>>> : std::false_type {};
+
+
+  template<> struct IsMirroredType<std::allocator<std::set<std::basic_string<char>,
+							   std::less<std::basic_string<char>>,
+							   std::allocator<std::basic_string<char>>
+							   >
+						  >
+				   > : std::false_type {};
+  
+  template<> struct IsMirroredType<std::set<std::set<std::basic_string<char>, std::less<std::basic_string<char>>, std::allocator<std::basic_string<char>>>, std::less<std::set<std::basic_string<char>, std::less<std::basic_string<char>>, std::allocator<std::basic_string<char>>>>, std::allocator<std::set<std::basic_string<char>, std::less<std::basic_string<char>>, std::allocator<std::basic_string<char>>>>>> : std::false_type { };
+
+}
+
+JLCXX_MODULE define_julia_module(jlcxx::Module& types){
+
+  auto t0 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>("std!less");
+  t0.apply<std::less<std::basic_string<char>>>([](auto){});
+  
+  auto t1 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>("std!allocator");
+  t1.apply<std::allocator<std::basic_string<char>>>([](auto){});
+
+  auto t2 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>, jlcxx::TypeVar<2>, jlcxx::TypeVar<3>>>("std!set");
+  t2.apply<std::set<std::basic_string<char>,
+		    std::less<std::basic_string<char>>,
+		    std::allocator<std::basic_string<char>>>>([](auto){});
+
+  
+  t0.apply<std::less<std::set<std::basic_string<char>,
+			      std::less<std::basic_string<char>>,
+			      std::allocator<std::basic_string<char>>>>>([](auto){});
+  
+  t1.apply<std::allocator<std::set<std::basic_string<char>,
+				   std::less<std::basic_string<char>>,
+				   std::allocator<std::basic_string<char>>
+				   >
+			  >
+	   >([] (auto) {});
+  
+
+  t2.apply<std::set<std::set<std::basic_string<char>,
+			     std::less<std::basic_string<char>>,
+			     std::allocator<std::basic_string<char>>>,
+		    std::less<std::set<std::basic_string<char>,
+				       std::less<std::basic_string<char>>,
+				       std::allocator<std::basic_string<char>>>>,
+		    std::allocator<std::set<std::basic_string<char>,
+					    std::less<std::basic_string<char>>,
+					    std::allocator<std::basic_string<char>>
+					    >
+				   >
+		    >
+	   >([](auto){});
+
+  /**********************************************************************
+   * Wrappers for global functions and variables including    * class static members
+   */
+
+  // int f(std::set<std::string>)
+
+  DEBUG_MSG("Adding wrapper for int f(std::set<std::string>) (" __HERE__ ")");
+  // defined in ./A.h:6:5
+  types.method("f", [](std::set<std::string> arg0)->int{ return f(arg0); });
+  /* End of global function wrappers
+   **********************************************************************/
+
+  DEBUG_MSG("End of wrapper definitions");
+
+}

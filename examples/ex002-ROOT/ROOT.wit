@@ -8,7 +8,7 @@ lib_basename        = "$(@__DIR__)/../deps/libjlROOT"
 
 include_dirs        = [ "%ROOT_INC_DIR%", "." ]
 
-input               = [ "TTree.h", "TBranchPtr.h", "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",  "TDirectoryFile.h", "TFile.h", "TNamed.h", "TObject.h", "TGraph.h", "TF1.h", "TTreeReader.h", "TTreeReaderValue.h", "TTreeReaderArray.h", "Templates.h", "TEntryList.h",  "TVectorT.h", "TVectorDfwd.h", "TVectorFfwd.h" ]
+input               = [ "TTree.h", "TBranchPtr.h", "TSystem.h", "TCanvas.h", "TROOT.h", "TH1.h", "TRandom.h", "TAxis.h", "TApplication.h",  "TDirectoryFile.h", "TFile.h", "TNamed.h", "TObject.h", "TGraph.h", "TF1.h", "TTreeReader.h", "TTreeReaderValue.h", "TTreeReaderArray.h", "Templates.h", "TEntryList.h",  "TVectorT.h", "TVectorDfwd.h", "TVectorFfwd.h", "Minuit2/Minuit2Minimizer.h"  ]
 #input               = [  "TTreeReader.h", "TTreeReaderValue.h", "TTreeReaderArray.h" ]
 extra_headers       = [ "TVectorT.h" ]
 

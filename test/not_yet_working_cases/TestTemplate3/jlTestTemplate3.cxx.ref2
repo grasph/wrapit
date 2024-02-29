@@ -1,0 +1,107 @@
+#include <type_traits>
+#include "jlcxx/jlcxx.hpp"
+#include "jlcxx/functions.hpp"
+#include "jlcxx/stl.hpp"
+
+#include "jlTestTemplate3.h"
+
+#ifdef VERBOSE_IMPORT
+#  define DEBUG_MSG(a) std::cerr << a << "\n"
+#else
+#  define DEBUG_MSG(a)
+#endif
+#define __HERE__  __FILE__ ":" QUOTE2(__LINE__)
+#define QUOTE(arg) #arg
+#define QUOTE2(arg) QUOTE(arg)
+
+template<typename, typename = void>
+constexpr bool is_type_complete_v = false;
+
+template<typename T>
+constexpr bool is_type_complete_v<T, std::void_t<decltype(sizeof(T))>> = true;
+
+
+namespace jlcxx {
+  template<> struct IsMirroredType<std::basic_string<char>> : std::false_type { };
+  template<> struct IsMirroredType<std::less<std::basic_string<char>>> : std::false_type { };
+  template<> struct IsMirroredType<std::allocator<std::basic_string<char>>> : std::false_type { };
+  template<> struct IsMirroredType<std::set<std::basic_string<char>,
+					    std::less<std::basic_string<char>>,
+					    std::allocator<std::basic_string<char>>>> : std::false_type { };
+}
+
+JLCXX_MODULE define_julia_module(jlcxx::Module& types){
+
+  // defined in /usr/lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/bits/stl_multiset.h:70:11
+  auto t0 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>, jlcxx::TypeVar<2>, jlcxx::TypeVar<3>>>("std!set");
+
+//  // defined in /usr/lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/bits/char_traits.h:310:12
+//  auto t2 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>("std!char_traits");
+
+  // defined in /usr/lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/bits/allocator.h:116:11
+  auto t3 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>("std!allocator");
+
+  // defined in /usr/lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/bits/stl_function.h:381:12
+  auto t4 = types.add_type<jlcxx::Parametric<jlcxx::TypeVar<1>>>("std!less");
+  /**********************************************************************
+   * Wrappers for typedefs
+   */
+  /* End of typedefs wrappers
+   **********************************************************************/
+
+
+
+//  /**********************************************************************/
+//  /* Wrapper for the methods of class std::char_traits
+//   */
+//  auto t2_decl_methods = []<typename _CharT> (jlcxx::TypeWrapper<std::char_traits<_CharT>> wrapped){
+//  };
+//  t2.apply<std::char_traits<char>>(t2_decl_methods);
+//  /* End of std::char_traits class method wrappers
+//   **********************************************************************/
+
+
+  /**********************************************************************/
+  /* Wrapper for the methods of class std::allocator
+   */
+  auto t3_decl_methods = []<typename _Tp> (jlcxx::TypeWrapper<std::allocator<_Tp>> wrapped){
+  };
+  t3.apply<std::allocator<std::basic_string<char>>>(t3_decl_methods);
+  /* End of std::allocator class method wrappers
+   **********************************************************************/
+
+
+  /**********************************************************************/
+  /* Wrapper for the methods of class std::less
+   */
+  auto t4_decl_methods = []<typename _Tp> (jlcxx::TypeWrapper<std::less<_Tp>> wrapped){
+  };
+  t4.apply<std::less<std::basic_string<char>>>(t4_decl_methods);
+  /* End of std::less class method wrappers
+   **********************************************************************/
+
+  /**********************************************************************/
+  /* Wrapper for the methods of class std::set
+   */
+  auto t0_decl_methods = []<typename _Key, typename _Compare, typename _Alloc> (jlcxx::TypeWrapper<std::set<_Key, _Compare, _Alloc>> wrapped){
+  };
+  t0.apply<std::set<std::basic_string<char>, std::less<std::basic_string<char>>, std::allocator<std::basic_string<char>>>>(t0_decl_methods);
+  /* End of std::set class method wrappers
+   **********************************************************************/
+
+
+  /**********************************************************************
+   * Wrappers for global functions and variables including    * class static members
+   */
+
+  // int f(std::set<std::string>)
+
+  DEBUG_MSG("Adding wrapper for int f(std::set<std::string>) (" __HERE__ ")");
+  // defined in ./A.h:6:5
+  types.method("f", [](std::set<std::string> arg0)->int{ return f(arg0); });
+  /* End of global function wrappers
+   **********************************************************************/
+
+  DEBUG_MSG("End of wrapper definitions");
+
+}

@@ -1,0 +1,16 @@
+module_name="TestTemplate3"
+
+input = [ "A.h" ]
+		  
+include_dirs = [ "." ]
+
+cxx-std = "c++17"
+
+macro_definitions = [ ]
+
+clang_opts = [ "-resource-dir=/home/opt/llvm-dev/lib/clang/17" ]
+
+auto_veto = false
+
+# all generated code in a single file:
+n_classes_per_file = 0
