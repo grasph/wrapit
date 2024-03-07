@@ -29,11 +29,15 @@ public:
   std::string mapped_type(const std::string& from, bool as_return = false,
                           bool* mapped = nullptr) const{
     auto it = map_.find(from);
-    if(mapped) *mapped = (it != map_.end());
 
-    if(it==map_.end()) return from;
-    else if(as_return) return it->second.as_return;
-    else               return it->second.as_arg;
+    if(it==map_.end()){
+      if(mapped) *mapped  = false;
+      return from;
+    } else{
+      const std::string& to = as_return ? it->second.as_return : it->second.as_arg;
+      if(mapped) *mapped = (to != from);
+      return to;
+    }
   }
 
   std::string mapped_typename(CXType from, bool as_return = false,
@@ -44,8 +48,13 @@ public:
     if(it == map_.end()){
       return false;
     } else{
-      to_change = as_return ? it->second.as_return :  it->second.as_arg;
-      return true;
+      std::string& new_type = as_return ? it->second.as_return :  it->second.as_arg;
+      if(to_change != new_type){
+        to_change = new_type;
+        return true;
+      } else{
+        return false;
+      }
     }
   }
 
@@ -53,7 +62,7 @@ public:
     auto it =  map_.find(from);
     if(it == map_.end()) return false;
     auto to = as_return ? it->second.as_return : it->second.as_arg;
-    return to.size() > 0;
+    return to != from;
   }
 
   bool is_mapped(CXType type, bool as_return = false) const;
