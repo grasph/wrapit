@@ -2,7 +2,9 @@
 
 In this file we keep a list of tasks to be done to improve WrapIt.
 
-   - [ ] Fix issues shown with test/TestTemplate3 and test/TestTemplate4: see .ref files: fix order of templated type declarations, set ismirrored types for all the involved types, remove erroneous default constructor definition. Note: for template order, prefer to separate the 'apply' from the add_type and call the apply methods in a second block coming after the add_type method block: that way we decorrelate order constraints from template parameters and from class inheritance. 
+   - [ ] Fix issues shown with test/TestTemplate3 and test/TestTemplate4: see .ref files: fix order of templated type declarations, set ismirrored types for all the involved types, remove erroneous default constructor definition. 
+   
+      > **Note**: for template order, prefer to separate the 'apply' from the add_type and call the apply methods in a second block coming after the add_type method block: that way we decorrelate order constraints from template parameters and from class inheritance. 
    - [ ] More generally complete support for templates. The current issue is the interpretation of templated types in function argument list which are "unexposed" by libclang (is it still true?).
    - [ ] Allow specifying by configuration the preferred Julia type name in case a C++ type has several names defined with typedef or using statements
    - [ ] Add an option to add in the generated code, Julia aliases to map the C/C++ typedefs/using. Some thought on how to deal with types involving pointers or references needed.
