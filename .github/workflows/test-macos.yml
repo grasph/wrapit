@@ -1,0 +1,56 @@
+#This file is kept almost identical to test-linux.
+#We use two files in order to get two distinct badges for Linux and macOS.
+name: macOS
+on:
+  - push
+  - pull_request
+    
+defaults:
+  run:
+    shell: bash
+    
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'
+          - 'nightly'
+        os:
+#         - ubuntu-latest
+          - macOS-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install liclang
+        run: |
+              if [ "$RUNNER_OS" = Linux ]; then
+                sudo apt-get install clang-13 libclang-13-dev
+              else #MacOS
+                brew install llvm@13
+              fi
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - name: Build and test
+        run: |
+          body="${{github.event.pull_request.body}}"
+          package="$(echo "$body" | sed -n '1p')"
+          if [ "$OSTYPE" != "darwin"* ]; then
+            rm -f /opt/hostedtoolcache/julia/1.6*/x64/lib/julia/libstdc++.so.6
+          fi
+          if [ "$RUNNER_OS" = Linux ]; then
+            cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -B build -S .
+          else #MacOS
+            cmake -DClang_DIR=/usr/local/Cellar/llvm@13/13.0.1_2/lib/cmake/clang/ -B build -S .
+          fi
+          cmake --build build --verbose -j `nproc`
+          PATH="`pwd`/build:$PATH"
+          cd test && ./runtests.jl
