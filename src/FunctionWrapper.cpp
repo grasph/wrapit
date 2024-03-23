@@ -11,11 +11,12 @@
 #include <sstream>
 
 #include "TypeMapper.h"
+#include "cxxwrap_version.h"
 
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o){
   int nargsmin =  std::max(1, method.min_args); //no-arg ctor, aka "default ctor" generate elsewhere with direct call to gen_ctor(std::ostream& o, int nindents,
-  //                                              const std::string& varname, bool templated, bool finalize, const std::string& arg_list)
+  //                                              const std::string& varname_, bool templated, bool finalize, const std::string& arg_list)
   int nargsmax = clang_getNumArgTypes(method_type);
 
   indent(o << "\n", nindents)
@@ -28,7 +29,8 @@ FunctionWrapper::gen_ctor(std::ostream& o){
   for(int nargs = nargsmin; nargs <= nargsmax; ++nargs){
     std::stringstream  buf;
     gen_arg_list(buf, nargs, "", /*argtypes_only = */ true);
-    gen_ctor(o, nindents, varname, templated_, finalize,  buf.str());
+    gen_ctor(o, nindents, varname_, templated_, finalize,  buf.str(),
+             cxxwrap_version_);
   }
   generated_jl_functions_.insert(name_jl_);
   return o;
@@ -36,13 +38,25 @@ FunctionWrapper::gen_ctor(std::ostream& o){
 
 std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o, int nindents,
-                          const std::string& varname, bool templated,
+                          const std::string& varname_, bool templated,
                           bool finalize,
-                          const std::string& arg_list){
-  indent(o, nindents) << varname << "." << (templated ? "template " : "")
+                          const std::string& arg_list, long cxxwrap_version_){
+
+  const char* finalize_true;
+  const char* finalize_false;
+  if(cxxwrap_version_ < cxxwrap_v0_15){
+    finalize_true = "true";
+    finalize_false = "false";
+  } else{
+    finalize_true = "jlcxx::finalize_policy::yes";
+    finalize_false = "jlcxx::finalize_policy::no";
+  }
+  
+  indent(o, nindents) << varname_ << "." << (templated ? "template " : "")
                       << "constructor<"
                       << arg_list
-                      << ">(/*finalize=*/" << (finalize?"true":"false") << ");\n";
+                      << ">(/*finalize=*/"
+                      << (finalize?finalize_true:finalize_false) << ");\n";
   return o;
 }
 
@@ -159,7 +173,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
       //tA.method("x", [](const ns::A&  a) -> const T& { return a.x; });
       // or
       //tA.method("x", [](const ns::A&  a) -> T { return a.x; });
-      indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []("
+      indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "\", []("
                           << "const " << classname << ref << " a) -> "
                           << (return_by_copy ?
                               copy_return_type(target_type) :
@@ -173,7 +187,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
         //tA.method("x", [](ns::A&  a) -> T& { return a.x; });
         // or
         //tA.method("x", [](ns::A&  a) -> T { return a.x; });
-        indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []("
+        indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "\", []("
                             <<  classname << ref << " a) -> "
                             << (return_by_copy ?
                                 copy_return_type(target_type)
@@ -197,7 +211,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
                  << "to provide write access to the field " << target_name
                  << " (\" __HERE__ \")\");\n";
         //tA.method("x!", [](ns::A&  a, int val) -> T&  { return a.x = val; });
-        indent(o, nindents) << varname << ".method(\"" << target_name_jl << "!\", []("
+        indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "!\", []("
                             << classname << ref << " a, " << const_type(target_type) << " val) -> "
                             << non_const_type_or_pod(target_type)
                             << " { return a" << op << target_name << " = val; });\n";
@@ -216,13 +230,13 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
 
     auto rtype = gen_setters ? non_const_type_or_pod(target_type) : const_type(target_type);
     //types.method("ns!A!x", []() -> T& { return ns::A::x; });
-    indent(o, nindents) << varname << ".method(\"" << target_name_jl << "\", []()"
+    indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "\", []()"
                         << "-> " << rtype
                         << " { return " << fqn << "; });\n";
 
     if(gen_setters){
       //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
-      indent(o, nindents) << varname << ".method(\"" << target_name_jl << "!\", []("
+      indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "!\", []("
                           << const_type(target_type) << " val)"
                           << "-> " << rtype
                           << " { return " << fqn << " = val; });\n";
@@ -251,8 +265,7 @@ FunctionWrapper::gen_setindex(std::ostream& o) const{
            << " to wrap " << signature()
            << " (\" __HERE__ \")\");\n"
            << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
-
-  indent(o, nindents) <<  varname << ".method(\"setindex!\",\n";
+  indent(o, nindents) <<  varname_ << ".method(\"setindex!\",\n";
   indent(o, nindents+1) << "[](" << classname
                         << "& a, " << short_arg_list_cxx << " i, "
                         << std::regex_replace(fix_template_type(fully_qualified_name(return_type_)), std::regex("\\s*&\\s*$"), " const &")
@@ -279,7 +292,7 @@ FunctionWrapper::gen_getindex(std::ostream& o,
            << " (\" __HERE__ \")\");\n";
   indent(o, nindents) << "// defined in "     << clang_getCursorLocation(method.cursor) << "\n";
 
-  indent(o, nindents) <<  varname << ".method(\"getindex\",\n";
+  indent(o, nindents) <<  varname_ << ".method(\"getindex\",\n";
   indent(o, nindents + 1) << "[](" << classname
                           << "& a, " << short_arg_list_cxx << " i){\n";
   indent(o, nindents + 1) << "return a[i];\n";
@@ -337,7 +350,7 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
     msg2 = std::string("of class ") + classname;
   }
 
-  indent(o, nindents) << varname << ".method(";
+  indent(o, nindents) << varname_ << ".method(";
 
   if(name_jl_.size() > 0){
     //note: operator() is a special case
@@ -394,7 +407,7 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
 
   for(int itype = 0; itype < ntypes; ++itype){
     for(int nargs = nargsmin; nargs <= nargsmax; ++nargs){
-      indent(o, nindents) <<  varname << ".method(\"" << name_jl_<<  "\", [](";
+      indent(o, nindents) <<  varname_ << ".method(\"" << name_jl_<<  "\", [](";
       std::string sep;
       if(!is_static_ && classname.size() > 0){
         o << classname << cv << ref_types[itype] << " a";
@@ -467,13 +480,16 @@ FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
 }
 
 
-FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRcd,
+FunctionWrapper::FunctionWrapper(const MethodRcd& method,
+                                 const TypeRcd* pTypeRcd,
                                  const TypeMapper& type_map,
+                                 long cxxwrap_version,
                                  std::string varname, std::string classname,
                                  int nindents, bool templated):
   method(method),
-  varname(varname),
+  varname_(varname),
   classname(classname),
+  cxxwrap_version_(cxxwrap_version),
   nindents(nindents),
   all_lambda_(false),
   pTypeRcd(pTypeRcd),
@@ -502,11 +518,6 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     class_prefix = this->classname + "::";
   }
 
-  if(varname.size() == 0){
-    this->varname = "t";
-  }
-
-  is_static_ = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;
   return_type_ = clang_getResultType(method_type);
   inaccessible_type = !isAccessible(return_type_);
 
@@ -516,9 +527,19 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
     //cursor name of global functions are not fully qualified.
     name_cxx = fully_qualified_name(cursor);
   }
-
+  
   std::string name_jl_suffix = jl_type_name(name_cxx);
 
+  is_static_ = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;
+  
+  if(name_cxx == "operator new" || name_cxx == "operator delete"
+     || name_cxx == "operator new[]" || name_cxx == "operator delete[]"
+     ) is_static_ = true;
+
+  if(varname.size() == 0){
+    varname_ = is_static_ ? "module_" : "t";
+  }
+  
   static std::regex opregex("(^|.*::)operator[[:space:]]*(.*)$");
   std::cmatch m;
   override_base_ = false;
@@ -616,17 +637,13 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRc
       setindex_ = true;
     }
   }
-
-  if(name_cxx == "operator new" || name_cxx == "operator delete"
-     || name_cxx == "operator new[]" || name_cxx == "operator delete[]"
-     ) is_static_ = true;
-
-
+  
   if(is_static_){
-    if(templated_)
+    if(templated_){
       name_jl_ = jl_type_name(pTypeRcd->type_name + "::") + name_jl_suffix;
-    else
-    name_jl_ = jl_type_name(class_prefix) + name_jl_suffix;
+    } else{
+      name_jl_ = jl_type_name(class_prefix) + name_jl_suffix;
+    }
   } else{
     //FIXME: Add prefix. The namespace?
     name_jl_ = name_jl_suffix;

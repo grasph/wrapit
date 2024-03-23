@@ -21,6 +21,7 @@
 #include "libclang-ext.h"
 #include "FileTimeRestorer.h"
 #include "utils.h"
+#include "cxxwrap_version.h"
 
 extern const char* version;
 
@@ -185,6 +186,53 @@ std::string CodeTree::wrapper_classsname(const std::string& classname) const{
 }
 
 std::ostream&
+CodeTree::generate_version_check_cxx(std::ostream& o) const{
+  auto [jllmin, jllmax] = version_libcxxwrap_bounds(cxxwrap_version_);
+
+  indent(o,0) << "//method from libcxxwrap returning its version\n";
+  indent(o,0) << "extern \"C\" JLCXX_API const char* cxxwrap_version_string();\n\n";
+  indent(o, 0) << "//Check the code is compiled with a compatible version of libcxxwrap:\n";
+  indent(o,0) << "static_assert(1000*1000*JLCXX_VERSION_MAJOR "
+    " + 1000 * JLCXX_VERSION_MINOR + JLCXX_VERSION_PATCH >= " << jllmin << "\n";
+  indent(o, 1) << "&& 1000 * 1000 * JLCXX_VERSION_MAJOR "
+    " + 1000 * JLCXX_VERSION_MINOR + JLCXX_VERSION_PATCH < " << jllmax << ",\n";
+  indent(o,1) << "\"The code was generated with WrapIt! for \"\n";
+  indent(o,1) << "\"a different CxxWrap version (controlled with the cxxwrap_version parameter).\");\n\n";
+  indent(o, 0) << "//Check the version of loaded libcxxwrap library:\n";
+  indent(o,0) << "void throw_if_version_incompatibility(){\n";
+  indent(o,1) <<   "std::string version_str = cxxwrap_version_string();\n";
+  indent(o,1) <<   "static std::regex r(\"([[:digit:]]{1,3})\\\\.([[:digit:]]{1,3})\\\\.([[:digit:]]{1,3})\");\n";
+  indent(o,1) <<   "std::smatch matches;\n";
+  indent(o,1) <<   "if(!std::regex_match(version_str, matches, r)){\n";
+  indent(o,2) <<     "std::cerr << \"Warning: Failed to check libcxxwrap version.\";\n";
+  indent(o,1) <<   "} else{";
+  indent(o,2) <<     "long version_int =   1000*1000*strtol(matches[1].str().c_str(), 0, 10)\n";
+  indent(o,2) <<     "                   +      1000*strtol(matches[2].str().c_str(), 0, 10)\n";
+  indent(o,2) <<     "                   +           strtol(matches[3].str().c_str(), 0, 10);\n";
+  indent(o,2) <<     "if(version_int < " << jllmin << " || version_int >= " <<  jllmax << "){\n";
+  indent(o,3) <<     "throw std::runtime_error(std::string(\"Found libcxxwrap_jll version \")\n";
+  indent(o,3) <<       " + version_str + \", while module " << module_name_ << " requires a version in \"\n";
+  indent(o,3) <<       "\"[" << version_int_to_string(jllmin) << ", " << version_int_to_string(jllmax) << ").\"\n";
+  indent(o,3) <<       "\" Note: if the module was installed with the package manager, the Project.toml file \"\n";
+  indent(o,3) <<       "\"of the package is probably missing a compat specification that would have prevented \"\n";
+  indent(o,3) <<       "\"the inconsistency.\");\n";
+  indent(o,2) <<     "}\n";
+  indent(o,1) <<   "}\n";
+  indent(o,0) << "}\n";
+  
+//  indent(o, 1) << "long libcxxwrap_vers = 1000*100* JLCXX_VERSION_MAJOR + 1000 * JLCXX_VERSION_MINOR + JLCXX_VERSION_PATCH;\n";
+//  indent(o, 1) << "if(libcxxwrap_vers < " << jllmin << " || libcxxwrap_vers >= " << jllmax << "){\n";
+//  indent(o, 2) << "throw std::runtime_error(\"Found libcxxwrap_jll version \" "
+//               << " JLCXX_VERSION_STRING \", module " << module_name_
+//               << " needs a vesion in ["
+//               << version_int_to_string(jllmin) << ", "
+//               << version_int_to_string(jllmax) << ")"
+//    ". Note: if the module was installed with the package manager, the Project.toml file of the package is probably missing a compat specification that would have prevented the inconsistency.\");\n";
+//  indent(o, 1) << "}\n\n";
+  return o;
+}
+
+std::ostream&
 CodeTree::generate_template_add_type_cxx(std::ostream& o,
                                          const TypeRcd& type_rcd,
                                          std::string& add_type_param){
@@ -259,7 +307,8 @@ CodeTree::generate_template_add_type_cxx(std::ostream& o,
 #ifdef DEFINE_TEMPLATE_METHODS_IN_CTOR
   if(type_rcd.default_ctor){
     FunctionWrapper::gen_ctor(o, 2, "t", type_rcd.template_parameters.empty(),
-                              type_rcd.finalize, std::string());
+                              type_rcd.finalize, std::string(),
+                              cxxwrap_version_);
   }
 #endif
 
@@ -399,7 +448,8 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
       //Generate a wrapper for the implicit default ctor if needed
       if(t.default_ctor){
         FunctionWrapper::gen_ctor(o, 2, "t", t.template_parameters.empty(),
-                                  t.finalize, std::string());
+                                  t.finalize, std::string(),
+                                  cxxwrap_version_);
       }
     }
 
@@ -530,8 +580,9 @@ CodeTree::generate_cxx(){
     "#include \"jlcxx/functions.hpp\"\n"
     "#include \"jlcxx/stl.hpp\"\n\n";
 
-  o << "#include \"jl" << module_name_ << ".h\"\n";
-
+  o << "#include \"jl" << module_name_ << ".h\"\n\n"
+    "#include <regex>\n\n";
+  
   //  for(const auto& include: forced_headers_){
   //    o << "#include \"" << include << "\"\n";
   //  }
@@ -609,8 +660,13 @@ CodeTree::generate_cxx(){
   }
 
 
+  generate_version_check_cxx(o);
+  
   o << "\n\nJLCXX_MODULE define_julia_module(jlcxx::Module& jlModule){\n";
 
+
+  indent(o, 1) << "\nthrow_if_version_incompatibility();\n\n";
+  
   indent(o, 1) << "std::vector<std::shared_ptr<Wrapper>> wrappers = {\n";
   std::string sep;
   for(const auto& w: wrappers){
@@ -785,7 +841,8 @@ CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
                                 const CXCursor& cursor, bool getter_only,
                                 int nindents){
 
-  FunctionWrapper helper(MethodRcd(cursor), type_rcd, type_map_, "", "", nindents);
+  FunctionWrapper helper(MethodRcd(cursor), type_rcd, type_map_,
+                         cxxwrap_version_,  "", "", nindents);
 
   int ngens = 0;
   helper.gen_accessors(o, getter_only, &ngens);
@@ -912,11 +969,12 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   TypeRcd* pTypeRcd = find_class_of_method(method.cursor);
 
-  FunctionWrapper wrapper(method, pTypeRcd, type_map_, varname, classname, nindents,
-                          templated);
+  FunctionWrapper wrapper(method, pTypeRcd, type_map_, cxxwrap_version_, varname,
+                          classname, nindents, templated);
 
   //FIXME: check that code below is needed. Should now be vetoed upstream
-  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
+  if(std::find(veto_list_.begin(), veto_list_.end(),
+               wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
     }
@@ -1010,7 +1068,7 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   //    wrapped.constructor<>();
   if(t.default_ctor){
     FunctionWrapper::gen_ctor(o, 3, "wrapped", /*templated=*/true,
-                              t.finalize, std::string());
+                              t.finalize, std::string(), cxxwrap_version_);
   }
 
   //        wrapped.method("get_first", [](const T& a) -> T1 { return a.get_first(); });
@@ -1216,7 +1274,7 @@ CodeTree::visit_global_function(CXCursor cursor){
   }
 
 
-  FunctionWrapper wrapper(MethodRcd(cursor), nullptr, type_map_);
+  FunctionWrapper wrapper(MethodRcd(cursor), nullptr, type_map_, cxxwrap_version_);
   if(in_veto_list(wrapper.signature())){
     //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
@@ -1670,7 +1728,7 @@ CodeTree::visit_member_function(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
-  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_);
+  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_, cxxwrap_version_);
 
   if(in_veto_list(wrapper.signature())){
     //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
@@ -1768,7 +1826,8 @@ CodeTree::inform_missing_types(std::vector<CXType> missing_types,
   };
 
   if(verbose > 0){
-    std::string funcname =  FunctionWrapper(methodRcd, classRcd, type_map_).signature();
+    std::string funcname =  FunctionWrapper(methodRcd, classRcd, type_map_,
+                                            cxxwrap_version_).signature();
     std::cerr << "Warning: missing definition of type "
               << (missing_types.size() > 1 ? "s" : "")
               << " "
@@ -1867,7 +1926,8 @@ CodeTree::visit_class_constructor(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
-  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_);
+  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_,
+                          cxxwrap_version_);
 
   if(in_veto_list(wrapper.signature())){
     //if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
@@ -2942,4 +3002,9 @@ void CodeTree::generate_projet_file(std::ostream& o,
   o << "\n[deps]\n"
     "CxxWrap = \"1f15a43c-97ca-5a2a-ae31-89f07a497df4\"\n"
     "";
+
+  int version_depth = version_major(cxxwrap_version_) == 0 ? 2 : 1;
+  o << "\n[compat]\n"
+    "CxxWrap = \"" << version_int_to_string(cxxwrap_version_, version_depth)
+    << "\"\n";
 }

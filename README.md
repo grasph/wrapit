@@ -1,5 +1,7 @@
 # Automatic generation of C++ -- Julia bindings
 
+![Linux](https://github.com/grasph/wrapit/actions/workflows/test-linux.yml/badge.svg) ![macOS](https://github.com/grasph/wrapit/actions/workflows/test-macos.yml/badge.svg)
+
 The goal of this project is the automatization of the generation of [Julia](https://julialang.org) bindings for C++ libraries.
 
 The WrapIt! tool complements the [CxxWrap.jl](https://github.com/JuliaInterop/CxxWrap.jl) package. It generates automatically the c++ wrapper code needed by CxxWrap.jl from the c++ header files of the library to wrap.

@@ -1,11 +1,18 @@
 #!/usr/bin/env julia
 using Test
 using Serialization
+import Pkg
 
 function runtest()
+    args = collect(Base.julia_cmd())
+    push!(args, "")
+    iscript = length(args)
+    push!(args, "-s")
+    ENV["JULIA_PROJECT"] = Pkg.project().path
     @testset verbose=true "TestVarField" begin
-        for test_script in ["runTestVarFieldOn.jl" "runTestVarFieldOff.jl"]
-            Test.record(Test.get_testset(), deserialize(open(Cmd(`julia --project=.. $test_script -s`, dir=@__DIR__))))
+        for testname in ["TestVarFieldOn" "TestVarFieldOff"]
+            args[iscript] = "run" * testname * ".jl"
+            Test.record(Test.get_testset(), deserialize(open(Cmd(Cmd(args), dir=@__DIR__))))
         end
     end
 end

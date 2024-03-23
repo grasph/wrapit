@@ -15,8 +15,21 @@
 
 static const char* one_indent = "  ";
 extern int verbose;
+extern long version_int_base;
 
 std::ostream& indent(std::ostream& o, int n);
+
+//Converts version string x.y.z (optionnally prefixed by the letter v)
+//to an int which is larger for newer version
+//and is defined as 10^6*x + 10^3*y + z
+//return -1 if the text format was not recognised or one of the
+//version subnumber includes than 3 digits.
+//(long return type ensures the type has a minimum of 32 bits.
+long version_string_to_int(const std::string& version_string);
+
+std::string version_int_to_string(long version_int, int depth = 3);
+
+int version_major(long version_int);
 
 template<typename T, typename U>
 bool has(const T& collection, const U& element){

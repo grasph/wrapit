@@ -1,7 +1,9 @@
 using Test
 using Serialization
 
-push!(LOAD_PATH, "build")
+import Pkg
+Pkg.activate(;temp=true)
+Pkg.develop(path="$(@__DIR__)/build/TestStdString")
 using TestStdString
 
 function runtest()

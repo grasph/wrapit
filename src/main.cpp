@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <tuple>
 #include <cxxopts.hpp>
+#include <ctime>
 
 #include "toml.hpp"
 using namespace std::string_view_literals;
@@ -18,6 +19,7 @@ using namespace std::string_view_literals;
 #include "CodeTree.h"
 #include "utils.h"
 #include "uuid_utils.h"
+#include "cxxwrap_version.h"
 
 using namespace codetree;
 
@@ -76,13 +78,19 @@ find_include_path(const fs::path& p, const std::vector<fs::path>& inc_dirs){
 }
 
 
+void append_to_table(toml::table& dest, toml::table& src){
+  for (const auto& [key, value]: src) {
+    dest.insert_or_assign(key, value);
+  }
+}
 
 int main(int argc, char* argv[]){
 
-  std::srand(std::time(nullptr));
-  
+  srand(time(nullptr));
+
   cxxopts::Options option_list("wrapit",
                                "Generates wrappers from a c++ header file for Cxx.jl.\n");
+  
   // clang-format off
   option_list.add_options()
     ("h,help", "Display this help and exit")
@@ -95,6 +103,12 @@ int main(int argc, char* argv[]){
      "configuration file. It defines two variables WRAPIT_INPUTS and "
      "WRAPIT_PRODUCTS repectively with the list of input header files "
      "the result depends on and the list of produced files")
+    ("get", "Retrieves a configuration parameter. Retrieval of only few "
+     "parameters are currently supported.",
+     cxxopts::value<std::string>())
+    ("add-cfg", "Set a configuration parameter on top of what is defined in the"
+     " configuration file.",
+     cxxopts::value<std::vector<std::string>>())
     ("output-prefix", "Prefix inserted to output paths",
      cxxopts::value<std::string>()->default_value(""))
     ("resource-dir", std::string("Change the clang resource directory path (see clang "
@@ -150,6 +164,45 @@ int main(int argc, char* argv[]){
       }
     };
 
+    if(options["add-cfg"].count() > 0){
+      auto params= options["add-cfg"].as<std::vector<std::string>>();
+      for(const auto& p: params){
+        toml::table to_append;
+        try{
+          to_append = toml::parse(p);
+        } catch (const toml::parse_error& err) {
+          std::cerr << "Error parsing --add-cfg parameter, '" << p << "': "
+                    << err.what() << "\n";
+          exit(1);
+        }
+        try{
+          append_to_table(toml_config, to_append);
+        } catch (const toml::parse_error& err) {
+        std::cerr << "Failed to set parameter specified by --add-cfg, '"
+                  << p << "': " << err.what() << "\n";
+        exit(1);
+        } 
+      }
+    }
+
+    auto cxxwrap_version_str = toml_config["cxxwrap_version"].value_or(std::string(""));
+    std::string mess;
+    if(cxxwrap_version_str.size() == 0){//default version
+      mess = "Error. Bug found in wrapit. Cxx wrap version string defined in the file cxxwrap_version.h is not valid.";
+      cxxwrap_version_str = default_cxxwrap_version;
+    } else{
+      std::stringstream buf;
+      buf << "Error. The format of the value of the cxxwrap_version "
+        "configuration parameter (\"" << cxxwrap_version_str
+          << "\") is not valid. Expected format: x.y.z, x.y, or x";
+      mess = buf.str();
+    }
+    auto cxxwrap_version = version_string_to_int(cxxwrap_version_str);
+    if(cxxwrap_version < 0){
+      std::cerr << mess;
+      exit(1);
+    }
+    
     auto include_dirs = read_vpath("include_dirs", { fs::path(".")} );
     //auto to_parse = read_vpath_include("input", include_dirs);
     auto to_parse = read_vstring("input");
@@ -234,14 +287,44 @@ int main(int argc, char* argv[]){
     }
 
 
+    auto version = toml_config["version"].value_or(std::string());
+
+    if(options.count("get")){
+      auto param = options["get"].as<std::string>();
+      if(param == "cxxwrap_version")      std::cout << cxxwrap_version_str << "\n";
+      else if(param == "module_name")     std::cout << module_name << "\n";
+      else if(param == "version")         std::cout << version << "\n";
+      else if(param == "lib_basname")     std::cout << lib_basename << "\n";
+      else if(param == "export_jl_fname") std::cout << out_export_jl_fname << "\n";
+      else if(param == "module_jl_fname") std::cout << out_jl_fname << "\n";
+      else std::cerr << "Retrieval of parameter '" << param
+                     << "' is not supported";
+      exit(0);
+    }
+
+    auto uuid = toml_config["uuid"].value_or(std::string());
+
+    if(uuid.size() == 0){
+      uuid = gen_uuid();
+      std::cerr << "The configuration file misses the uuid parameter. Following "
+        "generated uuid will be used for the generate Julia project. Add the "
+        "following line in the .wit configuration file to use same uuid "
+        "for next versions of the code.\n"
+        "uuid = \"" << uuid << "\"\n\n";
+    } else if (!validate_uuid(uuid)){
+      std::cerr << "The value \"" << uuid << "\" of the uuid parameter found in "
+        "the .wit configuration file is not valid. You can run first with an "
+        "empty string to generate a new uuid, which will be displayed to the "
+        "output (stderr).\n";
+        return 1;
+    }    
+
+    bool in_err = false;
     auto open_mode = std::ofstream::out;
     if(options.count("force") == 0){
       open_mode |= std::ofstream::app;
     }
-
-
-    bool in_err = false;
-
+    
     auto open_file = [&](const std::string& fname){
       std::ofstream f(fname, open_mode);
       if(f.tellp()!=0){
@@ -282,30 +365,14 @@ int main(int argc, char* argv[]){
     if(in_err) return -1;
 
 
-    auto uuid = toml_config["uuid"].value_or(std::string());
-
-    if(uuid.size() == 0){
-      uuid = gen_uuid();
-      std::cerr << "The configuration file misses the uuid parameter. Folloing "
-        "generated uuid will be used for the generate Julia project. Add the "
-        "following line in the .wit configuration file to use same uuid "
-        "for next versions of the code.\n"
-        "uuid = \"" << uuid << "\"\n\n";
-    } else if (!validate_uuid(uuid)){
-      std::cerr << "The value \"" << uuid << "\" of the uuid parameter found in "
-        "the .wit configuration file is not valid. You can run first with an "
-        "empty string to generate a new uuid, which will be displayed to the "
-        "output (stderr).\n";
-        return 1;
-    }
-
-    auto version = toml_config["version"].value_or(std::string());
 
     verbose = verbosity;
 
     CodeTree tree;
 
     tree.set_force_mode(options.count("force") > 0);
+
+    tree.set_cxxwrap_version(cxxwrap_version);
 
     tree.add_std_option(cxx_std);
 

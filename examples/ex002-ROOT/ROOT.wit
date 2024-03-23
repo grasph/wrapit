@@ -16,6 +16,9 @@ veto_list           = "jlROOT-veto.h"
 
 fields_and_variables = false
 
+# Currently not working with CxxWrap 0.15.0, use 0.14.x
+cxxwrap_version = "0.14"
+
 #auto_veto           = false
 
 vetoed_copy_ctor_classes = [ "TTreeReader", "RDataFrame" ]

@@ -71,7 +71,7 @@ namespace codetree{
     std::vector<std::string> include_files;
 
     std::vector<TypeRcd> types_;
-    std::vector<unsigned> types_sorted_indices_; 
+    std::vector<unsigned> types_sorted_indices_;
     std::vector<MethodRcd> functions_;
     std::vector<TypeRcd> enums_;
     std::vector<CXCursor> typedefs_;
@@ -113,7 +113,7 @@ namespace codetree{
     }
 
     static std::string resolve_clang_resource_dir_path(std::string relpath);
-    
+
     bool has_cursor(const std::vector<CXCursor> vec, const CXCursor& cursor){
       for(const auto& c: vec){
         if(clang_equalCursors(c, cursor)) return true;
@@ -145,7 +145,7 @@ namespace codetree{
     bool isAccessible(CXType type) const;
 
     CXType resolve_private_typedef(CXType type) const;
-    
+
     static std::string libclangdir();
 
     //Set clang resource directory.
@@ -182,7 +182,7 @@ namespace codetree{
     void generate_projet_file(std::ostream&o,
                               const std::string& uuid,
                               const std::string& version);
-    
+
 
     //To be called before the generate_xx functions.
     //Sorts the types such that a parent type appears in the list
@@ -259,6 +259,11 @@ namespace codetree{
 
     void add_export_veto_word(const std::string& s) { export_blacklist_.insert(s); }
 
+    //Sets version of CxxWrap the code should be generated for.
+    //Version is coded as
+    //10^6 * major_number + 1000 * minor_number +  patch_number;
+    void set_cxxwrap_version(long val){ cxxwrap_version_ = val; }
+
     void set_n_classes_per_file(int n_classes_per_file) { n_classes_per_file_ = n_classes_per_file; }
 
     void set_out_cxx_dir(const std::string& val) { out_cxx_dir_ = val; }
@@ -268,7 +273,7 @@ namespace codetree{
     void set_module_name(const std::string& val){ module_name_ = val;}
 
     void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
-    
+
   protected:
 
     enum class accessor_mode_t {none, getter, both };
@@ -281,7 +286,7 @@ namespace codetree{
     // and if it is the case, marks the element type as requiring
     // std::vector and std:valarray support.
     void check_for_stl(const CXType& type);
-    
+
     bool in_veto_list(const std::string signature) const;
 
     //Check is a field or variable is veto status for accessor generation
@@ -437,6 +442,8 @@ namespace codetree{
     //before calling this function
     void update_wrapper_filenames();
 
+    std::ostream& generate_version_check_cxx(std::ostream& o) const;
+
     std::ostream& generate_type_wrapper_header(std::ostream& o) const;
 
     //Try to open file path for writing. Exit application if
@@ -451,10 +458,10 @@ namespace codetree{
 
 
     bool is_natively_supported(const CXType& type, int* params = nullptr) const;
-    
+
     bool is_natively_supported(const std::string& type_fqn,
                                int* nparams = nullptr) const;
-    
+
   private:
     std::string clang_resource_dir_;
 
@@ -462,8 +469,10 @@ namespace codetree{
 
     std::string cmake_;
 
+    long cxxwrap_version_;
+
     bool update_mode_;
-    
+
     std::string header_file_path_;
 
     std::string module_name_;
@@ -514,12 +523,12 @@ namespace codetree{
     bool import_setindex_;
 
     Graph type_dependencies_;
-    
+
     std::vector<std::string> towrap_type_filenames_;
     std::set<std::string> towrap_type_filenames_set_;
 
     TypeMapper type_map_;
-    
+
     struct {
       unsigned enums = 0;
       unsigned types = 0;

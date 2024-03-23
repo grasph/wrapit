@@ -8,7 +8,7 @@ build_location = "build"
 wrapper_module = "Hello" 
 
 #Generate the wrapper code and compile:
-run(`cmake -B $build_location`)
+run(`cmake --fresh -B $build_location`)
 run(`cmake --build $build_location`)
 
 #Install the wrapport module:

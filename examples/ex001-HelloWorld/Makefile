@@ -9,7 +9,16 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 WRAPIT = $(shell which wrapit)
-CXXWRAP_PREFIX=$(shell ../../buildtools/print-cxxwrap-path.jl)
+WIT_FILE = Hello.wit
+CXXWRAP_VERSION=$(shell julia -e "import TOML; print(get(TOML.parse(open(\"$(WIT_FILE)\")), \"cxxwrap_version\", \"\"));")
+
+ifeq ($(CXXWRAP_VERSION),)
+CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(\"CxxWrap\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
+CXXWRAP_VERSION:=$(shell julia --project=${BUILD_DIR} -e "import CxxWrap; print(pkgversion(CxxWrap));")
+WRAPIT_OPT=--add-cfg cxxwrap_version=\"$(CXXWRAP_VERSION)\"
+else
+CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"$(CXXWRAP_VERSION)\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
+endif
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
 LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia -lcxxwrap_julia_stl
@@ -47,7 +56,7 @@ clean:
 	-$(RM) -r $(PRODUCTS)
 
 $(BUILD_DIR)/libHello/src/jl%.cxx: %.wit
-	$(WRAPIT) --force --output-prefix $(BUILD_DIR) $<
+	$(WRAPIT) $(WRAPIT_OPT) --force --output-prefix $(BUILD_DIR) $<
 
 $(BUILD_DIR)/%.o: $(BUILD_DIR)/libHello/src/%.cxx
 	-mkdir -p $(BUILD_DIR)

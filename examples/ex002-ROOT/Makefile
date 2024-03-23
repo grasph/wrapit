@@ -1,3 +1,4 @@
+
 BUILD_DIR=build
 
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
@@ -7,7 +8,16 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 WRAPIT = $(shell which wrapit)
-CXXWRAP_PREFIX=$(shell ../../buildtools/print-cxxwrap-path.jl)
+WIT_FILE = ROOT.wit
+CXXWRAP_VERSION=$(shell julia -e "import TOML; print(get(TOML.parse(open(\"$(WIT_FILE)\")), \"cxxwrap_version\", \"\"));")
+
+ifeq ($(CXXWRAP_VERSION),)
+CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(\"CxxWrap\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
+CXXWRAP_VERSION:=$(shell julia --project=${BUILD_DIR} -e "import CxxWrap; print(pkgversion(CxxWrap));")
+WRAPIT_OPT=--add-cfg cxxwrap_version=\"$(CXXWRAP_VERSION)\"
+else
+CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"$(CXXWRAP_VERSION)\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
+endif
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
@@ -72,24 +82,27 @@ run_demo2: all
 	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=.:@:@v#.#:@stdlib julia -i demo_TGraph.jl
 
 test: all
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia demo_ROOT.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) \
+JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) demo_ROOT.jl
 	cmp demo_ROOT.png demo_ROOT-ref.png
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia demo_TGraph.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) \
+JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) demo_TGraph.jl
 	cmp demo_TGraph.png demo_TGraph-ref.png
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/write_tree1.jl \
-&& JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/read_tree1.jl
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/write_tree2.jl \
-&& JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/read_tree2.jl
-	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/write_tree3.jl \
-&& JULIA_LOAD_PATH=:`pwd`/build/ROOT/src julia TTree_examples/read_tree3.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) \
+JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) TTree_examples/write_tree1.jl \
+&& JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) TTree_examples/read_tree1.jl
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) \
+JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) TTree_examples/write_tree2.jl \
+&& JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) -e 'import Pkg; Pkg.activate(;temp=true); Pkg.add("UnROOT"); include("TTree_examples/read_tree2.jl")'
+	LD_LIBRARY_PATH=libROOT:$(shell root-config --libdir) \
+JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) TTree_examples/write_tree3.jl \
+&& JULIA_LOAD_PATH=`pwd`/build/ROOT/src:$(JULIA_LOAD_PATH): julia --project=$(BUILD_DIR) TTree_examples/read_tree3.jl
 
 %/libROOT/src/generated_cxx %/ROOT/Project.toml %/ROOT/src/ROOT-export.jl: %/ROOT-generated.wit jlROOT-veto.h $(WRAPIT) TBranchPtr.h Templates.h
 	$(MAKE) $*/ROOT-generated.wit
-	$(WRAPIT) --force --update --output-prefix $* $<
+	$(WRAPIT) $(WRAPIT_OPT) --force --update --output-prefix $* $<
 	$(eval GENERATED_CXX:=$(file < $(BUILD_DIR)/libROOT/src/generated_cxx))
 	$(eval OBJS:=$(addprefix $(BUILD_DIR)/libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX))))
-#	cp -a TBranchPtr.h $(BUILD_DIR)/libROOT/src
-
 
 $(BUILD_DIR)/libROOT/build/%.o: $(BUILD_DIR)/libROOT/src/%.cxx $(BUILD_DIR)
 	[ -d $(BUILD_DIR)/libROOT/build ] || mkdir -p $(BUILD_DIR)/libROOT/build

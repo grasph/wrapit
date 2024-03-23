@@ -22,6 +22,11 @@ include_dirs        = [ "." ]
 # See clang -std= option
 # Possible values: "c++11", "c++14", "c++17", and "c++20"
 cxx-std             = "c++17"
+
+# Version of CxxWrap the code must be generated for.
+# Pay attention to quote the string. E.g, "0.14"
+# If empty, assume latest supported one.
+cxxwrap_version     = ""
 ```
 
 ### Extra options to control the generated code organisation

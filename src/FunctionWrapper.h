@@ -26,8 +26,10 @@ class TypeMapper;
 //
 class FunctionWrapper{
 public:
-  FunctionWrapper(const MethodRcd& method, const TypeRcd* pTypeRcd,
+  FunctionWrapper(const MethodRcd& method,
+                  const TypeRcd* pTypeRcd,
                   const TypeMapper& type_mapper,
+                  long cxxwrap_version,
                   std::string varname = std::string(),
                   std::string classname = std::string(),
                   int nindents = 0,
@@ -55,7 +57,8 @@ public:
   gen_ctor(std::ostream& o, int nindents,
            const std::string& varname, bool templated,
            bool finalize,
-           const std::string& arg_list);
+           const std::string& arg_list,
+           long cxxwrap_version);
 
   /// Tells if the Base module must be overriden.
   /// This is the case for operators.
@@ -133,8 +136,9 @@ protected:
 
 
 private:
+  long cxxwrap_version_;
   MethodRcd method;
-  std::string varname;
+  std::string varname_;
   std::string classname;
   std::string class_prefix;
   int nindents;

@@ -4,6 +4,8 @@ using Test
 import Pkg
 
 Pkg.activate(; temp=true)
+#use current project also for spawned julia processes:
+ENV["JULIA_PROJECT"]=Pkg.project().path
 
 ex_basedir = normpath(joinpath(pwd(), "../examples"))
 
@@ -31,11 +33,6 @@ catch
     println(stderr, "ROOT software not found. The ROOT example won't be tested.")
 end
 
-#FIXME.
-#Temporary trick to get the 'make test' command run in an environment
-#with CxxWrap installed until. Also a nice way to get them run in
-#a clean environment.
-ENV["JULIA_PROJECT"]=Pkg.project().path
 
 if run_exroot
     ex = "ex002-ROOT"

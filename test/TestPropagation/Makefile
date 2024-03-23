@@ -9,7 +9,11 @@ CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
+
 CXXWRAP_PREFIX=$(shell julia -e 'import Pkg; haskey(Pkg.dependencies(), Base.UUID("1f15a43c-97ca-5a2a-ae31-89f07a497df4")) || Pkg.add("CxxWrap"); using CxxWrap; print(CxxWrap.prefix_path())')
+CXXWRAP_VERSION:=$(shell julia --project=${BUILD_DIR} -e "import CxxWrap; print(pkgversion(CxxWrap));")
+WRAPIT_OPT=--add-cfg cxxwrap_version=\"$(CXXWRAP_VERSION)\"
+
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -std=c++20
 LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
@@ -57,13 +61,13 @@ clean:
 
 #use of % instead of $(BUILD_DIR) prevents make to run the recipee multiple times when running with -j
 %/libTestPropagation1/src/jlTestPropagation1.cxx %/libTestPropagation1/src/jlTestPropagation1.h %/TestPropagation1/src/TestPropagation1.jl: TestPropagation1.wit
-	wrapit --force --output-prefix $* $<
+	wrapit $(WRAPIT_OPT) --force --output-prefix $* $<
 
 %/libTestPropagation2/src/jlTestPropagation2.cxx %/libTestPropagation2/src/jlTestPropagation2.h %/TestPropagation2/src/TestPropagation2.jl: TestPropagation2.wit
-	wrapit --force --output-prefix $* $<
+	wrapit $(WRAPIT_OPT) --force --output-prefix $* $<
 
 %/libTestPropagation3/src/jlTestPropagation3.cxx %/libTestPropagation3/src/jlTestPropagation3.h %/TestPropagation3/src/TestPropagation3.jl: TestPropagation3.wit
-	wrapit --force --output-prefix $* $<
+	wrapit $(WRAPIT_OPT) --force --output-prefix $* $<
 
 $(BUILD_DIR)/libTestPropagation1/build/%.o: $(BUILD_DIR)/libTestPropagation1/src/%.cxx
 	[ -d $(@D) ] || mkdir -p $(@D)

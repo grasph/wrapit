@@ -19,6 +19,42 @@
 
 int verbose = 0;
 CXPrintingPolicy pp = nullptr;
+long version_int_base = 1000;
+
+long version_string_to_int(const std::string& version_string){
+  static std::regex r("v?([[:digit:]]{1,3}\\.)?([[:digit:]]{1,3}\\.)?([[:digit:]]{1,3})");
+  std::smatch matches;
+  if(!std::regex_match(version_string, matches, r)){
+    return -1;
+  } else{
+    if(matches[2].str().size() > 0){ //x.y.z
+      return strtol(matches[3].str().c_str(), 0, 0)
+        + version_int_base *  strtol(matches[2].str().c_str(), 0, 0)
+        + version_int_base * version_int_base * strtol(matches[1].str().c_str(), 0, 0);
+    } else if(matches[1].str().size() > 0){ //x.y
+      //Beware that it is the second ()? group of the regex that
+      //will be omitted and we have x in matches[1]; y in matches[3]
+      return version_int_base * strtol(matches[3].str().c_str(), 0, 0)
+        + version_int_base * version_int_base * strtol(matches[1].str().c_str(), 0, 0);
+    } else{ //x
+      std::cerr << "=>C\n";
+      return version_int_base * version_int_base * strtol(matches[3].str().c_str(), 0, 0);
+    }
+  }
+}
+
+std::string version_int_to_string(long iversion, int depth){
+  std::stringstream buf;
+  buf << (iversion / version_int_base / version_int_base);
+  if(depth>1) buf << "." << (iversion / version_int_base) % version_int_base;
+  if(depth>2) buf << "." << iversion % version_int_base;
+  return buf.str();
+}
+
+int version_major(long version_int){
+  return version_int / version_int_base / version_int_base;
+}
+
 
 std::ostream& indent(std::ostream& o, int n){
   for(int i = 0; i < n; ++i){

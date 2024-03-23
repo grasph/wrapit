@@ -1,7 +1,9 @@
 using Test
 using Serialization
 
-push!(LOAD_PATH, "$(@__DIR__)/build")
+import Pkg
+Pkg.activate(;temp=true)
+Pkg.develop(path="$(@__DIR__)/build/TestPointers")
 using TestPointers
 
 using CxxWrap: CxxPtr, ConstCxxPtr

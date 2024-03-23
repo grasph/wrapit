@@ -99,6 +99,7 @@ add_executable(wrapit
    src/TypeRcd.cpp
    src/TypeMapper.cpp
    src/utils.cpp
+   src/cxxwrap_version.cpp
    src/uuid_utils.cpp
    src/libclang-ext.cpp
    src/FunctionWrapper.cpp

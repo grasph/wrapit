@@ -10,5 +10,8 @@ export = "all"
 
 fields_and_variables = false
 
+# Currently not working with CxxWrap 0.15.0, use 0.14.x
+cxxwrap_version = "0.14"
+
 # all generated code in a single file:
 #n_classes_per_file = 0

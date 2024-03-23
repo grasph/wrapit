@@ -1,7 +1,6 @@
 #include "uuid_utils.h"
 
 #include <regex>
-
 std::string gen_uuid(){
   const char* v = "0123456789abcdef";
   //3fb17ebc-bc38-4939-bc8b-74f2443281d4
