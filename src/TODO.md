@@ -22,9 +22,10 @@ In this file we keep a list of tasks to be done to improve WrapIt.
   end
 ```
    - [ ] Simplify the code that handles generation of indentations by defining a custom output streamer that handles identation. It needs to provide methods to increment and decrement indentations, keep track of the current indentation size, keep track of ew lines.
-   - [ ] Integration: put in place automatic run of unit tests by the repository, using tests from the test directory
+   - [X] Integration: put in place automatic run of unit tests by the repository, using tests from the test directory
    - [ ] Add support to customize some wrappers. Signature to custom wrapper name mapping could be provided in the file as the veto list, no wrapper being a special case. This feature can be useful when we need to further wrap a method in the module Julia code for the purpose of "juliafication". 
    - [ ] In the autoveto mode, if an argument with a missing type has a default value, produce the wrapper using this value.
    - [ ] Review the return type of the generated accessors, currently return by value for POD and by reference for objects. Should we return by value in both cases? Should it be configurable?
-   - [ ] Generate and maintains a project database, in the form of an editable toml file, with the list of entity to wrap. The database should allow enabling/disabling the wrapping for each type, function and variables (accessors). It will replace and extend the veto file. This should ease both customization and upgrade to a new wrapit release, that support more cases and generate wrappers for type or functions previously auto vetoed.
+   - [ ] 🚧 Generate and maintain a project database, in the form of an editable toml file, with the list of entity to wrap. The database should allow enabling/disabling the wrapping for each type, function and variables (accessors). It will replace and extend the veto file. This should ease both customization and upgrade to a new wrapit release, that support more cases and generate wrappers for type or functions previously auto vetoed.
    - [ ] Add support to generate Julia docstring from the doxygen documentation found in the code. Support of documentation written in the source files instead of parsed headers (ROOT is in this case).
+   - [ ] Include paramater names in the functions using the CxxWrap v0.15 new feature.
