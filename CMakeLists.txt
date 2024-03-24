@@ -44,23 +44,38 @@ if (NOT CLANG_JLL)
 
 else() # Using Clang_jll
    # find_package(Clang) leads to errors with Clang_jll
-   # due to inconsitency between the lists expected and installed files
+   # due to inconsitency in the lists of expected and installed files
 
-   file(GLOB CLANG_RESOURCE_DIR_ "${CMAKE_INSTALL_PREFIX}/lib/clang/*/include/stddef.h")
-   list(GET CLANG_RESOURCE_DIR_ 0 CLANG_RESOURCE_DIR)
-   message("Searching in " "${CMAKE_INSTALL_PREFIX}/lib/clang")
-
-   cmake_path(REMOVE_FILENAME CLANG_RESOURCE_DIR)
-   cmake_path(RELATIVE_PATH CLANG_RESOURCE_DIR
-              BASE_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib")
-
-   set(CLANG_RESOURCE_DIR ${CLANG_RESOURCE_DIR} CACHE STRING
-       "Clang resource directory as returned by clang -print-resource-dir")
+   set(CLANG_PREFIX "" CACHE FILEPATH "Root path of libclang that contains lib/libclang.so.")
+   if("${CLANG_PREFIX}" STREQUAL "")
+     find_library(LIBCLANG_PATH_ clang REQUIRED NOCACHE)
+     get_filename_component(CLANG_PREFIX "${LIBCLANG_PATH_}" DIRECTORY)
+     get_filename_component(CLANG_PREFIX "${CLANG_PREFIX}" DIRECTORY)
+     unset(LIBCLANG_PATH_)
+     message(STATUS "CLANG_PREFIX: ${CLANG_PREFIX}") 
+   endif()
+   include_directories("${CLANG_PREFIX}/include")
+   
+   set(CLANG_RESOURCE_DIR "" CACHE STRING
+       "Clang resource directory as returned by clang -print-resource-dir")      
+   if("${CLANG_RESOURCE_DIR}" STREQUAL "")
+     message("Searching clang resource directory in " "${CLANG_PREFIX}/lib/clang")
+     file(GLOB CLANG_RESOURCE_DIR_ "${CLANG_PREFIX}/lib/clang/*/include/stddef.h")
+     if("${CLANG_RESOURCE_DIR_}" STREQUAL "")
+       message(FATAL_ERROR "Failed to find Clang resource directory")
+     else()
+       list(GET CLANG_RESOURCE_DIR_ 0 CLANG_RESOURCE_DIR)
+       unset(CLANG_RESOURCE_DIR_)
+       get_filename_component(CLANG_RESOURCE_DIR "${CLANG_RESOURCE_DIR}" DIRECTORY)
+       get_filename_component(CLANG_RESOURCE_DIR "${CLANG_RESOURCE_DIR}" DIRECTORY)
+       message(STATUS "CLANG_RESOURCE_DIR: ${CLANG_RESOURCE_DIR}") 
+     endif()
+   endif()
 
    set(SHARED_LIBS libclang clang-cpp LLVM)
    foreach(shared_lib IN LISTS SHARED_LIBS) 
        add_library(${shared_lib} SHARED IMPORTED)
-       set(lib_path "${CMAKE_INSTALL_PREFIX}/lib/lib${shared_lib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+       set(lib_path "${CLANG_PREFIX}/lib/lib${shared_lib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
        string(REPLACE liblib lib lib_path ${lib_path})
        set_property(TARGET ${shared_lib} PROPERTY
                     IMPORTED_LOCATION ${lib_path})
@@ -70,11 +85,11 @@ else() # Using Clang_jll
    add_compile_definitions(LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING)
 
    if(NOT ($ENV{target} MATCHES "darwin"))
-      execute_process(COMMAND /bin/sh -c "nm -C \$prefix/lib/libclang.so | grep -q abi:cxx11" RESULT_VARIABLE rc)
+      execute_process(COMMAND /bin/sh -c "nm -D -C ${CLANG_PREFIX}/lib/libclang.so | grep -q abi:cxx11" RESULT_VARIABLE rc)
       if(NOT (rc EQUAL 0)) #libclang.so compiled with cxx03 ABI
          add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
       endif()
-    endif()
+   endif()
 endif()
 
 
