@@ -1133,7 +1133,8 @@ std::ostream& CodeTree::generate_jl(std::ostream& o,
 
   o <<  "\n"
     "using CxxWrap\n"
-    "@wrapmodule(()->\"" << shared_lib_basename<< "\")\n"
+    "import Libdl\n"
+    "@wrapmodule(()->\"" << shared_lib_basename<< ".\" * Libdl.dlext)\n"
     "\n"
     "function __init__()\n"
     "    @initcxx\n"
@@ -3001,7 +3002,8 @@ void CodeTree::generate_projet_file(std::ostream& o,
   }
   o << "\n[deps]\n"
     "CxxWrap = \"1f15a43c-97ca-5a2a-ae31-89f07a497df4\"\n"
-    "";
+    "Libdl = \"8f399da3-3557-5675-b5ff-fb832c97cbdb\"\n\n";
+
 
   int version_depth = version_major(cxxwrap_version_) == 0 ? 2 : 1;
   o << "\n[compat]\n"
