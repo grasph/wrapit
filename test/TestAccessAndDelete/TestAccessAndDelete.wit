@@ -10,3 +10,5 @@ export = "all"
 
 # all generated code in a single file:
 n_classes_per_file = 0
+
+#cxxwrap_version = "0.15.0"

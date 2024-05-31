@@ -49,7 +49,10 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -B build -S .
           else #MacOS
-            cmake -DClang_DIR=/usr/local/Cellar/llvm@13/13.0.1_2/lib/cmake/clang/ -B build -S .
+            #cmake -DClang_DIR=/usr/local/Cellar/llvm@13/13.0.1_2/lib/cmake/clang/ -B build -S .
+            echo ls /opt/homebrew/opt/llvm@13/lib/cmake/clang
+            ls /opt/homebrew/opt/llvm@13/lib/cmake/clang
+            cmake -DClang_DIR=/opt/homebrew/opt/llvm@13/lib/cmake/clang -B build -S .
           fi
           cmake --build build --verbose -j `nproc`
           PATH="`pwd`/build:$PATH"

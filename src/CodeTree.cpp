@@ -559,6 +559,8 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
 void
 CodeTree::generate_cxx(){
 
+  wrapped_methods_.clear();
+
   //default filename for type wrapper code:
   std::string type_out_fname = std::string("jl") + module_name_ + ".cxx";
 
@@ -992,6 +994,7 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
   o << "\n";
 
   wrapper.generate(o,  get_index_generated_);
+  wrapped_methods_.push_back(wrapper.signature());
 
   import_getindex_ |= wrapper.defines_getindex();
   import_setindex_ |= wrapper.defines_setindex();
@@ -2294,6 +2297,9 @@ CodeTree::parse(){
   files_to_wrap_fullpaths_.clear();
   for(const auto& fname: files_to_wrap_){
     files_to_wrap_fullpaths_.push_back(resolve_include_path(fname));
+    //DEBUG>> 
+    std::cerr << "File to wrap: " << files_to_wrap_fullpaths_.back() << "\n";
+//<<DEBUG
     header_file << "#include \"" << fname << "\"\n";
   }
 
@@ -2462,6 +2468,19 @@ std::ostream& CodeTree::report(std::ostream& o){
     o << "None";
   }
   o << "\n";
+
+  o << "\nList of wrapped classed:\n\n";
+  for(const auto& t: types_){
+    if(t.to_wrap){
+      o << t.type_name << "\n";
+    }
+  }
+
+  o << "\n\nList of wrapped methods:\n\n:";
+  for(const auto& m: wrapped_methods_){
+    o << m << "\n";
+  }
+  
   return o;
 }
 

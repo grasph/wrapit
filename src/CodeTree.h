@@ -81,7 +81,8 @@ namespace codetree{
     int include_depth_;
     std::vector<std::string> files_to_wrap_;
     std::vector<std::string> files_to_wrap_fullpaths_;
-
+    std::vector<std::string> wrapped_methods_;
+    
     int n_classes_per_file_;
     std::string out_cxx_dir_;
     std::string out_jl_dir_;
