@@ -1,12 +1,13 @@
-
 BUILD_DIR=build
+UNAME=$(shell uname)
 
 JL_SHARE = $(shell julia -e 'print(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia"))')
 CXXFLAGS += $(patsubst -std=gnu%,,$(shell $(JL_SHARE)/julia-config.jl --cflags))
 #CXXFLAGS += -DVERBOSE_IMPORT #To enable the verbose mode of the libray loading
 #CXXFLAGS += -Wall -O0 -g     #To compile with debugger infomation
 LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
-LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
+LDLIBS = $(shell $(JL_SHARE)/julia-config.jl --ldlibs) -L$(CXXWRAP_PREFIX)/lib -lcxxwrap_julia -lcxxwrap_julia_stl
+#LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 WRAPIT = $(shell which wrapit)
 WIT_FILE = ROOT.wit
 CXXWRAP_VERSION=$(shell julia -e "import TOML; print(get(TOML.parse(open(\"$(WIT_FILE)\")), \"cxxwrap_version\", \"\"));")
@@ -19,7 +20,7 @@ else
 CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"$(CXXWRAP_VERSION)\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
 endif
 
-CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
+CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++20
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
 CXX_IS_CLANG=$(shell $(CXX) -dM -E - < /dev/null | grep -c __clang__)
@@ -52,7 +53,8 @@ LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 PRODUCTS=$(addprefix $(BUILD_DIR)/, ROOT/deps/libjlROOT$(SO_SUFFIX) ROOT-generated.wit ROOT/src/ROOT.jl ROOT/src/iROOT.jl ROOT/src/ROOTex.jl ROOT/Project.toml ROOT/src/ROOT-export.jl)
 
 LOGS=$(BUILD_DIR)/jlROOT-report.txt
-GENERATED_CXX:=$(file < $(BUILD_DIR)/libROOT/src/generated_cxx)
+#GENERATED_CXX:=$(file < $(BUILD_DIR)/libROOT/src/generated_cxx)
+GENERATED_CXX:=$(shell cat $(BUILD_DIR)/libROOT/src/generated_cxx)
 OBJS=$(addprefix $(BUILD_DIR)/libROOT/build/, $(patsubst %.cxx,%.o, $(GENERATED_CXX)))
 DEPS=$(patsubst %.o,%.d, $(OBJS))
 
@@ -120,7 +122,7 @@ $(BUILD_DIR)/ROOT/src/%.jl: %.jl  $(BUILD_DIR)
 
 make_lib_from_objs: $(OBJS) $(BUILD_DIR)
 	[ -d $(BUILD_DIR)/ROOT/deps ] || mkdir -p $(BUILD_DIR)/ROOT/deps
-	$(LINK.o) -o $(BUILD_DIR)/ROOT/deps/libjlROOT$(SO_SUFFIX) --shared -fPIC $(OBJS) $(ROOT_LIBS)
+	$(LINK.o) -o $(BUILD_DIR)/ROOT/deps/libjlROOT$(SO_SUFFIX) --shared -fPIC $(OBJS) $(ROOT_LIBS) $(LDLIBS)
 
 echo_%:
 	@echo "$* = $(subst ",\",$($*))"
