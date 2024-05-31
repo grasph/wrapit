@@ -5,6 +5,11 @@ project(ex001-HelloWorld)
 set(CMAKE_MACOSX_RPATH 1)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}/deps")
 
+# C++ standard
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CXX_EXTENSIONS OFF)
+
 # julia is used to retrieve the CxxWrap library paths
 find_program(JULIA julia REQUIRED)
 
