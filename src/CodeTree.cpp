@@ -2121,7 +2121,7 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
 bool CodeTree::isAForwardDeclaration(CXCursor cursor) const{
   const auto& kind = clang_getCursorKind(cursor);
 
-  auto rc =  (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl)
+  auto rc =  (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl || kind == CXCursor_EnumDecl)
     && !clang_equalCursors(clang_getCursorDefinition(cursor), cursor);
 
   const auto& special = clang_getSpecializedCursorTemplate(cursor);
@@ -2234,7 +2234,7 @@ CXChildVisitResult CodeTree::visit(CXCursor cursor, CXCursor parent,
     tree.visit_class(cursor);
   } else if(kind == CXCursor_FunctionDecl){
     tree.visit_global_function(cursor);
-  } else if(kind == CXCursor_EnumDecl){
+  } else if(kind == CXCursor_EnumDecl && !tree.isAForwardDeclaration(cursor)){
     tree.visit_enum(cursor);
   } else if(kind == CXCursor_TypedefDecl){
     //  tree.visit_typedef(cursor);
