@@ -12,3 +12,12 @@ enum E {
   E1 = 5,
   E2 = 6
 };
+
+// Only the definition should create a binding, otherwise a duplicate will be
+// created for the forward declaration which will cause an error during
+// precompilation.
+enum ForwardDecl : int;
+enum ForwardDecl : int {
+    X = 1,
+    Y = 2
+};
