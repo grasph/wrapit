@@ -40,9 +40,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - name: Build and test
+        env:
+          BODY: ${{github.event.pull_request.body}}
         run: |
-          body="${{github.event.pull_request.body}}"
-          package="$(echo "$body" | sed -n '1p')"
+          echo "$BODY"
+
           if [ "$OSTYPE" != "darwin"* ]; then
             rm -f /opt/hostedtoolcache/julia/1.6*/x64/lib/julia/libstdc++.so.6
           fi
