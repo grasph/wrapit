@@ -3010,9 +3010,9 @@ std::string CodeTree::resolve_clang_resource_dir_path(std::string path){
   return path;
 }
 
-void CodeTree::generate_projet_file(std::ostream& o,
-                                    const std::string& uuid,
-                                    const std::string& version){
+void CodeTree::generate_project_file(std::ostream& o,
+                                     const std::string& uuid,
+                                     const std::string& version){
   o << "name = \"" << module_name_ << "\"\n"
     "uuid = \"" << uuid << "\"\n";
   

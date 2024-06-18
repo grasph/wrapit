@@ -180,9 +180,9 @@ namespace codetree{
 
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 
-    void generate_projet_file(std::ostream&o,
-                              const std::string& uuid,
-                              const std::string& version);
+    void generate_project_file(std::ostream&o,
+                               const std::string& uuid,
+                               const std::string& version);
 
 
     //To be called before the generate_xx functions.
