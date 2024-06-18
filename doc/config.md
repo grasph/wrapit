@@ -163,16 +163,15 @@ macro_definitions   = [ WRAPIT ]
 # List of clang features to enable. See the -x option
 # of clang
 clang_features      = [ ]
-```
 
 # List of options to pass to clang when use to parse the header files.
 # See the clang command line documentation
 clang_opts      = [ ]
-```
 
 # Discard methods with no wrapper for one type of its argument type
 # or return value
 auto_veto = true
+```
 
 ### Debugging mode options
 
