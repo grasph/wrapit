@@ -235,6 +235,7 @@ int main(int argc, char* argv[]){
 
     auto out_cxx_dir        = resolve_out_dir(toml_config["out_cxx_dir"].value_or(join_paths("lib" + module_name, std::string("src"))));
     auto out_jl_dir         = resolve_out_dir(toml_config["out_jl_dir"].value_or(module_name));
+    auto out_jl_subdir      = toml_config["out_jl_subdir"].value_or("src");
     auto out_report_fpath   = resolve_out_dir(std::string("jl") + module_name + "-report.txt");
     std::string out_cmake_fpath;
     if(options.count("cmake") > 0){
@@ -335,7 +336,7 @@ int main(int argc, char* argv[]){
     };
 
 
-    auto out_jl_src = join_paths(out_jl_dir, "src");
+    auto out_jl_src = join_paths(out_jl_dir, out_jl_subdir);
     fs::create_directories(out_jl_src);
     auto out_jl = open_file(join_paths(out_jl_src, out_jl_fname));
 

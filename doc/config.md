@@ -42,9 +42,14 @@ output-prefix = ""
 
 # Destination directory for the generated julia package
 # If not set, default to: <module_name>. The julia module code
-# is written in a src subdirectory and Project.toml file
+# is written in a src subdirectory (or the subdirectory defined
+# in out_jl_subdir) and Project.toml file
 # at the root of the directory.
 # out_jl_dir =
+
+# Directory to put the module julia code files relative to out_jl_dir
+# Use empty string to get the files at the root of out_jl_dir.
+out_jl_subdir = "src"
 
 # Number of class wrapper to group in the same source file
 # -1: one steering file, one file for class wrappers, one file 
