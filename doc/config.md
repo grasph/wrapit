@@ -85,6 +85,9 @@ veto_list           = ""
 # automatically.
 vetoed_finalizer_classes = []
 
+# List of classes that should not have a copy constructor defined.
+vetoed_copy_ctor_classes = []
+
 # Mode to generate binding not requested by required
 # to define a requested function binding. Possible values:
 #   "types": generate binding only for the type (recommended)
