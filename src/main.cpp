@@ -460,7 +460,7 @@ int main(int argc, char* argv[]){
     tree.preprocess();
     tree.generate_cxx();
     tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);
-    tree.generate_projet_file(out_project_toml, uuid, version);
+    tree.generate_project_file(out_project_toml, uuid, version);
 
     tree.report(out_report);
   }
