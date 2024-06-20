@@ -2974,6 +2974,8 @@ bool CodeTree::is_natively_supported(const std::string& type_fqn,
     {"std::vector", 1},
     {"std::valarray", 1},
     {"jlcxx::SafeCFunction", 0},
+    {"jlcxx::Array", 1},
+    {"jlcxx::ArrayRef", 2},
     {"std::shared_ptr", 1},
     {"std::unique_ptr", 1},
     {"std::weak_ptr", 1}
