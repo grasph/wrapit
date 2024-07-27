@@ -843,7 +843,7 @@ CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
                                 const CXCursor& cursor, bool getter_only,
                                 int nindents){
 
-  FunctionWrapper helper(MethodRcd(cursor), type_rcd, type_map_,
+  FunctionWrapper helper(cxx_to_julia_, MethodRcd(cursor), type_rcd, type_map_,
                          cxxwrap_version_,  "", "", nindents);
 
   int ngens = 0;
@@ -971,7 +971,7 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   TypeRcd* pTypeRcd = find_class_of_method(method.cursor);
 
-  FunctionWrapper wrapper(method, pTypeRcd, type_map_, cxxwrap_version_, varname,
+  FunctionWrapper wrapper(cxx_to_julia_, method, pTypeRcd, type_map_, cxxwrap_version_, varname,
                           classname, nindents, templated);
 
   //FIXME: check that code below is needed. Should now be vetoed upstream
@@ -1278,7 +1278,7 @@ CodeTree::visit_global_function(CXCursor cursor){
   }
 
 
-  FunctionWrapper wrapper(MethodRcd(cursor), nullptr, type_map_, cxxwrap_version_);
+  FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), nullptr, type_map_, cxxwrap_version_);
   if(in_veto_list(wrapper.signature())){
     //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
@@ -1732,7 +1732,7 @@ CodeTree::visit_member_function(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
-  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_, cxxwrap_version_);
+  FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_, cxxwrap_version_);
 
   if(in_veto_list(wrapper.signature())){
     //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
@@ -1830,8 +1830,8 @@ CodeTree::inform_missing_types(std::vector<CXType> missing_types,
   };
 
   if(verbose > 0){
-    std::string funcname =  FunctionWrapper(methodRcd, classRcd, type_map_,
-                                            cxxwrap_version_).signature();
+    std::string funcname =  FunctionWrapper(cxx_to_julia_, methodRcd, classRcd,
+                                            type_map_, cxxwrap_version_).signature();
     std::cerr << "Warning: missing definition of type "
               << (missing_types.size() > 1 ? "s" : "")
               << " "
@@ -1930,7 +1930,7 @@ CodeTree::visit_class_constructor(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
-  FunctionWrapper wrapper(MethodRcd(cursor), pTypeRcd, type_map_,
+  FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_,
                           cxxwrap_version_);
 
   if(in_veto_list(wrapper.signature())){
@@ -3030,4 +3030,16 @@ void CodeTree::generate_project_file(std::ostream& o,
   o << "\n[compat]\n"
     "CxxWrap = \"" << version_int_to_string(cxxwrap_version_, version_depth)
     << "\"\n";
+}
+
+void CodeTree::set_julia_names(const std::vector<std::string>& name_map){
+  cxx_to_julia_.clear();
+  std::regex re("\\s*->\\s");
+  for(const std::string& m: name_map){
+    std::sregex_token_iterator it{m.begin(), m.end(), re, -1};
+    std::vector<std::string> tokens{it, {}};
+    if(tokens.size() > 1){
+      cxx_to_julia_[tokens[0]] = tokens[1];
+    }
+  }
 }

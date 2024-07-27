@@ -1,4 +1,5 @@
 module_name         = "TestNoFinalizer"
+uuid                = "9b3b33f9-5f5a-4340-99f2-99014b361dcb"
 
 include_dirs        = [ "." ]
 

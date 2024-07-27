@@ -68,7 +68,7 @@ endif()
 
 if("${CXXWRAP_REQUESTED_VERSION}" STREQUAL "")
   execute_process(
-    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg; Pkg.add(\"CxxWrap\"); import CxxWrap; print(pkgversion(CxxWrap));"
+    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg; Pkg.add(\"CxxWrap\"); Pkg.resolve(); import CxxWrap; print(pkgversion(CxxWrap));"
     OUTPUT_VARIABLE CXXWRAP_INSTALLED_VERSION
     RESULT_VARIABLE result
   )
@@ -78,7 +78,7 @@ if("${CXXWRAP_REQUESTED_VERSION}" STREQUAL "")
   message(STATUS ${WRAPIT})
 else()
   execute_process(
-    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg; import CxxWrap; Pkg.add(name=\"CxxWrap\", version=\"${CXXWRAP_REQUESTED_VERSION}\"); Pkg.resolve(); print(pkgversion(CxxWrap));"
+    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"${CXXWRAP_REQUESTED_VERSION}\"); Pkg.resolve(); import CxxWrap; print(pkgversion(CxxWrap));"
     OUTPUT_VARIABLE CXXWRAP_INSTALLED_VERSION
     RESULT_VARIABLE result)
 endif()

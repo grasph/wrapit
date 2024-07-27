@@ -112,6 +112,19 @@ fields_and_variables = true
 # given class.
 #
 inheritances        = [ "" ]
+
+# List of customized C++-to-Julia name mapping.  Each element of the list must
+# be a string with format <C++ fully qualified name> -> <julia name>.
+#
+# E. g., ["TDirectoryFile::Get -> Get_", "TDirectory::Get -> Get_" ] will
+# request to name `Get_` the Julia bindings to the `Get` methods of C++ classes
+# `TDirectoryFile` and `TDirectory`.
+#
+# This feature is useful to customize a julia binding: changing the name
+# of a function, for instance by appending an underscore as in the above
+# example, allows the implementation in Julia of a wrapper with the original
+# function name, that can make the required customization.
+julia_names         = [ ]
 ```
 
 ### Extra options for the julia module code generation

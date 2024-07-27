@@ -1,4 +1,5 @@
 module_name         = "TestStringView"
+uuid                = "e57441ec-fdf1-4fed-8052-68b2b6ada888"
 
 include_dirs        = [ "." ]
 

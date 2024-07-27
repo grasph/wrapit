@@ -18,6 +18,7 @@
 #include <iostream>
 #include <filesystem>
 #include <tuple>
+#include <map>
 
 //#include "Entity.h"
 #include "TypeRcd.h"
@@ -82,7 +83,7 @@ namespace codetree{
     std::vector<std::string> files_to_wrap_;
     std::vector<std::string> files_to_wrap_fullpaths_;
     std::vector<std::string> wrapped_methods_;
-    
+
     int n_classes_per_file_;
     std::string out_cxx_dir_;
     std::string out_jl_dir_;
@@ -275,6 +276,8 @@ namespace codetree{
 
     void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
 
+    void set_julia_names(const std::vector<std::string>& name_map);
+
   protected:
 
     enum class accessor_mode_t {none, getter, both };
@@ -463,6 +466,7 @@ namespace codetree{
     bool is_natively_supported(const std::string& type_fqn,
                                int* nparams = nullptr) const;
 
+
   private:
     std::string clang_resource_dir_;
 
@@ -475,6 +479,8 @@ namespace codetree{
     bool update_mode_;
 
     std::string header_file_path_;
+
+    std::map<std::string, std::string> cxx_to_julia_;
 
     std::string module_name_;
 

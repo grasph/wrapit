@@ -480,13 +480,15 @@ FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
 }
 
 
-FunctionWrapper::FunctionWrapper(const MethodRcd& method,
+FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_map,
+                                 const MethodRcd& method,
                                  const TypeRcd* pTypeRcd,
                                  const TypeMapper& type_map,
                                  long cxxwrap_version,
                                  std::string varname, std::string classname,
                                  int nindents, bool templated):
   method(method),
+  //  name_map_(name_map),
   varname_(varname),
   classname(classname),
   cxxwrap_version_(cxxwrap_version),
@@ -528,8 +530,6 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method,
     name_cxx = fully_qualified_name(cursor);
   }
   
-  std::string name_jl_suffix = jl_type_name(name_cxx);
-
   is_static_ = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;
   
   if(name_cxx == "operator new" || name_cxx == "operator delete"
@@ -540,38 +540,35 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method,
     varname_ = is_static_ ? "module_" : "t";
   }
   
-  static std::regex opregex("(^|.*::)operator[[:space:]]*(.*)$");
-  std::cmatch m;
   override_base_ = false;
 
   //number of args including the implicit "this"
   //of non-statis method
   int noperands = clang_getNumArgTypes(method_type);
   if((this->classname.size()) != 0 && !is_static_) noperands += 1;
-  
-  if(std::regex_match(name_cxx.c_str(), m, opregex)){
-    name_jl_suffix = m[2];
-  }
-  
-  //FIXME: check that julia = operator is not already mapped to c++ operator=
-  //by CxxWrap. In that case we won't need to define an assign function
-  if(name_jl_suffix == "="){
-    name_jl_suffix = "assign";
+
+
+//--------  
+
+  auto full_name = class_prefix + name_cxx;
+  auto it = name_map.find(full_name);
+
+  std::string name_jl_suffix;
+  if(it != name_map.end()){ //custom name mapping
+    name_jl_suffix = it->second;
+    if(verbose > 0){
+      std::cerr << "Info name mapping: " << full_name << " mapped to " << name_jl_ << "\n";
+    }
+  } else{// automatic name mapping
+    if(verbose > 4){
+      std::cerr << "Info name mapping: no name customization for " << full_name
+                << ", standard naming rules will be used.\n";
+    }
+    name_jl_suffix = get_name_jl_suffix(name_cxx, noperands);
   }
 
-  if(name_jl_suffix == "*" && noperands == 1){
-    name_jl_suffix = "getindex"; //Deferencing operator, *x -> x[]
-    override_base_ = true;
-  }
   
-  if(name_jl_suffix == "[]"){
-    name_jl_suffix = "getindex";
-    override_base_ = true;
-  }
-
-  if(name_jl_suffix == "+"){
-    //Base.+ can take an arbitrary number of arguments
-    //including zero, case that corrsponds to the prefix operator
+  if(name_jl_suffix == "getindex" || name_jl_suffix == "+"){
     override_base_ = true;
   }
 
@@ -584,58 +581,13 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method,
   }
   
   static std::vector<std::string> infix_base_ops = { "-", "*", "/",
-    "%", "[]", "&", "|", "^", ">>", ">>>", "<<", ">", "<", "<=", ">=",
-    "==", "!=", "<=>"};
+    "%", "[]", "&", "|", "xor", ">>", ">>>", "<<", ">", "<", "<=", ">=",
+    "==", "!=", "cmp"};
   
   if(noperands == 2
      && std::find(infix_base_ops.begin(), infix_base_ops.end(),
                   name_jl_suffix) != infix_base_ops.end()){
     override_base_ = true;
-  }
-  
-  //TODO map cast operator to convert
-  //T A::operator R();
-  
-  //C++ -> Julia operation name map for operators65;6203;1c
-  //When not in the list, operatorOP() is mapped to Base.OP()
-  std::vector<std::pair<std::string, std::string>> op_map = {
-    {"()", "paren"},
-    {"+=", "add!"},
-    {"-=", "sub!"},
-    {"*=", "mult!"},
-    {"/=", "fdiv!"},
-    {"%=", "rem!"},
-    {"^=", "xor!"},
-    {"|=", "or!"},
-    {"&=", "and!"},
-    {"<<=", "lshit!"},
-    {">>=", "rshit!"},
-    {"^", "xor"},
-    {"->", "arrow"}, 
-    {"->*", "arrowstar"},
-    {",", "comma"},
-    {"<=>", "cmp"},
-    {"--", "dec!"},
-    {"++", "inc!"},
-    {"&&", "logicaland"},//&& and ||, to which short-circuit evalution is applied
-    {"||", "logicalor"},//cannot be overloaded in Julia.
-  };
-
-  for(const auto& m: op_map){
-    if(name_jl_suffix == m.first){
-      name_jl_suffix = m.second;
-    }
-  }
-
-  setindex_ = getindex_ = false;
-
-  if(name_cxx == "operator[]"){
-    getindex_ = true;
-
-    if(return_type_.kind == CXType_LValueReference
-       && !(clang_isConstQualifiedType(clang_getPointeeType(return_type_)))){
-      setindex_ = true;
-    }
   }
   
   if(is_static_){
@@ -647,6 +599,17 @@ FunctionWrapper::FunctionWrapper(const MethodRcd& method,
   } else{
     //FIXME: Add prefix. The namespace?
     name_jl_ = name_jl_suffix;
+  }
+  
+  
+  setindex_ = getindex_ = false;
+  if(name_cxx == "operator[]"){
+    getindex_ = true;
+
+    if(return_type_.kind == CXType_LValueReference
+       && !(clang_isConstQualifiedType(clang_getPointeeType(return_type_)))){
+      setindex_ = true;
+    }
   }
 
   bool argtype_mapped;
@@ -788,4 +751,69 @@ std::string FunctionWrapper::fix_template_type(std::string type_name) const{
   fixed = std::regex_replace(fixed, r2, "$1WrappedType");
 
   return fixed;
+}
+
+std::string FunctionWrapper::get_name_jl_suffix(const std::string& cxx_name,
+                                                int noperands) const{
+  auto name_jl_suffix = jl_type_name(name_cxx);
+
+  
+  static std::regex opregex("(^|.*::)operator[[:space:]]*(.*)$");
+  std::cmatch m;
+
+  if(std::regex_match(name_cxx.c_str(), m, opregex)){
+    name_jl_suffix = m[2];
+  }
+  
+  //FIXME: check that julia = operator is not already mapped to c++ operator=
+  //by CxxWrap. In that case we won't need to define an assign function
+  if(name_jl_suffix == "="){
+    name_jl_suffix = "assign";
+  }
+
+  if(name_jl_suffix == "*" && noperands == 1){
+    name_jl_suffix = "getindex"; //Deferencing operator, *x -> x[]
+  }
+  
+  if(name_jl_suffix == "getindex"){
+    name_jl_suffix = "getindex";
+  }
+
+  if(name_jl_suffix == "+"){
+    //Base.+ can take an arbitrary number of arguments
+    //including zero, case that corrsponds to the prefix operator
+  }
+
+  
+  //C++ -> Julia operation name map for operators
+  //When not in the list, operatorOP() is mapped to Base.OP()
+  std::vector<std::pair<std::string, std::string>> op_map = {
+    {"()", "paren"},
+    {"+=", "add!"},
+    {"-=", "sub!"},
+    {"*=", "mult!"},
+    {"/=", "fdiv!"},
+    {"%=", "rem!"},
+    {"^=", "xor!"},
+    {"|=", "or!"},
+    {"&=", "and!"},
+    {"<<=", "lshit!"},
+    {">>=", "rshit!"},
+    {"^", "xor"},
+    {"->", "arrow"},
+    {"->*", "arrowstar"},
+    {",", "comma"},
+    {"<=>", "cmp"},
+    {"--", "dec!"},
+    {"++", "inc!"},
+    {"&&", "logicaland"},//&& and ||, to which short-circuit evalution is applied
+    {"||", "logicalor"},//cannot be overloaded in Julia.
+  };
+  
+  for(const auto& m: op_map){
+    if(name_jl_suffix == m.first){
+      name_jl_suffix = m.second;
+    }
+  }
+  return name_jl_suffix;
 }

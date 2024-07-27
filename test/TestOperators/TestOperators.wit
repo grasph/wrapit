@@ -1,4 +1,5 @@
 module_name         = "TestOperators"
+uuid                = "eac3d17b-fe75-474e-abb4-ffee6697f022"
 
 include_dirs        = [ "." ]
 

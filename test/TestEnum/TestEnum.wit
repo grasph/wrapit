@@ -1,4 +1,5 @@
 module_name="TestEnum"
+uuid                = "28eb9369-de4c-45bd-ac6f-8997959d6fdf"
 
 input = [ "A.h" ]
 		  

@@ -1,4 +1,5 @@
 module_name         = "TestVarFieldOn"
+uuid                = "dd714936-ccd5-4eb9-b517-eb27dc33182c"
 
 input               = [ "A.h" ] 
 

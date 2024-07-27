@@ -1,4 +1,5 @@
 module_name         = "TestPointers"
+uuid                = "349e78bd-0c7e-4b4e-b557-74e6dbc0705f"
 
 include_dirs        = [ "." ]
 

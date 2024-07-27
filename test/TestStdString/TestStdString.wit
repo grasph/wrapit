@@ -1,4 +1,5 @@
 module_name         = "TestStdString"
+uuid                = "0f352689-3a91-449f-b356-09037dc0014d"
 
 include_dirs        = [ "."  ]
 
@@ -10,3 +11,7 @@ export = "all"
 
 # all generated code in a single file:
 n_classes_per_file = 0
+
+# not working with CxxWrap 0.16 on MacOS and with 0.15 on both Linux and MacOS
+# forcing version to 0.14
+cxxwrap_version = "0.14"

@@ -2,7 +2,7 @@ using Test
 using Serialization
 
 import Pkg
-Pkg.activate(;temp=true)
+Pkg.activate("$(@__DIR__)/build")
 Pkg.develop(path=joinpath(@__DIR__, "build", "TestTemplate1"))
 using TestTemplate1
 

@@ -1,4 +1,5 @@
 module_name         = "TestEmptyClass"
+uuid                = "2f673fc7-f88b-4edc-83bf-90277445a7d5"
 
 include_dirs        = [ "." ]
 

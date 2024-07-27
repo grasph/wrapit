@@ -1,4 +1,5 @@
 module_name="TestPropagation1"
+uuid                = "dcafd7d8-bc61-4afa-8d46-2a065f56244d"
 
 propagation_mode = "types"
 

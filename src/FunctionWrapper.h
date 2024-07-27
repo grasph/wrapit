@@ -11,7 +11,7 @@
 #include "TypeRcd.h"
 #include <iostream>
 #include <set>
-
+#include <map>
 
 class TypeMapper;
 
@@ -26,7 +26,8 @@ class TypeMapper;
 //
 class FunctionWrapper{
 public:
-  FunctionWrapper(const MethodRcd& method,
+  FunctionWrapper(const std::map<std::string, std::string>& name_map,
+                  const MethodRcd& method,
                   const TypeRcd* pTypeRcd,
                   const TypeMapper& type_mapper,
                   long cxxwrap_version,
@@ -134,6 +135,9 @@ protected:
 
   std::string arg_decl(int iarg, bool argtype_only) const;
 
+  std::string get_name_jl_suffix(const std::string& cxx_name,
+                                 int noperands) const;
+  
 
 private:
   long cxxwrap_version_;
@@ -148,6 +152,7 @@ private:
 
   CXCursor cursor;
   CXType  method_type;
+  //  std::map<std::string, std::string> name_map_;
   CXType  return_type_;
   bool is_variadic;
   const TypeRcd* pTypeRcd;

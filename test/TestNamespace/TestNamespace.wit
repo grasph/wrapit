@@ -1,4 +1,5 @@
 module_name="TestNamespace"
+uuid                = "9105eb7d-8b5e-4e93-a689-47fa8b474c60"
 
 input = [ "A.h" ]
 		  

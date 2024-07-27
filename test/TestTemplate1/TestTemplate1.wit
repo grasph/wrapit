@@ -1,4 +1,5 @@
 module_name="TestTemplate1"
+uuid                = "75b462a2-300d-4e17-8fef-26b5867f20b8"
 
 input = [ "A.h" ]
 		  

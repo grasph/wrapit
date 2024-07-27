@@ -1,4 +1,5 @@
 module_name         = "TestOrder"
+uuid                = "ebb94d09-d965-41ab-bedb-1b43446a2abc"
 
 include_dirs        = [ "." ]
 

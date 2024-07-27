@@ -1,4 +1,5 @@
 module_name         = "TestIncompleteArray"
+uuid                = "ccef8bff-c5fb-42fc-a1e7-2ad4b6b12870"
 
 include_dirs        = [ "." ]
 

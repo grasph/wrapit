@@ -1,4 +1,5 @@
 module_name         = "TestCtorDefVal"
+uuid                = "6adbae56-dcac-43a4-a141-f1a93695edd0"
 
 include_dirs        = [ "." ]
 

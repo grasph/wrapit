@@ -1,4 +1,5 @@
 module_name         = "TestUsingType"
+uuid                = "0ba2e2b8-09e1-4537-a510-6ba872e04e29"
 
 include_dirs        = [ "." ]
 
@@ -12,10 +13,9 @@ export  = "all"
 
 auto_veto = true
 
-# Currently not working with CxxWrap 0.15.0, use 0.14.x
-cxxwrap_version = "0.14"
-
-
 # all generated code in a single file:
 n_classes_per_file = 0
 
+# not working with CxxWrap 0.16 on MacOS
+# forcing version to 0.14
+cxxwrap_version = "0.14"

@@ -1,4 +1,5 @@
 module_name         = "TestStdVector"
+uuid                = "e3f6a139-b70f-4986-83d9-6831a1366ac5"
 
 include_dirs        = [ "."  ]
 
@@ -10,8 +11,10 @@ export = "all"
 
 fields_and_variables = false
 
-# Currently not working with CxxWrap 0.15.0, use 0.14.x
-cxxwrap_version = "0.14"
-
 # all generated code in a single file:
 #n_classes_per_file = 0
+
+# not working with CxxWrap 0.16 on MacOS and with 0.15 on both Linux and MacOS
+# forcing version to 0.14
+cxxwrap_version = "0.14"
+

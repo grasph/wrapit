@@ -1,4 +1,5 @@
 module_name         = "TestAccessAndDelete"
+uuid                = "b84a21c7-7db1-4fd8-bb99-b65182dd0d09"
 
 include_dirs        = [ "." ]
 
@@ -10,5 +11,3 @@ export = "all"
 
 # all generated code in a single file:
 n_classes_per_file = 0
-
-#cxxwrap_version = "0.15.0"

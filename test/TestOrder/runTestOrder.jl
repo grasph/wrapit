@@ -2,7 +2,7 @@ using Test
 using Serialization
 
 import Pkg
-Pkg.activate(;temp=true)
+Pkg.activate("$(@__DIR__)/build")
 Pkg.develop(path="$(@__DIR__)/build/TestOrder")
 
 if "-s" in ARGS #Serialize mode

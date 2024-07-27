@@ -8,10 +8,10 @@ tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer
           "TestOrder", "TestAutoAdd"
           ]
 
-#Switch to test examples
+# Switch to test examples
 testExamples = true
 
-#List of test can also be specified on the command line
+# List of test can also be specified on the command line
 if length(ARGS) > 0
     tests = replace.(filter(x->x ≠ "examples", ARGS), r"/$" => "")
     if length(ARGS) == length(tests)
@@ -19,8 +19,12 @@ if length(ARGS) > 0
     end
 end
 
-#Number of CPU cores to use to compile the code
+# Number of CPU cores to use to compile the code
 ncores=Sys.CPU_THREADS
+
+# Clean the module load path for spwaneed julia process to reduce test dependency
+# on the installation the test is run on (remove "@#.#")
+ENV["LOAD_PATH"] = "@:@stdlib"
 
 @testset verbose=true "Tests" begin
     for t in tests
@@ -35,6 +39,7 @@ ncores=Sys.CPU_THREADS
                         #cmake based build
                         # Configure and build with CMake
 	                run(`cmake --fresh -S $source_dir -B $build_dir`)
+                        run(`cmake --build $build_dir -t clean`)
                         run(`cmake --build $build_dir -j $ncores`)
                     else
                         println("source_dir:", source_dir)

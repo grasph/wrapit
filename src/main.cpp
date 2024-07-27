@@ -12,6 +12,7 @@
 #include <tuple>
 #include <cxxopts.hpp>
 #include <ctime>
+#include <unistd.h>
 
 #include "toml.hpp"
 using namespace std::string_view_literals;
@@ -86,7 +87,7 @@ void append_to_table(toml::table& dest, toml::table& src){
 
 int main(int argc, char* argv[]){
 
-  srand(time(nullptr));
+  srand(time(nullptr) ^ ~getpid());
 
   cxxopts::Options option_list("wrapit",
                                "Generates wrappers from a c++ header file for Cxx.jl.\n");
@@ -244,7 +245,7 @@ int main(int argc, char* argv[]){
 
     auto n_classes_per_file = toml_config["n_classes_per_file"].value_or(-1);
 
-
+    auto julia_names = read_vstring("julia_names");
 
     auto veto_list = toml_config["veto_list"].value_or(""sv);
 
@@ -375,6 +376,8 @@ int main(int argc, char* argv[]){
 
     tree.set_cxxwrap_version(cxxwrap_version);
 
+    tree.set_julia_names(julia_names);
+    
     tree.add_std_option(cxx_std);
 
     tree.auto_veto(auto_veto);
