@@ -493,7 +493,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   classname(classname),
   cxxwrap_version_(cxxwrap_version),
   nindents(nindents),
-  all_lambda_(false),
+  all_lambda_(true),//switched to true on 2024/11/18 because of https://github.com/JuliaInterop/CxxWrap.jl/issues/458
   pTypeRcd(pTypeRcd),
   rvalueref_arg(false),
   templated_(templated),
