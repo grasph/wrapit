@@ -1,5 +1,9 @@
 #!/bin/bash
 
-ncores=`nproc`
+if [[ "$(uname)" == "Darwin" ]]; then
+    ncores=`sysctl -n hw.ncpu`
+else
+    ncores=`nproc`
+fi
 
 make -j "$ncores" test
