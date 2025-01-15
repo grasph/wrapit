@@ -21,5 +21,15 @@ class G4VMPLData
     G4PhysConstVectorData* physicsVector = nullptr;
 };
 
+using std::string;
+class MyString {
+public:
+    MyString(const string& str) : m_str(str) {}
+    string str() const { return m_str; }
+private:
+    string m_str;
+};
+
+
 #endif //A_H not defined
 

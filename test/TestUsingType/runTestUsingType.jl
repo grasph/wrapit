@@ -14,6 +14,8 @@ function runtest()
         @test physicsVector(data) != C_NULL
         pv = physicsVector(data)
         @test physicsVector(data) |> length == 0
+        s = MyString("Hello")
+        @test str(s) == "Hello"
     end
 end
 
