@@ -24,6 +24,12 @@ function runtest()
         s = TestInheritance.String("Hello")
         s_with_underscore = f(s)
         @test s_with_underscore == s * "_"
+
+        @test supertype(TestInheritance.F) == Any
+        @test f7(TestInheritance.F()) == 7
+
+        @test supertype(TestInheritance.B2) == TestInheritance.A2
+        @test f2(TestInheritance.B2()) == 2
     end
 end
 

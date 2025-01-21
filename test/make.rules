@@ -16,11 +16,11 @@ WRAPIT = $(shell which wrapit)
 WIT_FILE = $(MODULE_NAME).wit
 
 ifeq ($(CXXWRAP_VERSION),)
-CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(\"CxxWrap\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
-CXXWRAP_VERSION=$(shell julia -e "import CxxWrap; print(pkgversion(CxxWrap));")
+CXXWRAP_PREFIX:=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(\"CxxWrap\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
+CXXWRAP_VERSION:=$(shell julia --project=$(BUILD_DIR) -e "import CxxWrap,TOML; print(TOML.parsefile(joinpath(pkgdir(CxxWrap), \"Project.toml\"))[\"version\"]);")
 WRAPIT_OPT=--add-cfg cxxwrap_version=\"$(CXXWRAP_VERSION)\"
 else
-CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"$(CXXWRAP_VERSION)\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
+CXXWRAP_PREFIX:=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"$(CXXWRAP_VERSION)\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
 endif
 
 WRAPIT_PRODUCTS+=jl$(MODULE_NAME).cxx

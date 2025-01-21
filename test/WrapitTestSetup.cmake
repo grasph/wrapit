@@ -68,7 +68,8 @@ endif()
 
 if("${CXXWRAP_REQUESTED_VERSION}" STREQUAL "")
   execute_process(
-    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg; Pkg.add(\"CxxWrap\"); Pkg.resolve(); import CxxWrap; print(pkgversion(CxxWrap));"
+    #note: we don't use Pkg.pkgversion because it is not supported for Julia < 1.9
+    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg,TOML; Pkg.add(\"CxxWrap\"); Pkg.resolve(); import CxxWrap; print(TOML.parsefile(joinpath(pkgdir(CxxWrap), \"Project.toml\"))[\"version\"]);"
     OUTPUT_VARIABLE CXXWRAP_INSTALLED_VERSION
     RESULT_VARIABLE result
   )
@@ -78,7 +79,8 @@ if("${CXXWRAP_REQUESTED_VERSION}" STREQUAL "")
   message(STATUS ${WRAPIT})
 else()
   execute_process(
-    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"${CXXWRAP_REQUESTED_VERSION}\"); Pkg.resolve(); import CxxWrap; print(pkgversion(CxxWrap));"
+    #note: we don't use Pkg.pkgversion because it is not supported for Julia < 1.9
+    COMMAND ${JULIA} --project=${CMAKE_BINARY_DIR} -e "import Pkg, TOML; Pkg.add(name=\"CxxWrap\", version=\"${CXXWRAP_REQUESTED_VERSION}\"); Pkg.resolve(); import CxxWrap; print(TOML.parsefile(joinpath(pkgdir(CxxWrap), \"Project.toml\"))[\"version\"]);"
     OUTPUT_VARIABLE CXXWRAP_INSTALLED_VERSION
     RESULT_VARIABLE result)
 endif()

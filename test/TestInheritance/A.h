@@ -13,6 +13,7 @@ struct A1{
 
 struct A2{
   int f2() { return 2; }
+  virtual ~A2(){}
 };
 
 struct B: public A1, A2, C {
@@ -21,11 +22,18 @@ struct B: public A1, A2, C {
   std::string real_func(){ return std::string("B::real_func()"); }
 };
 
+struct B2: public A1, A2, C {
+  int f7(){ return 7; }
+};
+
 struct E: public D {
   int f6(){ return 6; }
 };
 
 A1* new_B(){
   return new B();
-}
+};
 
+struct F: public A1{
+  int f7(){ return 7;}
+};

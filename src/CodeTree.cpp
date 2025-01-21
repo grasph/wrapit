@@ -145,7 +145,7 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
           }
           //FIXME: handling of parent namespace?
           if(data.preferred_parent.size() == 0
-             || str(clang_getTypeSpelling(clang_getCursorType(data.c)))
+             || str(clang_getTypeSpelling(clang_getCursorType(cursor)))
              == data.preferred_parent){
             data.c = cursor;
           }
@@ -164,11 +164,10 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
     clang_visitChildren(cursor, visitor, &data);
 
     if(clang_Cursor_isNull(data.c) && !clang_Cursor_isNull(data.first_parent)){
-      std::cerr << "Inheritance preference" << clazz << ":" << data.preferred_parent
+      std::cerr << "Inheritance preference " << clazz << ":" << data.preferred_parent
                 << " cannot be fulfilled as there is no such inheritance. "
-                << "Inheritance from class "
-                << clang_getCursorType(data.first_parent) << " is mapped into "
-                << " Julia.\n";
+                << "Super type of " << clazz << " will be "
+                << clang_getCursorType(data.first_parent) << " in Julia.\n";
       data.c = data.first_parent;
     }
   }
