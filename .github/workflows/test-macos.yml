@@ -18,22 +18,29 @@ jobs:
       matrix:
         version:
           - '1.10'
-          - 'nightly'
         os:
 #         - ubuntu-latest
-          - macOS-latest
+#          - macOS-latest
+          - macos-13
         arch:
           - x64
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Install liclang
+      - name: Install libclang
         run: |
               if [ "$RUNNER_OS" = Linux ]; then
                 sudo apt-get install clang-13 libclang-13-dev
-              else #MacOS
-                brew install llvm@13
+              #else #MacOS
+              #  #brew install llvm@13 #llvm@13 no more supported by brew
+              #  wget "https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-13.0.1.tar.gz"
+              #  tar xzf llvmorg-13.0.1.tar.gz
+              #  rm llvmorg-13.0.1.tar.gz
+              #  export CMAKE_INSTALL_MODE=SYMLINK #use symlinks to reduce disk space usage
+              #  cmake -S llvm-project-llvmorg-13.0.1/llvm -B llvm-build -DCMAKE_INSTALL_PREFIX=`pwd`/clang-13 -DLLVM_ENABLE_PROJECTS="clang" -DBUILD_SHARED_LIBS=on -DLLVM_BUILD_LLVM_DYLIB=on  -DCMAKE_BUILD_TYPE=Release
+              #  cmake --build llvm-build --verbose -j `sysctl -n hw.logicalcpu`
+              #  cmake --install llvm-build
               fi
       - uses: julia-actions/setup-julia@latest
         with:
@@ -49,13 +56,13 @@ jobs:
             rm -f /opt/hostedtoolcache/julia/1.6*/x64/lib/julia/libstdc++.so.6
           fi
           if [ "$RUNNER_OS" = Linux ]; then
-            cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -B build -S .
-          else #MacOS
-            #cmake -DClang_DIR=/usr/local/Cellar/llvm@13/13.0.1_2/lib/cmake/clang/ -B build -S .
-            echo ls /opt/homebrew/opt/llvm@13/lib/cmake/clang
-            ls /opt/homebrew/opt/llvm@13/lib/cmake/clang
-            cmake -DClang_DIR=/opt/homebrew/opt/llvm@13/lib/cmake/clang -B build -S .
+            cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
+            cmake --build build --verbose -j `nproc`
+          else
+            cmake -DBUILD_LLVM=ON -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
+            cmake --build build --verbose -j `sysctl -n hw.logicalcpu`
           fi
-          cmake --build build --verbose -j `nproc`
-          PATH="`pwd`/build:$PATH"
+          cmake --install build
+          PATH="$PATH:$PWD/bin"
+          export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
           cd test && ./runtests.jl

@@ -38,14 +38,16 @@ ENV["LOAD_PATH"] = "@:@stdlib"
                         println("Try to run cmake...")
                         #cmake based build
                         # Configure and build with CMake
-	                run(`cmake --fresh -S $source_dir -B $build_dir`)
-                        run(`cmake --build $build_dir -t clean`)
-                        run(`cmake --build $build_dir -j $ncores`)
+                        rm(build_dir, recursive=true, force=true)
+                        mkdir(build_dir)
+	                run(`cmake -S "$source_dir" -B "$build_dir"`)
+                        run(`cmake --build "$build_dir" -t clean`)
+                        run(`cmake --build "$build_dir" -j $ncores`)
                     else
                         println("source_dir:", source_dir)
                         #assumes plain make build
-                        run(`make -C $source_dir clean`)
-                        run(`make -C $source_dir -j $ncores`)
+                        run(`make -C "$source_dir" clean`)
+                        run(`make -C "$source_dir" -j $ncores`)
                     end
                     true
                 catch
