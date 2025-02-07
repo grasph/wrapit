@@ -1,6 +1,6 @@
 # Automatic generation of C++ -- Julia bindings
 
-![Linux](https://github.com/grasph/wrapit/actions/workflows/test-linux.yml/badge.svg) ![macOS](https://github.com/grasph/wrapit/actions/workflows/test-macos.yml/badge.svg)
+[![Linux](https://github.com/grasph/wrapit/actions/workflows/test-linux.yml/badge.svg" alt="Linux")](https://github.com/grasph/wrapit/actions?query=workflow%3ALinux+branch%3Amain) [![macOS](https://github.com/grasph/wrapit/actions/workflows/test-macos.yml/badge.svg)](https://github.com/grasph/wrapit/actions?query=workflow%3AmacOS+branch%3Amain)
 
 The goal of this project is the automatization of the generation of [Julia](https://julialang.org) bindings for C++ libraries.
 
@@ -8,7 +8,7 @@ The WrapIt! tool complements the [CxxWrap.jl](https://github.com/JuliaInterop/Cx
 
 Support of generation of code in multiple files (now the default) to reduce time and memory needs for compilation in case of large project. See `n_classes_per_file` in [config.md](../doc/config.md).
 
-🆕 Installation using the Julia package manager and execution of the tool from the Julia REPL: [WrapIt.jl](https://github.com/grasph/WrapIt.jl/).
+💡Installation using the Julia package manager and execution of the tool from the Julia REPL: [WrapIt.jl](https://github.com/grasph/WrapIt.jl/).
 
 ## Usage
 
@@ -40,11 +40,14 @@ An alternative to the installation of the pre-built executable is to build it fr
 #### Dependencies:
 
   * Software to be present on the system before running `cmake`:
-    * libclang: packages `clang-13` and `libclang-13-dev` on Debian
-    * libclang: packages `llvm`, `llvm-devel`, `clang`, `clang-devel` on Alma/Rocky/RHEL
-    * On MacOS, you can install `llvm/clang` with brew running the command `brew install llvm` from a terminal
+    * libclang release 13¹: packages `clang-13` and `libclang-13-dev` on Debian.
+    * libclang relase 13¹: packages `llvm13`, `llvm13-devel`, `clang13`, `clang13-devel` on Alma/Rocky/RHEL
+    * _If release 13 is not available for the linux distribution version of yoursystem, you can use the option `-DLLVM_BUILD` to build LLVM and Clang from the source code, that will be automatically downloaded from the LLVM project github repository._
   * Software will be downloaded  by the `cmake` command:
     * [tomlplusplus](https://github.com/marzer/tomlplusplus.git)
+    * [llvm/clang](https://github.com/llvm/llvm-project/releases/) if the option `-DBUILD_LLVM=ON` is used.
+
+¹ WrapIt is not guaranteed to generate correct code with higher versions of clang. Version 16 is known to give issues. The symptom is function wrappers declared with some argument or the return type as `int` while it if of another type.
 
 #### Build
 
@@ -56,9 +59,9 @@ cmake -S .. -B . -DCMAKE_INSTALL_PREFIX=/opt
 cmake --build .
 ```
 
-On OS X it is necessary to add the prefix of the clang/llvm installation, `-DCMAKE_PREFIX_PATH=/opt/homebrew/Cellar/llvm/LLVM_VERSION`
+On OS X it is necessary to add the prefix of the clang/llvm installation, `-DCMAKE_PREFIX_PATH=<path>` or use the `-DBUILD_LLVM=ON` to download and build LLVM and clang. Dep
 
-The build process will produce the `wrapit` executable. Install it with `cmake --build . --target install`.
+The build process will produce the `wrapit` executable. Install it with `cmake --install .`.
 
 ## A simple example
 

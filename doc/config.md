@@ -125,6 +125,24 @@ inheritances        = [ "" ]
 # example, allows the implementation in Julia of a wrapper with the original
 # function name, that can make the required customization.
 julia_names         = [ ]
+
+# Bit-to-bit map of C++ types to julia types (experimental)
+#
+# This control the generation of map_type() code that maps memory of 
+# a C++ struct to a julia struct.
+#
+# Use extra_headers to add the header file that defines the C++ struct.
+# Currently, the struct needed to be vetoed if it is defined in a header of the
+# input list, to prevent doubling mapping.
+# 
+# Note: it does not generate the julia code to define the Julia version of the type.
+#
+# Format: [ "CxxType -> JuliaType", ...]
+#
+# This feature is experimental and may change in a future release.
+#
+mapped_types = []
+
 ```
 
 ### Extra options for the julia module code generation

@@ -247,6 +247,8 @@ int main(int argc, char* argv[]){
 
     auto julia_names = read_vstring("julia_names");
 
+    auto mapped_types = read_vstring("mapped_types");
+    
     auto veto_list = toml_config["veto_list"].value_or(""sv);
 
     auto auto_veto = toml_config["auto_veto"].value_or(true);
@@ -377,6 +379,7 @@ int main(int argc, char* argv[]){
     tree.set_cxxwrap_version(cxxwrap_version);
 
     tree.set_julia_names(julia_names);
+    tree.set_mapped_types(mapped_types);
     
     tree.add_std_option(cxx_std);
 

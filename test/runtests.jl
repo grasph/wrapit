@@ -38,8 +38,7 @@ ENV["LOAD_PATH"] = "@:@stdlib"
                         println("Try to run cmake...")
                         #cmake based build
                         # Configure and build with CMake
-                        rm(build_dir, recursive=true, force=true)
-                        mkdir(build_dir)
+                        run(`rm -rf "$build_dir"`)
 	                run(`cmake -S "$source_dir" -B "$build_dir"`)
                         run(`cmake --build "$build_dir" -t clean`)
                         run(`cmake --build "$build_dir" -j $ncores`)

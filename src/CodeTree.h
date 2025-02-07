@@ -32,6 +32,13 @@
 #include "TypeMapper.h"
 #include "Graph.h"
 
+//to be used by set<CXCursor>
+static bool operator<(const CXCursor& c1, const CXCursor& c2){
+  return c1.data[0] < c2.data[0]
+    || (c1.data[0] == c2.data[0] && c1.data[1] < c2.data[1])
+    || (c1.data[0] == c2.data[0] && c1.data[1] == c2.data[1] && c1.data[2] < c2.data[2]);
+}
+
 namespace fs = std::filesystem;
 
 
@@ -277,6 +284,8 @@ namespace codetree{
     void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
 
     void set_julia_names(const std::vector<std::string>& name_map);
+    
+    void set_mapped_types(const std::vector<std::string>& name_map);
 
   protected:
 
@@ -393,6 +402,7 @@ namespace codetree{
 
     std::set<std::string> types_missing_def_;
     std::set<std::string> builtin_types_;
+    std::set<CXCursor> auto_vetoed_methods_;
 
     std::vector<std::string> forced_headers_;
 
@@ -482,6 +492,8 @@ namespace codetree{
 
     std::map<std::string, std::string> cxx_to_julia_;
 
+    std::map<std::string, std::string> type_straight_mapping_;
+
     std::string module_name_;
 
     std::ios_base::openmode out_open_mode_;
@@ -505,6 +517,9 @@ namespace codetree{
     CXTranslationUnit unit_;
     CXIndex index_;
 
+    //Current top-level visited cursor
+    CXCursor visited_cursor_;
+    
     //Map of child->mother class inheritance preference
     std::map<std::string, std::string> inheritance_;
 
@@ -547,7 +562,7 @@ namespace codetree{
       unsigned global_var_setters = 0;
       unsigned global_funcs = 0;
     } nwraps_;
-
+    
   };
 }
 #endif //CODETREE_H not defined

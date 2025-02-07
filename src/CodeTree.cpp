@@ -666,7 +666,7 @@ CodeTree::generate_cxx(){
   o << "\n\nJLCXX_MODULE define_julia_module(jlcxx::Module& jlModule){\n";
 
 
-  indent(o, 1) << "\nthrow_if_version_incompatibility();\n\n";
+  indent(o << "\n", 1) << "throw_if_version_incompatibility();\n\n";
   
   indent(o, 1) << "std::vector<std::shared_ptr<Wrapper>> wrappers = {\n";
   std::string sep;
@@ -677,6 +677,17 @@ CodeTree::generate_cxx(){
   o << "\n";
   indent(o, 1) << "};\n";
 
+  if(type_straight_mapping_.size() > 0){
+    indent(o, 1) << "// mapping of types that are bit-to-bit matched\n";
+    indent(o, 1) << "// WrapIt note: map is generated from the mapped_types list provided in\n";
+    indent(o, 1) << "// the configuration file without further check..\n";
+  }
+  
+  for(const auto& type_pair: type_straight_mapping_){
+    indent(o, 1) << "jlModule.map_type<" << type_pair.first
+                 << ">(\"" << type_pair.second << "\");\n";
+  }
+  
   for(const auto& e: enums_){
     generate_enum_cxx(o, e.cursor);
   }
@@ -1291,7 +1302,19 @@ CodeTree::visit_global_function(CXCursor cursor){
   int min_args;
   std::tie(missing_types, min_args) = visit_function_arg_and_return_types(cursor);
 
-  if(!auto_veto_ || !inform_missing_types(missing_types, MethodRcd(cursor))){
+  auto missing_some_type = inform_missing_types(missing_types, MethodRcd(cursor));
+
+  bool dowrap;
+  if(auto_veto_){
+    //wrap funcion only if no type is missing
+    dowrap = !missing_some_type;
+    if(!dowrap) auto_vetoed_methods_.insert(cursor);
+  } else{
+    //always wrap the function
+    dowrap = true;
+  }
+  
+  if(dowrap){
     functions_.emplace_back(cursor, min_args);
   }
 
@@ -1467,9 +1490,24 @@ void CodeTree::check_for_stl(const CXType& type_){
   }
 
   if(itype>=0){
+    
     auto& beltype_rcd = types_.at(itype);  
     beltype_rcd.to_wrap = true;
-  
+
+    if(verbose > 0){
+      auto [_, def ] = find_base_type_definition_(btype);
+      std::cerr << "INFO: STL activated for type "
+                << beltype_rcd.type_name
+                << " to support " << fully_qualified_name(type_)
+                << ". ";
+      if(!clang_Cursor_isNull(visited_cursor_)){
+        std::cerr << "Hint: the latest is likely needed at "
+                  << clang_getCursorLocation(visited_cursor_) 
+                  << ". ";
+      }
+      std::cerr << "\n";
+    }
+    
     bool isconst = clang_isConstQualifiedType(eltype);
     bool isptr   = (eltype.kind == CXType_Pointer);
     if(isptr){
@@ -1513,6 +1551,10 @@ CodeTree::register_type(const CXType& type, int* pItype, int* pIenum){
 
     const auto& type0 = clang_getCursorType(c);
 
+
+    if(maintype && is_natively_supported(type0)) return true;
+
+    
     //by retrieving the type from the definition cursor, we discard
     //the qualifiers.
     std::string type0_name = fully_qualified_name(type0);
@@ -1628,6 +1670,11 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
 
   std::vector<CXType> missing_types;
 
+  //FIXME: if the registration of the function failed, then we can end
+  //up with types which were registered for that function but are finally
+  //not needed. We should avoid these uncessary registrations that add unecessary
+  //wraps.
+  
   if(return_type.kind != CXType_Void){
     if(verbose > 3) std::cerr << cursor << ", return type: " << return_type << "\n";
     if(is_class_param(return_type)){
@@ -1636,8 +1683,9 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
     } else if(type_map_.is_mapped(return_type, /*as_return=*/ true)){
       if(verbose > 3) std::cerr << return_type << " is mapped to an alternative type.\n";
     } else{
-      bool rc = register_type(return_type);
-      if(!rc) missing_types.push_back(return_type);
+      //we call in_veto_list instead of is_type_vetoed to not exclude std::vector
+      bool rc = !in_veto_list(fully_qualified_name(return_type)) && register_type(return_type);
+      if(!rc) missing_types.push_back(base_type(return_type));
     }
   }
 
@@ -1654,7 +1702,8 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
       } else if(type_map_.is_mapped(argtype)){
         if(verbose > 3) std::cerr << argtype << " is mapped to an alternative type.\n";
       } else{
-        bool rc = register_type(argtype);
+        //we call in_veto_list instead of is_type_vetoed to not exclude std::vector
+        bool rc = !in_veto_list(fully_qualified_name(base_type(argtype))) && register_type(argtype);
         if(!rc) missing_types.push_back(argtype);
       }
     }
@@ -1752,17 +1801,30 @@ CodeTree::visit_member_function(CXCursor cursor){
               << clang_getCursorLocation(cursor)
               << " skipped because the definition of its class "
       "was not found.\n";
-  } else if(!auto_veto_ || !inform_missing_types(missing_types, MethodRcd(cursor), p)){
-    auto it = std::find_if(p->methods.begin(), p->methods.end(),
-                           [cursor](const MethodRcd& m){
+  } else{
+    bool missing_some_type = inform_missing_types(missing_types, MethodRcd(cursor), p);
+    bool dowrap;
+    if(auto_veto_){
+      //method wrapped only if all argument and return types can be wrapped
+      dowrap = !missing_some_type;
+      if(!dowrap) auto_vetoed_methods_.insert(cursor);
+    } else{
+      //always wrap the function
+      dowrap = true;
+    }
+    
+    if(dowrap){
+      auto it = std::find_if(p->methods.begin(), p->methods.end(),
+                             [cursor](const MethodRcd& m){
                              return clang_equalCursors(clang_getCanonicalCursor(m.cursor),
                                                        clang_getCanonicalCursor(cursor));
                            });
-    if(it == p->methods.end()){
-      p->methods.emplace_back(cursor, min_args);
-    } else if(it->min_args > min_args){
-      it->min_args = min_args;
-      it->cursor = cursor;
+      if(it == p->methods.end()){
+        p->methods.emplace_back(cursor, min_args);
+      } else if(it->min_args > min_args){
+        it->min_args = min_args;
+        it->cursor = cursor;
+      }
     }
   }
 }
@@ -1956,19 +2018,29 @@ CodeTree::visit_class_constructor(CXCursor cursor){
   bool is_def_ctor = (0 == clang_Cursor_getNumArguments(cursor));
 
   if(p && !is_def_ctor){
-    if(access == CX_CXXPublic
-       && (!auto_veto_ || !inform_missing_types(missing_types, MethodRcd(cursor), p))){
+    if(access == CX_CXXPublic){
+      auto missing_some_type = inform_missing_types(missing_types, MethodRcd(cursor), p);
+      bool dowrap;
 
-      auto it = std::find_if(p->methods.begin(), p->methods.end(),
-                             [cursor](const MethodRcd& m){
-                               return clang_equalCursors(clang_getCanonicalCursor(m.cursor),
-                                                         clang_getCanonicalCursor(cursor));
-                             });
-      if(it == p->methods.end()){
-        p->methods.emplace_back(cursor, min_args);
-      } else if(it->min_args > min_args){
-        it->min_args = min_args;
-        it->cursor = cursor;
+      if(auto_veto_){
+        dowrap = !missing_some_type;
+        if(!dowrap) auto_vetoed_methods_.insert(cursor);
+      } else{
+        dowrap = true;
+      }
+
+      if(dowrap){
+        auto it = std::find_if(p->methods.begin(), p->methods.end(),
+                               [cursor](const MethodRcd& m){
+                                 return clang_equalCursors(clang_getCanonicalCursor(m.cursor),
+                                                           clang_getCanonicalCursor(cursor));
+                               });
+        if(it == p->methods.end()){
+          p->methods.emplace_back(cursor, min_args);
+        } else if(it->min_args > min_args){
+          it->min_args = min_args;
+          it->cursor = cursor;
+        }
       }
     }
   }
@@ -2190,6 +2262,8 @@ CXChildVisitResult CodeTree::visit(CXCursor cursor, CXCursor parent,
 
   if(!pp) pp = clang_getCursorPrintingPolicy(cursor);
 
+  tree.visited_cursor_ = cursor;
+  
   if(verbose > 5) std::cerr << "visiting " << clang_getCursorLocation(cursor)
                             << "\n";
 
@@ -2415,6 +2489,21 @@ std::ostream& CodeTree::report(std::ostream& o){
   if(types_missing_def_.size() == 0){
     o << "No missing definitions\n";
   }
+
+
+  s = "Auto-vetoed functions";
+  o << "\n" << s << "\n";
+  for(unsigned i = 0; i < s.size(); ++i) o << "-";
+  o << "\n";
+
+  for(const auto& cursor: auto_vetoed_methods_){
+    auto sig = FunctionWrapper(cxx_to_julia_, MethodRcd(cursor),
+                               find_class_of_method(cursor),
+                               type_map_,
+                               cxxwrap_version_).signature();
+    o << sig << "\n";
+  }
+  
   //
   //   std::set<int> used_headers;
   //   for(const auto& t: types_missing_def_){
@@ -2968,6 +3057,8 @@ bool CodeTree::is_natively_supported(const std::string& type_fqn,
   };
 
   static std::vector<rcd> natively_supported = {
+    {"_jl_value_t", 0},
+    {"jl_value_t", 0},
     {"std::string", 0},
     {"std::wstring", 0},
     {"std::vector", 1},
@@ -3031,6 +3122,8 @@ void CodeTree::generate_project_file(std::ostream& o,
     << "\"\n";
 }
 
+//FIXME: factorize codes of set_julia_names and set_mapped_types
+
 void CodeTree::set_julia_names(const std::vector<std::string>& name_map){
   cxx_to_julia_.clear();
   std::regex re("\\s*->\\s");
@@ -3039,6 +3132,18 @@ void CodeTree::set_julia_names(const std::vector<std::string>& name_map){
     std::vector<std::string> tokens{it, {}};
     if(tokens.size() > 1){
       cxx_to_julia_[tokens[0]] = tokens[1];
+    }
+  }
+}
+
+void CodeTree::set_mapped_types(const std::vector<std::string>& name_map){
+  type_straight_mapping_.clear();
+  std::regex re("\\s*->\\s");
+  for(const std::string& m: name_map){
+    std::sregex_token_iterator it{m.begin(), m.end(), re, -1};
+    std::vector<std::string> tokens{it, {}};
+    if(tokens.size() > 1){
+      type_straight_mapping_[tokens[0]] = tokens[1];
     }
   }
 }
