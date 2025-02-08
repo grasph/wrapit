@@ -28,6 +28,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          path: ./opt
+          key: ead27cdb-0345-4c4f-9723-89a4fa37765e
       - name: Install libclang
         run: |
               if [ "$RUNNER_OS" = Linux ]; then
@@ -56,13 +61,21 @@ jobs:
             rm -f /opt/hostedtoolcache/julia/1.6*/x64/lib/julia/libstdc++.so.6
           fi
           if [ "$RUNNER_OS" = Linux ]; then
-            cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
+            cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD/opt" -B build -S .
             cmake --build build --verbose -j `nproc`
           else
-            cmake -DBUILD_LLVM=ON -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
+            if [ -d ./opt/lib/cmake/clang ]; then
+               # Use LLVM/Clang built from cache
+               CLANG_OPT="-DClang_DIR=./opt/lib/cmake/clang -DLLVM_DIR=./opt/lib/cmake/llvm"
+               [ -f ./opt/bin/wrapit ] && rm ./opt/bin/wrapit
+            else
+               #build LLVM/Clang
+               CLANG_OPT="-DBUILD_LLVM=ON"
+            fi
+            cmake $CLANG_OPT -DCMAKE_INSTALL_PREFIX="$PWD/opt" -B build -S .
             cmake --build build --verbose -j `sysctl -n hw.logicalcpu`
           fi
           cmake --install build
-          PATH="$PATH:$PWD/bin"
+          PATH="$PATH:$PWD/opt/bin"
           export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
           cd test && ./runtests.jl
