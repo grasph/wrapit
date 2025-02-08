@@ -2734,8 +2734,7 @@ void CodeTree::exit_if_wrapper_files_in_the_way(){
     } else{
       std::cerr << "Files " << buf.str() << " are in the way. Remove them or use the --force option.\n";
     }
-    //exit(1);
-    abort();
+    exit(1);
   }
 }
 

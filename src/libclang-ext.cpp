@@ -186,7 +186,13 @@ std::string fully_qualified_name(CXType t){
 CXType remove_non_builtin_qualifiers(CXType type){
   //FIXME: there are probably more kinds to exclude
   if(type.kind > CXType_LastBuiltin && type.kind != CXType_FunctionProto){
-    return clang_getCursorType(clang_getTypeDeclaration(type));
+    CXCursor c = clang_getTypeDeclaration(type);
+    if(c.kind == CXCursor_NoDeclFound){
+      std::cerr << "Failed to find type declaration of " << type << "\n";
+      return type;
+    } else{
+      return clang_getCursorType(c);
+    }
   } else{
     return type;
   }
