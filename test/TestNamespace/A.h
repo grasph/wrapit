@@ -1,6 +1,10 @@
 namespace ns1{
   namespace ns2 {
-  struct C {};
+  struct C {
+    C(): i(0){}
+    int i;
+    void set(int i_){ i = i_;}
+  };
 
   static int global_var = 2;
 
@@ -21,7 +25,10 @@ namespace ns1{
     
     struct B {
       void f(A<int>& a) { a = data1; }
-      void g(C& c) { c = data2; }
+      void g_ref(C& c) { c = data2; }
+      void g_ptr(C* c) { *c = data2; }
+      void g_ptrofptr(C** c) { **c = data2; }
+      void g_arrofptr(C* c[]){ *c[0] = data2; }
       A<int> data1;
       C data2;
     };

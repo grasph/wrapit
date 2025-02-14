@@ -67,13 +67,15 @@ CXType base_type_(CXType type){
   auto type0 = type;
   CXType type1 = {CXType_Invalid, nullptr};
   while(!clang_equalTypes(type0, type1)){
-    if(type0.kind == CXType_Pointer || type0.kind == CXType_LValueReference || type0.kind == CXType_RValueReference){
-      type1 = type0;
+    type1 = type0;
+    if(type0.kind == CXType_Pointer || type0.kind == CXType_LValueReference
+       || type0.kind == CXType_RValueReference){
       type0 = clang_getPointeeType(type0);
-    } else if(type0.kind == CXType_Typedef){
-      type1 = type0;
     } else{
-      break;
+      CXType arr_elt = clang_getArrayElementType(type1);
+      if(arr_elt.kind != CXType_Invalid){
+        type0 =arr_elt;
+      }
     }
   }
   return type0;
@@ -158,7 +160,10 @@ std::string fully_qualified_name(CXType t){
   } else  if(base.kind > CXType_LastBuiltin){
     const auto& type_decl = clang_getTypeDeclaration(base);
     if(type_decl.kind != CXCursor_NoDeclFound){
-      base_fqn = fully_qualified_name(clang_getTypeDeclaration(base));
+      base_fqn = fully_qualified_name(type_decl);
+    } else{
+      if(verbose>1) std::cerr << "Warning: type declaration of " << base
+                              << " was not found.\n";
     }
     base_local_name = remove_cv(str(clang_getTypeSpelling(base)));
   }
