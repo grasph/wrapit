@@ -1,0 +1,18 @@
+module_name         = "TestAbstractClass"
+uuid                = "418a21d6-7439-4776-b194-a2b4eefa9b4a"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ]
+
+#extra_input         = [ "cstdef" ]
+
+cxx-std             = "c++17"
+
+export  = "all"
+
+auto_veto = true
+
+# all generated code in a single file:
+n_classes_per_file = 0
+

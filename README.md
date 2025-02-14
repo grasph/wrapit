@@ -1,6 +1,6 @@
 # Automatic generation of C++ -- Julia bindings
 
-[![Linux](https://github.com/grasph/wrapit/actions/workflows/test-linux.yml/badge.svg" alt="Linux")](https://github.com/grasph/wrapit/actions?query=workflow%3ALinux+branch%3Amain) [![macOS](https://github.com/grasph/wrapit/actions/workflows/test-macos.yml/badge.svg)](https://github.com/grasph/wrapit/actions?query=workflow%3AmacOS+branch%3Amain)
+[![Linux](https://github.com/grasph/wrapit/actions/workflows/test-linux.yml/badge.svg)](https://github.com/grasph/wrapit/actions?query=workflow%3ALinux+branch%3Amain) [![macOS](https://github.com/grasph/wrapit/actions/workflows/test-macos.yml/badge.svg)](https://github.com/grasph/wrapit/actions?query=workflow%3AmacOS+branch%3Amain)
 
 The goal of this project is the automatization of the generation of [Julia](https://julialang.org) bindings for C++ libraries.
 
