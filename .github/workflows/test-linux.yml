@@ -19,8 +19,7 @@ jobs:
         version:
           - '1.10'
         os:
-#         - ubuntu-latest
-          - ubuntu-22.04
+         - ubuntu-latest
 #         - macOS-latest
         arch:
           - x64
@@ -31,9 +30,9 @@ jobs:
       - name: Install libclang
         run: |
               if [ "$RUNNER_OS" = Linux ]; then
-                sudo apt-get install clang-13 libclang-13-dev
+                sudo apt-get install clang-19 libclang-19-dev
               else #MacOS
-                brew install llvm@13
+                brew install llvm@19
               fi
       - uses: julia-actions/setup-julia@latest
         with:
@@ -49,10 +48,13 @@ jobs:
             rm -f /opt/hostedtoolcache/julia/1.6*/x64/lib/julia/libstdc++.so.6
           fi
           if [ "$RUNNER_OS" = Linux ]; then
-            cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -B build -S .
-          else #MacOS
-            cmake -DClang_DIR=/usr/local/Cellar/llvm@13/13.0.1_2/lib/cmake/clang/ -B build -S .
+            cmake -DClang_DIR=/usr/lib/llvm-13/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
+            cmake --build build --verbose -j `nproc`
+          else
+            cmake -DClang_DIR=/opt/homebrew/opt/llvm@13/lib/cmake/clang -B build -S .
+            cmake --build build --verbose -j `sysctl -n hw.logicalcpu`
           fi
-          cmake --build build --verbose -j `nproc`
-          PATH="`pwd`/build:$PATH"
+          cmake --install build
+          PATH="$PATH:$PWD/bin"
+          export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
           cd test && ./runtests.jl
