@@ -40,14 +40,12 @@ An alternative to the installation of the pre-built executable is to build it fr
 #### Dependencies:
 
   * Software to be present on the system before running `cmake`:
-    * libclang release 13¹: packages `clang-13` and `libclang-13-dev` on Debian.
-    * libclang relase 13¹: packages `llvm13`, `llvm13-devel`, `clang13`, `clang13-devel` on Alma/Rocky/RHEL
-    * _If release 13 is not available for the linux distribution version of yoursystem, you can use the option `-DLLVM_BUILD` to build LLVM and Clang from the source code, that will be automatically downloaded from the LLVM project github repository._
+    * libclang (recommanded release: 19): packages `clang-19` and `libclang-19-dev` on Debian.
+    * libclang (recommanded release: 19): packages `llvm19`, `llvm19-devel`, `clang19`, `clang19-devel` on Alma/Rocky/RHEL
+    * On MacOS, you can install `llvm/clang` with brew running the command `brew install llvm` from a terminal
   * Software will be downloaded  by the `cmake` command:
     * [tomlplusplus](https://github.com/marzer/tomlplusplus.git)
-    * [llvm/clang](https://github.com/llvm/llvm-project/releases/) if the option `-DBUILD_LLVM=ON` is used.
-
-¹ WrapIt is not guaranteed to generate correct code with higher versions of clang. Version 16 is known to give issues. The symptom is function wrappers declared with some argument or the return type as `int` while it if of another type.
+    * [llvm/clang](https://github.com/llvm/llvm-project/releases/) if the experimental option `-DBUILD_LLVM=ON` is used.
 
 #### Build
 
@@ -59,7 +57,7 @@ cmake -S .. -B . -DCMAKE_INSTALL_PREFIX=/opt
 cmake --build .
 ```
 
-On OS X it is necessary to add the prefix of the clang/llvm installation, `-DCMAKE_PREFIX_PATH=<path>` or use the `-DBUILD_LLVM=ON` to download and build LLVM and clang. Dep
+On OS X it is necessary to add the prefix of the clang/llvm installation, `-DCMAKE_PREFIX_PATH=/opt/homebrew/Cellar/llvm/LLVM_VERSION`
 
 The build process will produce the `wrapit` executable. Install it with `cmake --install .`.
 
@@ -139,5 +137,3 @@ The code uses [Clang](https://clang.llvm.org/) from the [LLVM](https://llvm.org/
 ## Contributing to the project
 
 Enthousiastic developers will find in the [src/TODO.md](src/TODO.md) file a list of identified tasks for improving WrapIt!. If you are interested in working on a task, contact us in the Discussion section.
-
-A [Google Summer of Code](https://buildyourfuture.withgoogle.com/programs/summer-of-code) project within the [CERN-HSF organization](https://summerofcode.withgoogle.com/programs/2024/organizations/cern-hsf) on WrapIt! and its application is proposed this year 2024 to students. Desciption of the project: [GSoC Julia-C++ project](https://hepsoftwarefoundation.org/gsoc/2024/proposal_Julia-HEP-Cpp.html).
