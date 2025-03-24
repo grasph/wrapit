@@ -78,7 +78,40 @@ namespace codetree{
     //Replace all '::' occurences by '!':
     return std::regex_replace(cpp_name, std::regex("::"), "!");
   }
+
+  bool isAssignable(CXCursor type_def){
+    if(verbose > 3) std::cerr << __FUNCTION__ << "(" << type_def << ")\n";
+
+    struct data_t {
+      bool copy_assignment_deleted;
+      bool copy_assignment_defined;
+      bool move_assignment_deleted;
+    } data = {false, false, false};
+    
+    clang_visitChildren(type_def, [](CXCursor cursor, CXCursor, CXClientData data_){
+      auto& data = *static_cast<data_t*>(data_);
+      const auto& access = clang_getCXXAccessSpecifier(cursor);
+      if(clang_CXXMethod_isCopyAssignmentOperator(cursor)){
+        if(clang_CXXMethod_isDeleted(cursor) || access != CX_CXXPublic){
+          data.copy_assignment_deleted = true;
+        } else{
+          data.copy_assignment_defined = true;
+        }
+      }
+
+      if(clang_CXXMethod_isMoveAssignmentOperator(cursor)
+         && (clang_CXXMethod_isDeleted(cursor) || access != CX_CXXPublic)){
+        data.move_assignment_deleted = true;
+      }
+      return CXChildVisit_Continue;
+    }, &data);
+  
+    bool not_assignable = data.copy_assignment_deleted
+      || (data.move_assignment_deleted && !data.copy_assignment_defined) ;
+    return !not_assignable;
+  }
 }
+
 
 CXCursor
 CodeTree::getParentClassForWrapper(CXCursor cursor) const{
@@ -474,11 +507,13 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
           if(accessor_gen != accessor_mode_t::none){
             //skip field with anomymous struct types:
             bool anonymous = false;
+            bool assignable = true;
             CXType field_type = clang_getCursorType(f);
             if(field_type.kind != CXType_Invalid){
               auto def = clang_getTypeDeclaration(field_type);
-              if(!clang_Cursor_isNull(def) && clang_Cursor_isAnonymous(def)){
-                anonymous = true;
+              if(!clang_Cursor_isNull(def)){
+                anonymous = clang_Cursor_isAnonymous(def);
+                assignable = isAssignable(def);
               }
             }
             if(anonymous){
@@ -487,7 +522,8 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
                           << " because its type is anonymous.\n";
               }
             } else{
-              generate_accessor_cxx(o, &t, f, accessor_gen == accessor_mode_t::getter, 2);
+              bool getter_only = (accessor_gen == accessor_mode_t::getter || !assignable);
+              generate_accessor_cxx(o, &t, f, getter_only, 2);
             }
           }
         }
@@ -925,9 +961,10 @@ void CodeTree::set_type_rcd_ctor_info(TypeRcd& rcd){
     bool explicit_def_ctor;
     bool implicit_def_ctor;
     bool public_dtor;
+    int assignable;
     int n_def_ctor_decls;
     const CodeTree* tree;
-  } data = {false, true, true, 0, this};
+  } data = {false, true, true, true, 0, this};
 
   clang_visitChildren(rcd.cursor, [](CXCursor cursor, CXCursor, CXClientData data_){
     auto& data = *static_cast<data_t*>(data_);
@@ -950,9 +987,10 @@ void CodeTree::set_type_rcd_ctor_info(TypeRcd& rcd){
         data.public_dtor = false;
       }
     }
+    
     return CXChildVisit_Continue;
   }, &data);
-
+  
   bool finalize_vetoed = false;
   auto it = find(finalizers_to_veto_.begin(), finalizers_to_veto_.end(), rcd.type_name);
   if(it != finalizers_to_veto_.end()){
@@ -3174,3 +3212,5 @@ void CodeTree::set_mapped_types(const std::vector<std::string>& name_map){
     }
   }
 }
+
+

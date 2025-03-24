@@ -13,7 +13,21 @@ function runtest()
         @test :C ∈ names(TestVarFieldOn, all=true)
         @test :global_C ∈ names(TestVarFieldOn, all=true)
         @test :global_C! ∈ names(TestVarFieldOn, all=true)
-       
+
+        @test :global_NoCopyCtor ∈ names(TestVarFieldOn, all=true)
+        @test :global_NoCopyCtor! ∈ names(TestVarFieldOn, all=true)
+
+        @test :global_NotAssignable ∈ names(TestVarFieldOn, all=true)
+        @test :global_NotAssignable! ∉ names(TestVarFieldOn, all=true)
+
+        @test :global_NotAssignable2 ∈ names(TestVarFieldOn, all=true)
+        @test :global_NotAssignable2! ∉ names(TestVarFieldOn, all=true)
+        
+        @test :global_PrivateCopyOp ∈ names(TestVarFieldOn, all=true)
+        @test :global_PrivateCopyOp! ∉ names(TestVarFieldOn, all=true)
+
+        @test :global_NoMoveAssignment ∈ names(TestVarFieldOn, all=true)
+        
         a = TestVarFieldOn.A()
     
         @test TestVarFieldOn.field_int(a) == 1

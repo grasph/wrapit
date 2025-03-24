@@ -5,6 +5,30 @@ struct B{
   int field;
 };
 
+struct NotAssignale {
+  NotAssignale& operator=(const NotAssignale& a) = delete;
+};
+
+struct NotAssignale2 {
+  NotAssignale2& operator=(const NotAssignale2&& a) = delete;
+};
+
+struct NoCopyCtor {
+  NoCopyCtor() {}
+  NoCopyCtor(const NoCopyCtor&)  = delete;
+};
+
+struct NoMoveAssignment {
+  NoMoveAssignment& operator=(NoMoveAssignment&&) = delete;
+  NoMoveAssignment& operator=(const NoMoveAssignment&) { return *this; };
+};
+
+class PrivateCopyOp {
+  PrivateCopyOp& operator=(const PrivateCopyOp& a){
+    return *this;
+  }
+};
+
 
 struct A {
   A(int x = 1): field_int(x), field_int_const(3), field_B(2*x){}
@@ -24,6 +48,12 @@ extern int global_int;
 extern A global_A;
 extern const A global_A_const;
 extern C global_C;
+extern NotAssignale global_NotAssignable;
+extern NotAssignale2 global_NotAssignable2;
+extern NoMoveAssignment global_NoMoveAssignment;
+extern NoCopyCtor global_NoCopyCtor;
+extern PrivateCopyOp global_PrivateCopyOp;
+
 
 namespace ns{
   struct A {

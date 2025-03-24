@@ -267,3 +267,4 @@ bool same_type(CXType t1, CXType t2){
   //Falling back to name comparison:
   return (fully_qualified_name(t1) == fully_qualified_name(t2));
 }
+
