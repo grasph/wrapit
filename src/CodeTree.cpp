@@ -472,7 +472,23 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
         for(const auto& f: t.fields){
           auto accessor_gen = check_veto_list_for_var_or_field(f, false);
           if(accessor_gen != accessor_mode_t::none){
-            generate_accessor_cxx(o, &t, f, accessor_gen == accessor_mode_t::getter, 2);
+            //skip field with anomymous struct types:
+            bool anonymous = false;
+            CXType field_type = clang_getCursorType(f);
+            if(field_type.kind != CXType_Invalid){
+              auto def = clang_getTypeDeclaration(field_type);
+              if(!clang_Cursor_isNull(def) && clang_Cursor_isAnonymous(def)){
+                anonymous = true;
+              }
+            }
+            if(anonymous){
+              if(verbose > 1){
+                std::cerr << "No accessor generated for field " << f
+                          << " because its type is anonymous.\n";
+              }
+            } else{
+              generate_accessor_cxx(o, &t, f, accessor_gen == accessor_mode_t::getter, 2);
+            }
           }
         }
       }
@@ -853,6 +869,7 @@ CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
                                 const CXCursor& cursor, bool getter_only,
                                 int nindents){
 
+  
   FunctionWrapper helper(cxx_to_julia_, MethodRcd(cursor), type_rcd, type_map_,
                          cxxwrap_version_,  "", "", nindents);
 
@@ -1182,7 +1199,8 @@ CodeTree::visit_class(CXCursor cursor){
                             << cursor << ")\n";
 
 
-  if(str(clang_getCursorSpelling(cursor)).size() == 0){
+  //FIXME: is the first check needed?
+  if(str(clang_getCursorSpelling(cursor)).size() == 0 || clang_Cursor_isAnonymous(cursor)){
     if(verbose > 0){
       std::cerr << "Skipping anonymous struct found in "
                 << clang_getCursorLocation(cursor)
@@ -1530,6 +1548,7 @@ CodeTree::register_type(const CXType& type, int* pItype, int* pIenum){
                             << type.kind
                             << ".\n";
 
+  
   check_for_stl(type);
 
   std::string type_name = fully_qualified_name(type);
@@ -1542,6 +1561,15 @@ CodeTree::register_type(const CXType& type, int* pItype, int* pIenum){
     return false;
   }
 
+
+  if(defs.size() > 0 && clang_Cursor_isAnonymous(defs[0])){
+    if(verbose > 2){
+      std::cerr << "Type " << type << " and its possible instance not mapped because the type is anonymous.\n";
+    };
+    return false;
+  }
+
+  
   bool maintype = true;
   for(const auto& c: defs){
     if(clang_Cursor_isNull(c)){
