@@ -1,0 +1,15 @@
+module_name="TestAnonymousStruct"
+uuid                = "28eb9369-de4c-45bd-ac6f-8997959d6fdf"
+
+input = [ "A.h" ]
+		  
+include_dirs = [ "." ]
+
+cxx-std = "c++17"
+
+auto_veto = false
+
+export = "all"
+
+# all generated code in a single file:
+n_classes_per_file = 0
