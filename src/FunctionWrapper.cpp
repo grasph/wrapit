@@ -454,7 +454,7 @@ std::string
 FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
   const auto& argtype = clang_getArgType(method_type, iarg);
   //  const auto argtypename = fully_qualified_name(argtype); //str(clang_getTypeSpelling(argtype));
-  const auto argtypename = type_map_.mapped_typename(argtype);
+  const auto argtypename = fix_template_type(type_map_.mapped_typename(argtype));
 
   if(argtypes_only) return argtypename;
 

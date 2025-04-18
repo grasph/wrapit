@@ -22,6 +22,10 @@ namespace ns{
 
     void setval(const S& val){ a = val; }
 
+    typedef typename std::string String;
+    int slen(const String& s) { return s.size(); }
+
+
     S a;
   };
 
