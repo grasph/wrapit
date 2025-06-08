@@ -186,18 +186,18 @@ std::string CodeTree::wrapper_classsname(const std::string& classname) const{
 
 std::ostream&
 CodeTree::generate_version_check_cxx(std::ostream& o) const{
-  auto [jllmin, jllmax] = version_libcxxwrap_bounds(cxxwrap_version_);
+  auto [sjllmin, sjllmax] = version_libcxxwrap_static_bounds(cxxwrap_version_);
 
   indent(o,0) << "//method from libcxxwrap returning its version\n";
   indent(o,0) << "extern \"C\" JLCXX_API const char* cxxwrap_version_string();\n\n";
   indent(o, 0) << "//Check the code is compiled with a compatible version of libcxxwrap:\n";
   indent(o,0) << "static_assert(1000*1000*JLCXX_VERSION_MAJOR "
-    " + 1000 * JLCXX_VERSION_MINOR + JLCXX_VERSION_PATCH >= " << jllmin << "\n";
+    " + 1000 * JLCXX_VERSION_MINOR + JLCXX_VERSION_PATCH >= " << sjllmin << "\n";
   indent(o, 1) << "&& 1000 * 1000 * JLCXX_VERSION_MAJOR "
-    " + 1000 * JLCXX_VERSION_MINOR + JLCXX_VERSION_PATCH < " << jllmax << ",\n";
+    " + 1000 * JLCXX_VERSION_MINOR + JLCXX_VERSION_PATCH < " << sjllmax << ",\n";
   indent(o,1) << "\"The code was generated with WrapIt! for \"\n";
   indent(o,1) << "\"a different CxxWrap version (controlled with the cxxwrap_version parameter).\");\n\n";
-  indent(o, 0) << "//Check the version of loaded libcxxwrap library:\n";
+  indent(o, 0) << "//Check the version of loaded libcxxrap library:\n";
   indent(o,0) << "void throw_if_version_incompatibility(){\n";
   indent(o,1) <<   "std::string version_str = cxxwrap_version_string();\n";
   indent(o,1) <<   "static std::regex r(\"([[:digit:]]{1,3})\\\\.([[:digit:]]{1,3})\\\\.([[:digit:]]{1,3})\");\n";
@@ -208,13 +208,15 @@ CodeTree::generate_version_check_cxx(std::ostream& o) const{
   indent(o,2) <<     "long version_int =   1000*1000*strtol(matches[1].str().c_str(), 0, 10)\n";
   indent(o,2) <<     "                   +      1000*strtol(matches[2].str().c_str(), 0, 10)\n";
   indent(o,2) <<     "                   +           strtol(matches[3].str().c_str(), 0, 10);\n";
-  indent(o,2) <<     "if(version_int < " << jllmin << " || version_int >= " <<  jllmax << "){\n";
+  indent(o,2) <<     "long jllmin = 1000*1000*JLCXX_VERSION_MAJOR + 1000 * JLCXX_VERSION_MINOR;\n";
+  indent(o,2) <<     "long jllmax = 1000*1000*JLCXX_VERSION_MAJOR + 1000 * (JLCXX_VERSION_MINOR + 1);\n";
+  indent(o,2) <<     "if(version_int < jllmin || version_int >= jllmax){\n";
   indent(o,3) <<     "throw std::runtime_error(std::string(\"Found libcxxwrap_jll version \")\n";
-  indent(o,3) <<       " + version_str + \", while module " << module_name_ << " requires a version in \"\n";
-  indent(o,3) <<       "\"[" << version_int_to_string(jllmin) << ", " << version_int_to_string(jllmax) << ").\"\n";
-  indent(o,3) <<       "\" Note: if the module was installed with the package manager, the Project.toml file \"\n";
-  indent(o,3) <<       "\"of the package is probably missing a compat specification that would have prevented \"\n";
-  indent(o,3) <<       "\"the inconsistency.\");\n";
+  indent(o,4) <<       "+ version_str + \", while module " << module_name_ << " requires version \"\n";
+  indent(o,4) <<       "+ std::to_string(JLCXX_VERSION_MAJOR) + \".\" + std::to_string(JLCXX_VERSION_MINOR) + \".x.\"\n";
+  indent(o,4) <<       "\" Note: if the module was installed with the package manager, the Project.toml file \"\n";
+  indent(o,4) <<       "\"of the package is probably missing a compat specification that would have prevented \"\n";
+  indent(o,4) <<       "\"the inconsistency.\");\n";
   indent(o,2) <<     "}\n";
   indent(o,1) <<   "}\n";
   indent(o,0) << "}\n";
@@ -3052,6 +3054,11 @@ CodeTree::gen_apply_stl(std::ostream& o, int indent_depth,
                         const TypeRcd& type_rcd,
                         const std::string& add_type_param) const{
 
+  if(cxxwrap_version_ >= cxxwrap_v0_17){
+    //apply_stl not relevant for CxxWrap 0.17+
+    return o;
+  }
+  
   if(type_rcd.stl){
     indent(o, indent_depth) << "jlcxx::stl::apply_stl<" << add_type_param
                             << ">(jlModule);\n";
