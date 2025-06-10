@@ -27,9 +27,11 @@ FunctionWrapper::gen_ctor(std::ostream& o){
   auto finalize = pTypeRcd && pTypeRcd->finalize;
 
   for(int nargs = nargsmin; nargs <= nargsmax; ++nargs){
-    std::stringstream  buf;
-    gen_arg_list(buf, nargs, "", /*argtypes_only = */ true);
-    gen_ctor(o, nindents, varname_, templated_, finalize,  buf.str(),
+    std::stringstream  buf1;
+    gen_arg_list(buf1, nargs, "", /*argtypes_only = */ true);
+    std::stringstream buf2;
+    gen_argname_list(buf2, nargs, "");
+    gen_ctor(o, nindents, varname_, templated_, finalize,  buf1.str(), buf2.str(),
              cxxwrap_version_);
   }
   generated_jl_functions_.insert(name_jl_);
@@ -40,7 +42,9 @@ std::ostream&
 FunctionWrapper::gen_ctor(std::ostream& o, int nindents,
                           const std::string& varname_, bool templated,
                           bool finalize,
-                          const std::string& arg_list, long cxxwrap_version_){
+                          const std::string& arg_list,
+                          const std::string& argname_list,
+                          long cxxwrap_version_){
 
   const char* finalize_true;
   const char* finalize_false;
@@ -51,12 +55,17 @@ FunctionWrapper::gen_ctor(std::ostream& o, int nindents,
     finalize_true = "jlcxx::finalize_policy::yes";
     finalize_false = "jlcxx::finalize_policy::no";
   }
-  
+
   indent(o, nindents) << varname_ << "." << (templated ? "template " : "")
                       << "constructor<"
                       << arg_list
                       << ">(/*finalize=*/"
-                      << (finalize?finalize_true:finalize_false) << ");\n";
+                      << (finalize?finalize_true:finalize_false);
+  if(argname_list.size() > 0){
+    o << ", " << argname_list;
+  }
+
+  indent(o, nindents) << ");\n";
   return o;
 }
 
@@ -145,7 +154,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
   };
 
   bool return_by_copy = false;
-  
+
   auto gen_setters = !is_const && !getter_only;
 
   bool wrapper_generated = false;
@@ -178,8 +187,12 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
                           << (return_by_copy ?
                               copy_return_type(target_type) :
                               const_type(target_type))
-                          << " { return a" << op << target_name << "; });\n";
-      
+                          << " { return a" << op << target_name << "; }";
+      if(cxxwrap_version_ >= cxxwrap_v0_15 && !is_static_){
+        o << ", jlcxx::arg(\"this\")";
+      }
+      o << ");\n";
+
       if(non_const_getter){
         if(verbose > 0){
           std::cout << "Info: Generating non-const getter for " << classname << "::" << target_name << "\n";
@@ -192,7 +205,11 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
                             << (return_by_copy ?
                                 copy_return_type(target_type)
                                 : non_const_type_or_pod(target_type))
-                            << " { return a" << op << target_name << "; });\n";
+                            << " { return a" << op << target_name << "; }";
+      if(cxxwrap_version_ >= cxxwrap_v0_15 && !is_static_){
+        o << ", jlcxx::arg(\"this\")";
+      }
+      o << ");\n";
       }
     }
 
@@ -214,7 +231,12 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
         indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "!\", []("
                             << classname << ref << " a, " << const_type(target_type) << " val) -> "
                             << non_const_type_or_pod(target_type)
-                            << " { return a" << op << target_name << " = val; });\n";
+                            << " { return a" << op << target_name << " = val; }";
+          if(cxxwrap_version_ >= cxxwrap_v0_15){
+            if(!is_static_) o << ", jlcxx::arg(\"this\")";
+            o <<", jlcxx::arg(\"value\")";
+          }
+          o << ");\n";
       }
     }
     wrapper_generated = true;
@@ -232,14 +254,23 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
     //types.method("ns!A!x", []() -> T& { return ns::A::x; });
     indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "\", []()"
                         << "-> " << rtype
-                        << " { return " << fqn << "; });\n";
-
+                        << " { return " << fqn << "; }";
+    if(cxxwrap_version_ >= cxxwrap_v0_15 && !is_static_){
+      o << ", jlcxx::arg(\"this\")";
+    }
+    o << ");\n";
+    
     if(gen_setters){
       //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
       indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "!\", []("
                           << const_type(target_type) << " val)"
                           << "-> " << rtype
-                          << " { return " << fqn << " = val; });\n";
+                          << " { return " << fqn << " = val; }";
+      if(cxxwrap_version_ >= cxxwrap_v0_15){
+        if(!is_static_) o << ", jlcxx::arg(\"this\")";
+        o << ", jlcxx::arg(\"value\")";
+      }
+      o << ");\n";
     }
     wrapper_generated = true;
   } else{
@@ -271,7 +302,12 @@ FunctionWrapper::gen_setindex(std::ostream& o) const{
                         << std::regex_replace(fix_template_type(fully_qualified_name(return_type_)), std::regex("\\s*&\\s*$"), " const &")
                         << " val" << "){\n";
   indent(o, nindents+1) << "return a[i] = val;\n";
-  indent(o, nindents) << "});\n";
+  indent(o, nindents) << "}";
+  if(cxxwrap_version_ >= cxxwrap_v0_15){
+    if(!is_static_) o << ", jlcxx::arg(\"this\")";
+    o << ", jlcxx::arg(\"index\"), jlcxx::arg(\"value\")";
+  }
+  o  << ");\n";
   return o;
 }
 
@@ -296,7 +332,12 @@ FunctionWrapper::gen_getindex(std::ostream& o,
   indent(o, nindents + 1) << "[](" << classname
                           << "& a, " << short_arg_list_cxx << " i){\n";
   indent(o, nindents + 1) << "return a[i];\n";
-  indent(o, nindents) << "});\n";
+  indent(o, nindents) << "}";
+  if(cxxwrap_version_ >= cxxwrap_v0_15){
+    if(!is_static_) o << ", jlcxx::arg(\"this\")";
+    o << ", jlcxx::arg(\"index\")";
+  }
+  o  << ");\n";
 
   get_index_register.push_back(getindex_signature);
 
@@ -363,7 +404,12 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
   o << "static_cast<"
     << fix_template_type(fully_qualified_name(return_type_)) << " (" << (is_static_ ? "" : class_prefix) << "*)"
     << "(" << short_arg_list_cxx << (is_variadic ? ",..." : "" ) << ") " << cv
-    << ">(&" << class_prefix << name_cxx << "));\n";
+    << ">(&" << class_prefix << name_cxx << ")";
+
+  std::string sep = ", ";
+  gen_argname_list(o, clang_getNumArgTypes(method_type), sep);
+
+  o << ");\n";
 
   generated_jl_functions_.insert(name_jl_);
 
@@ -376,6 +422,50 @@ FunctionWrapper::gen_arg_list(std::ostream& o, int nargs, std::string sep, bool 
     o << sep << arg_decl(iarg, argtype_only);
     sep = ", ";
   }
+  return o;
+}
+
+std::ostream&
+FunctionWrapper::gen_argname_list(std::ostream& o, int nargs, std::string sep) const{
+
+  //argname list supported starting from CxxWrap v0.15.x
+  if(cxxwrap_version_ < cxxwrap_v0_15) return o;
+
+  if(!is_static_){ //for a non-static class method, first arg is the class instance
+    //by calling the first parameter 'this', which is forbidded in C++, we ensure the
+    //name is not used by another argument of the c++ function.
+    o << sep << "jlcxx::arg(\"this\")";
+    sep = ", ";
+  }
+
+  struct data_t {
+    int iarg;
+    int nargs;
+    std::ostream& o;
+    std::string& sep;
+    data_t(int iarg, int nargs, std::ostream& o, std::string& sep): iarg(iarg), nargs(nargs), o(o), sep(sep){}
+  } data(0, nargs, o, sep);
+
+  clang_visitChildren(method.cursor, [](CXCursor cursor, CXCursor parent, CXClientData data_){
+    data_t& data = *reinterpret_cast<data_t*>(data_);
+    if(clang_getCursorKind(cursor) == CXCursor_ParmDecl){
+      data.o << data.sep << "jlcxx::arg(\"";
+      std::string argname = str(clang_getCursorSpelling(cursor));
+      if(argname.size() >  0){
+        data.o << argname;
+      } else{
+        data.o << "arg" << data.iarg;
+      }
+      data.o << "\")";
+      data.sep = ", ";
+      data.iarg += 1;
+    }
+    if(data.iarg == data.nargs){
+      return CXChildVisit_Break;
+    } else{
+      return CXChildVisit_Continue;
+    }
+  }, &data);
   return o;
 }
 
@@ -418,7 +508,7 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
       std::string mapped_return_type
         = fix_template_type(type_map_.mapped_typename(return_type_,
                                                       /*as_return=*/true,
-                                                      &cast_return)); 
+                                                      &cast_return));
       o << ")";
       if(!cast_return) o << "->"<< (mapped_return_type);
       o << " { ";
@@ -443,7 +533,10 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
         o << sep << cast_op.str() << "arg" << iarg;
         sep = ", ";
       }
-      o << "); });\n";
+      o << "); }";
+      sep = ", ";
+      gen_argname_list(o, nargs, sep);
+      o << ");\n";
     }
   }
   generated_jl_functions_.insert(name_jl_);
@@ -529,9 +622,9 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
     //cursor name of global functions are not fully qualified.
     name_cxx = fully_qualified_name(cursor);
   }
-  
+
   is_static_ = clang_Cursor_getStorageClass(cursor) == CX_SC_Static;
-  
+
   if(name_cxx == "operator new" || name_cxx == "operator delete"
      || name_cxx == "operator new[]" || name_cxx == "operator delete[]"
      ) is_static_ = true;
@@ -539,7 +632,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   if(varname.size() == 0){
     varname_ = is_static_ ? "module_" : "t";
   }
-  
+
   override_base_ = false;
 
   //number of args including the implicit "this"
@@ -548,7 +641,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   if((this->classname.size()) != 0 && !is_static_) noperands += 1;
 
 
-//--------  
+//--------
 
   auto full_name = class_prefix + name_cxx;
   auto it = name_map.find(full_name);
@@ -567,7 +660,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
     name_jl_suffix = get_name_jl_suffix(name_cxx, noperands);
   }
 
-  
+
   if(name_jl_suffix == "getindex" || name_jl_suffix == "+"){
     override_base_ = true;
   }
@@ -579,17 +672,17 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
                   name_jl_suffix) != prefix_base_ops.end()){
     override_base_ = true;
   }
-  
+
   static std::vector<std::string> infix_base_ops = { "-", "*", "/",
     "%", "[]", "&", "|", "xor", ">>", ">>>", "<<", ">", "<", "<=", ">=",
     "==", "!=", "cmp"};
-  
+
   if(noperands == 2
      && std::find(infix_base_ops.begin(), infix_base_ops.end(),
                   name_jl_suffix) != infix_base_ops.end()){
     override_base_ = true;
   }
-  
+
   if(is_static_){
     if(templated_){
       name_jl_ = jl_type_name(pTypeRcd->type_name + "::") + name_jl_suffix;
@@ -600,8 +693,8 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
     //FIXME: Add prefix. The namespace?
     name_jl_ = name_jl_suffix;
   }
-  
-  
+
+
   setindex_ = getindex_ = false;
   if(name_cxx == "operator[]"){
     getindex_ = true;
@@ -617,14 +710,14 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
 
   all_lambda_ |= (argtype_mapped || type_map_.is_mapped(return_type_,
                                                         /*as_return=*/true));
-  
+
   if(clang_CXXMethod_isConst(method.cursor)){
     cv = " const";
   }
 
   is_ctor_ = clang_getCursorKind(method.cursor) == CXCursor_Constructor;
 
-  is_abstract_ = pTypeRcd ? clang_CXXRecord_isAbstract(pTypeRcd->cursor) : false;  
+  is_abstract_ = pTypeRcd ? clang_CXXRecord_isAbstract(pTypeRcd->cursor) : false;
 }
 
 bool
@@ -757,14 +850,14 @@ std::string FunctionWrapper::get_name_jl_suffix(const std::string& cxx_name,
                                                 int noperands) const{
   auto name_jl_suffix = jl_type_name(name_cxx);
 
-  
+
   static std::regex opregex("(^|.*::)operator[[:space:]]*(.*)$");
   std::cmatch m;
 
   if(std::regex_match(name_cxx.c_str(), m, opregex)){
     name_jl_suffix = m[2];
   }
-  
+
   //FIXME: check that julia = operator is not already mapped to c++ operator=
   //by CxxWrap. In that case we won't need to define an assign function
   if(name_jl_suffix == "="){
@@ -774,7 +867,7 @@ std::string FunctionWrapper::get_name_jl_suffix(const std::string& cxx_name,
   if(name_jl_suffix == "*" && noperands == 1){
     name_jl_suffix = "getindex"; //Deferencing operator, *x -> x[]
   }
-  
+
   if(name_jl_suffix == "getindex"){
     name_jl_suffix = "getindex";
   }
@@ -784,7 +877,7 @@ std::string FunctionWrapper::get_name_jl_suffix(const std::string& cxx_name,
     //including zero, case that corrsponds to the prefix operator
   }
 
-  
+
   //C++ -> Julia operation name map for operators
   //When not in the list, operatorOP() is mapped to Base.OP()
   std::vector<std::pair<std::string, std::string>> op_map = {
@@ -809,7 +902,7 @@ std::string FunctionWrapper::get_name_jl_suffix(const std::string& cxx_name,
     {"&&", "logicaland"},//&& and ||, to which short-circuit evalution is applied
     {"||", "logicalor"},//cannot be overloaded in Julia.
   };
-  
+
   for(const auto& m: op_map){
     if(name_jl_suffix == m.first){
       name_jl_suffix = m.second;

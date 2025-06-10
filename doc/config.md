@@ -4,7 +4,6 @@ The configuration file uses the [toml](https://toml.io) syntax.
 
 The list of parameters with their defaut value is provided below.
 
-
 ### Main parameters
 
 ```
@@ -112,6 +111,15 @@ fields_and_variables = true
 # given class.
 #
 inheritances        = [ "" ]
+
+# Explicit constraints on the class wrapper declaration order.
+# A constraint is a string with format class_name_1 < class_name_2. It results
+# in having the wrappert of class_name_1 declared before the one of class_name_2.
+#
+# This parameter can be used to fix a bad wrapper declaration order resulting
+# from a Wrapit limitation. See the FAQ ""
+#
+class_order_constraints = [ "" ]
 
 # List of customized C++-to-Julia name mapping.  Each element of the list must
 # be a string with format <C++ fully qualified name> -> <julia name>.

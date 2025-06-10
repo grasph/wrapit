@@ -59,6 +59,7 @@ public:
            const std::string& varname, bool templated,
            bool finalize,
            const std::string& arg_list,
+           const std::string& argname_list,
            long cxxwrap_version);
 
   /// Tells if the Base module must be overriden.
@@ -88,6 +89,8 @@ protected:
 
   std::ostream& gen_arg_list(std::ostream& o, int nargs, std::string sep, bool argtypes_only = false) const;
 
+  std::ostream& gen_argname_list(std::ostream& o, int nargs, std::string sep) const;
+  
   std::ostream&
   gen_func_with_default_values(std::ostream& o);
 

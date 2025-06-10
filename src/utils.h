@@ -17,6 +17,9 @@ static const char* one_indent = "  ";
 extern int verbose;
 extern long version_int_base;
 
+
+std::string nth(int i);
+
 std::ostream& indent(std::ostream& o, int n);
 
 //Converts version string x.y.z (optionnally prefixed by the letter v)

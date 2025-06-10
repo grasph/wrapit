@@ -284,6 +284,8 @@ namespace codetree{
     void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
 
     void set_julia_names(const std::vector<std::string>& name_map);
+
+    void set_class_order_constraints(const std::vector<std::string>& class_order_constraints);
     
     void set_mapped_types(const std::vector<std::string>& name_map);
 
@@ -319,7 +321,6 @@ namespace codetree{
     CXSourceRange function_decl_range(const CXCursor& cursor) const;
 
     bool add_type_specialization(TypeRcd* pTypeRcd, const CXType& type);
-
 
     bool check_resource_dir(bool verbose) const;
 
@@ -546,6 +547,8 @@ namespace codetree{
 
     Graph type_dependencies_;
 
+    std::vector<std::pair<std::string, std::string>> class_order_constraints_;
+    
     std::vector<std::string> towrap_type_filenames_;
     std::set<std::string> towrap_type_filenames_set_;
 

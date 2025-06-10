@@ -21,6 +21,15 @@ int verbose = 0;
 CXPrintingPolicy pp = nullptr;
 long version_int_base = 1000;
 
+std::string nth(int i){
+  if(i== 1)
+    return "1st";
+  else if(i==2)
+    return "2nd";
+  else
+    return std::to_string(i) + "th";
+}
+
 long version_string_to_int(const std::string& version_string){
   static std::regex r("v?([[:digit:]]{1,3}\\.)?([[:digit:]]{1,3}\\.)?([[:digit:]]{1,3})");
   std::smatch matches;

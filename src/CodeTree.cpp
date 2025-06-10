@@ -308,7 +308,7 @@ CodeTree::generate_template_add_type_cxx(std::ostream& o,
 #ifdef DEFINE_TEMPLATE_METHODS_IN_CTOR
   if(type_rcd.default_ctor){
     FunctionWrapper::gen_ctor(o, 2, "t", type_rcd.template_parameters.empty(),
-                              type_rcd.finalize, std::string(),
+                              type_rcd.finalize, std::string(), std::string(),
                               cxxwrap_version_);
   }
 #endif
@@ -449,7 +449,7 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
       //Generate a wrapper for the implicit default ctor if needed
       if(t.default_ctor){
         FunctionWrapper::gen_ctor(o, 2, "t", t.template_parameters.empty(),
-                                  t.finalize, std::string(),
+                                  t.finalize, std::string(), std::string(),
                                   cxxwrap_version_);
       }
     }
@@ -722,7 +722,7 @@ CodeTree::generate_cxx(){
   o2 << "#ifdef VERBOSE_IMPORT\n"
     "#  define DEBUG_MSG(a) std::cerr << a << \"\\n\"\n"
     "#else\n"
-    "#  define DEBUG_MSG(a)\n"
+    "#  define DEBUG_MSG(a) if(getenv(\"WRAPIT_VERBOSE_IMPORT\")) std::cerr << a << \"\\n\"\n"
     "#endif\n"
     "#define __HERE__  __FILE__ \":\" QUOTE2(__LINE__)\n"
     "#define QUOTE(arg) #arg\n"
@@ -1100,7 +1100,8 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   //    wrapped.constructor<>();
   if(t.default_ctor){
     FunctionWrapper::gen_ctor(o, 3, "wrapped", /*templated=*/true,
-                              t.finalize, std::string(), cxxwrap_version_);
+                              t.finalize, std::string(), std::string(),
+                              cxxwrap_version_);
   }
 
   //        wrapped.method("get_first", [](const T& a) -> T1 { return a.get_first(); });
@@ -2674,6 +2675,30 @@ void CodeTree::preprocess(){
       }//next paramType
     }//next iCombi
 
+
+    //Add user defined dependencies
+    for(const auto& dep: class_order_constraints_){
+      auto it1 = std::find_if(types_.begin(), types_.end(),
+                              [dep](const auto& x){ return x.type_name == dep.first;});
+      auto it2 = std::find_if(types_.begin(), types_.end(),
+                              [dep](const auto& x){ return x.type_name == dep.second;});
+      
+      if(it1 != types_.end() && it2 != types_.end()){
+        type_dependencies_.preceeds(it1 - types_.begin(), it2 - types_.begin());
+        if(verbose > 1) std::cerr << "Dependency \"" << dep.second << " requires " << dep.first
+                                << "\" added.\n";
+      } else{
+        if(verbose>0){
+          std::cerr << "Warning: class dependency "
+                    << dep.first << " < " << dep.second
+                    << " not used.";
+          if(it1 == types_.end()) std::cerr << " No " << dep.first << " class.";
+          if(it2 == types_.end()) std::cerr << " No " << dep.second << " class.";
+          std::cerr << "\n";
+        } 
+      }
+    }
+
 #ifdef DEFINE_TEMPLATE_METHODS_IN_CTOR
     //Add dependencies of templated classes to the type of their methods
     //argument and return value.
@@ -3160,24 +3185,54 @@ void CodeTree::generate_project_file(std::ostream& o,
 
 void CodeTree::set_julia_names(const std::vector<std::string>& name_map){
   cxx_to_julia_.clear();
-  std::regex re("\\s*->\\s");
+  std::regex re("\\s*->\\s*");
+  int i = 0;
   for(const std::string& m: name_map){
+    ++i;
     std::sregex_token_iterator it{m.begin(), m.end(), re, -1};
     std::vector<std::string> tokens{it, {}};
     if(tokens.size() > 1){
       cxx_to_julia_[tokens[0]] = tokens[1];
+    } else{
+      std::cerr << "ERROR. Syntax error for the " << nth(i) << " element "
+                << m
+                << " of julia_names parameter.\n";
+    }
+  }
+}
+
+void CodeTree::set_class_order_constraints(const std::vector<std::string>& class_order_constraints){
+  class_order_constraints_.clear();
+  std::regex re("\\s*<\\s*");
+  int i = 0;
+  for(const std::string& m: class_order_constraints){
+    ++i;
+    std::sregex_token_iterator it{m.begin(), m.end(), re, -1};
+    std::vector<std::string> tokens{it, {}};
+    if(tokens.size() > 1){
+      class_order_constraints_.push_back(std::make_pair(tokens[0], tokens[1]));
+    } else{
+      std::cerr << "ERROR. Syntax error for the " << nth(i) << " element "
+                << m
+                << " of class_dependencies configuration parameter.\n";
     }
   }
 }
 
 void CodeTree::set_mapped_types(const std::vector<std::string>& name_map){
   type_straight_mapping_.clear();
-  std::regex re("\\s*->\\s");
+  std::regex re("\\s*->\\s*");
+  int i = 0;
   for(const std::string& m: name_map){
+    ++i;
     std::sregex_token_iterator it{m.begin(), m.end(), re, -1};
     std::vector<std::string> tokens{it, {}};
     if(tokens.size() > 1){
       type_straight_mapping_[tokens[0]] = tokens[1];
+    } else{
+      std::cerr << "ERROR. Syntax error for the " << nth(i) << " element "
+                << m
+                << " of mapped_types configuration parameter.\n";
     }
   }
 }

@@ -248,6 +248,8 @@ int main(int argc, char* argv[]){
     auto julia_names = read_vstring("julia_names");
 
     auto mapped_types = read_vstring("mapped_types");
+
+    auto class_order_contraints = read_vstring("class_order_constraints");
     
     auto veto_list = toml_config["veto_list"].value_or(""sv);
 
@@ -380,6 +382,7 @@ int main(int argc, char* argv[]){
 
     tree.set_julia_names(julia_names);
     tree.set_mapped_types(mapped_types);
+    tree.set_class_order_constraints(class_order_contraints);
     
     tree.add_std_option(cxx_std);
 
