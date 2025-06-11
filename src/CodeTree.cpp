@@ -685,15 +685,6 @@ CodeTree::generate_cxx(){
 
 
   indent(o << "\n", 1) << "throw_if_version_incompatibility();\n\n";
-  
-  indent(o, 1) << "std::vector<std::shared_ptr<Wrapper>> wrappers = {\n";
-  std::string sep;
-  for(const auto& w: wrappers){
-    indent(o << sep, 2) << "std::shared_ptr<Wrapper>(new" << w << "(jlModule))";
-    sep = ",\n";
-  }
-  o << "\n";
-  indent(o, 1) << "};\n";
 
   if(type_straight_mapping_.size() > 0){
     indent(o, 1) << "// mapping of types that are bit-to-bit matched\n";
@@ -709,6 +700,15 @@ CodeTree::generate_cxx(){
   for(const auto& e: enums_){
     generate_enum_cxx(o, e.cursor);
   }
+  
+  indent(o, 1) << "std::vector<std::shared_ptr<Wrapper>> wrappers = {\n";
+  std::string sep;
+  for(const auto& w: wrappers){
+    indent(o << sep, 2) << "std::shared_ptr<Wrapper>(new" << w << "(jlModule))";
+    sep = ",\n";
+  }
+  o << "\n";
+  indent(o, 1) << "};\n";
 
   indent(o, 1) << "for(const auto& w: wrappers) w->add_methods();\n";
 
