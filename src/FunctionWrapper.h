@@ -40,7 +40,11 @@ public:
   /// Returns the method signature.
   /// Used by CodeTree to support method
   /// vetoing.
-  std::string signature() const;
+  ///
+  /// When aftermap is true, the argument and return types are transformed
+  /// according with the type_mapper. This is used to check duplicate
+  /// declaration for the wrapping.
+  std::string signature(bool withcv=false, bool aftermap=false) const;
 
   /// Generates the c++ code for the wrapper.
   /// @param [in,out] get_index_register register used to keep tracks
@@ -61,7 +65,7 @@ public:
            const std::string& arg_list,
            const std::string& argname_list,
            long cxxwrap_version);
-
+  
   /// Tells if the Base module must be overriden.
   /// This is the case for operators.
   bool override_base(){ return override_base_;}
@@ -90,6 +94,8 @@ protected:
   std::ostream& gen_arg_list(std::ostream& o, int nargs, std::string sep, bool argtypes_only = false) const;
 
   std::ostream& gen_argname_list(std::ostream& o, int nargs, std::string sep) const;
+
+  std::ostream& gen_call_args(std::ostream&  o, int nargs) const;
   
   std::ostream&
   gen_func_with_default_values(std::ostream& o);

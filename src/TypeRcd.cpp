@@ -12,7 +12,7 @@ int TypeRcd::nRecords = 0;
 TypeRcd::TypeRcd(const CXCursor& cursor, const std::string& type_name)
   : cursor(cursor), to_wrap(false), stl(false), stl_const(false),
     stl_ptr(false), stl_const_ptr(false), id(nRecords++), default_ctor(true),
-    finalize(true){
+    copy_op_deleted(false), finalize(true){
   if(type_name.size() == 0){
     this->type_name = fully_qualified_name(cursor);
   }  else{

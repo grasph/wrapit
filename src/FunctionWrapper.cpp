@@ -98,19 +98,36 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
   auto target_pointee = clang_getPointeeType(target_type);
   auto pointer_target =  target_pointee.kind != CXType_Invalid;
 
-  bool is_const;
-  if(pointer_target) is_const = clang_isConstQualifiedType(target_pointee);
-  else is_const = clang_isConstQualifiedType(target_type);
+//  std::cerr << "===> " << signature() << " -> kind: " << target_type.kind
+//            << ", kind of pointee: " << target_pointee.kind
+//            << ", spelling: " <<  target_type
+//            << ", spelling of decl: " << clang_getTypeDeclaration (target_type)
+//            << "\n";
 
+  if(target_pointee.kind == CXType_FunctionProto){
+    //a function pointer
+    if(verbose > 0){
+      //FIXME: this should go in the report
+      std::cerr << "Warning: no accessor created for the function pointer type variable "
+                << class_prefix << target_name << "\n";
+    }
+    return o;
+  }
+  
   if(clang_getArraySize(target_type) >=0){
     //a c-array
     if(verbose > 0){
+      //FIXME: this should go in the report
       std::cerr << "Warning: no accessor created for the c-array type variable "
                 << class_prefix << target_name << "\n";
     }
     return o;
   }
 
+  bool is_const;
+  if(pointer_target) is_const = clang_isConstQualifiedType(target_pointee);
+  else is_const = clang_isConstQualifiedType(target_type);
+  
   auto const_type = [](CXType type){
     if(clang_isPODType(type)){
       bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
@@ -499,6 +516,8 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
     for(int nargs = nargsmin; nargs <= nargsmax; ++nargs){
       indent(o, nindents) <<  varname_ << ".method(\"" << name_jl_<<  "\", [](";
       std::string sep;
+      //If a non-static method class, generate the first argument
+      //which must be the class instance:
       if(!is_static_ && classname.size() > 0){
         o << classname << cv << ref_types[itype] << " a";
         sep = ", ";
@@ -522,17 +541,7 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
       if(is_static_) o << classname << "::";
       if(!is_static_ && classname.size() > 0) o << "a" << accessors[itype];
       o << name_cxx << "(";
-      sep = "";
-      std::stringstream cast_op;
-      for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
-        cast_op.str("");
-        const auto& argtype = clang_getArgType(method_type, iarg);
-        if(type_map_.is_mapped(argtype)){
-          cast_op << "(" << fully_qualified_name(argtype) << ")";
-        }
-        o << sep << cast_op.str() << "arg" << iarg;
-        sep = ", ";
-      }
+      gen_call_args(o, nargs);
       o << "); }";
       sep = ", ";
       gen_argname_list(o, nargs, sep);
@@ -540,6 +549,28 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
     }
   }
   generated_jl_functions_.insert(name_jl_);
+  return o;
+}
+
+std::ostream& FunctionWrapper::gen_call_args(std::ostream& o, int nargs) const{
+  std::string sep = "";
+  std::stringstream cast_op;
+  std::regex re_arr("(.*)\\[.*\\]");
+  for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
+    cast_op.str("");
+    const auto& argtype = clang_getArgType(method_type, iarg);
+    if(type_map_.is_mapped(argtype)){
+      auto fqn = fully_qualified_name(argtype);
+          //change arrays to pointers for the cast:
+      std::smatch sm;
+      if(std::regex_match(fqn, sm, re_arr)){
+        fqn = sm[1].str() + "*";
+          }
+      cast_op << "(" << fqn << ")";
+    }
+    o << sep << cast_op.str() << "arg" << iarg;
+    sep = ", ";
+  }
   return o;
 }
 
@@ -640,7 +671,6 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   int noperands = clang_getNumArgTypes(method_type);
   if((this->classname.size()) != 0 && !is_static_) noperands += 1;
 
-
 //--------
 
   auto full_name = class_prefix + name_cxx;
@@ -650,7 +680,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   if(it != name_map.end()){ //custom name mapping
     name_jl_suffix = it->second;
     if(verbose > 0){
-      std::cerr << "Info name mapping: " << full_name << " mapped to " << name_jl_ << "\n";
+      std::cerr << "Info name mapping: " << full_name << " mapped to " << name_jl_suffix << "\n";
     }
   } else{// automatic name mapping
     if(verbose > 4){
@@ -700,7 +730,8 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
     getindex_ = true;
 
     if(return_type_.kind == CXType_LValueReference
-       && !(clang_isConstQualifiedType(clang_getPointeeType(return_type_)))){
+       && !(clang_isConstQualifiedType(clang_getPointeeType(return_type_)))
+       && !pTypeRcd->copy_op_deleted){
       setindex_ = true;
     }
   }
@@ -759,11 +790,15 @@ FunctionWrapper::validate(){
   return true;
 }
 
-std::string FunctionWrapper::signature() const{
+
+std::string FunctionWrapper::signature(bool withcv, bool aftermap) const{
   std::stringstream buf;
   std::string genuine_classname_prefix = pTypeRcd ? (pTypeRcd->type_name + "::") : "";
-  buf << fully_qualified_name(return_type_) << " " << genuine_classname_prefix << name_cxx
-      << "(" <<  short_arg_list_signature << ")";
+  buf << ((withcv && is_static_) ? "static " : "")
+      << (is_ctor_ ? "" : (fully_qualified_name(return_type_) + " "))
+      << genuine_classname_prefix << name_cxx
+      << "(" <<  (aftermap ? short_arg_list_cxx : short_arg_list_signature) << ")"
+      << (withcv ? cv : "");
   return buf.str();
 }
 
@@ -868,6 +903,7 @@ std::string FunctionWrapper::get_name_jl_suffix(const std::string& cxx_name,
     name_jl_suffix = "getindex"; //Deferencing operator, *x -> x[]
   }
 
+  //FIXME: what does below lines do? replace getindex in cond. by [] ?
   if(name_jl_suffix == "getindex"){
     name_jl_suffix = "getindex";
   }

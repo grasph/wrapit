@@ -24,6 +24,9 @@ function runtest()
         @test_throws UndefVarError TestEnum.D
         @test_throws UndefVarError TestEnum.E!E1
         @test_throws UndefVarError TestEnum.E!E2
+
+        @test TestEnum.f(TestEnum.A!C) == TestEnum.A!C
+        @test TestEnum.f(TestEnum.A!D) == TestEnum.A!D
     end
 end
 

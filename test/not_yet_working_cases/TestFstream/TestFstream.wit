@@ -1,11 +1,13 @@
 module_name="TestFstream"
+uuid = "660213d3-4310-6cf2-bcde-c967d5dd873e"
 
 #input = [ "iosfwd", "fstream", "fstream_def.h" ]
 input = [ "fstream_def.h" ]
 
-extra_headers = [ "streambuf" ]
+#extra_headers = [ "streambuf" ]
+#extra_headers = [ "cstdlib" ]
 		  
-#include_dirs = [ ".", "/usr/lib/llvm-11/include/c++/v1"  ]
+#include_dirs = [ ".", "/usr/lib/llvm-19/include/c++/v1"  ]
 include_dirs = [ "." ]
 
 cxx-std = "c++17"
@@ -15,8 +17,6 @@ auto_veto = false
 #clang_opts = [ "-stdlib=libc++" ]
 
 #macro_definitions = [ "CXXWRAPGEN" ]
-
-
 
 # all generated code in a single file:
 n_classes_per_file = 0

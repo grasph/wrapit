@@ -18,4 +18,4 @@ n_classes_per_file = 0
 
 # not working with CxxWrap 0.16 on MacOS
 # forcing version to 0.14
-cxxwrap_version = "0.14"
+#cxxwrap_version = "0.14"

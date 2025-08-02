@@ -14,9 +14,11 @@ extra_headers       = [ "TVectorT.h" ]
 
 veto_list           = "jlROOT-veto.h"
 
+class_order_constraints = [ "TTreeReader < TTreeReaderValue" ]
+
 fields_and_variables = false
 
-# Currently not working with CxxWrap 0.15.0, use 0.14.x or 0.16+
+# Not working with CxxWrap 0.15.0, use 0.17.x
 cxxwrap_version = "0.17"
 
 #auto_veto           = false

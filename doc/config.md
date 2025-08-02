@@ -134,6 +134,41 @@ class_order_constraints = [ "" ]
 # function name, that can make the required customization.
 julia_names         = [ ]
 
+# This parameter allows changing the argument and return types in the
+# function prototype used to define a method wrapper.
+#
+# It is useful to select the name to expose to CxxWrap, when a type
+# has multiple alias defined by typedefs. See the CxxWrap documentation
+# for the c++ type to Julia mapping that will be performed on this
+# exposed type.
+#
+# For the mapping to work, cast operation from the new type 
+# to the original one must be available for argument type changes and
+# in the other direction for return type changes.
+#
+# cxx2cxx_type_map parameter is a list of character string with
+# the following format:
+#      original_type -> new_type
+#   or orginal_type -> (new_argument_type, new_return_type)
+#
+# The second format allows different mapping for method arguments and return value.
+#
+# To be substituted, the type must exactly match with the specified one,
+# apart from the const specifier. In presence of const specifier, it will be
+# added to the type of substitution. To map also pointers and reference of
+# a type, the pointer and reference type should be explicitly included in the
+# table.
+#
+# Following default mapping are always defined, although the default can change 
+# in future wrapit release:
+#
+#     std::string_view         -> (const char *, std::string)
+#     const std::string_view & -> (const char *, std::string)
+#     const char *             -> (const char *, std::string)
+#
+# experimental feature that can evolve in future.
+cxx2cxx_type_map = []
+
 # Bit-to-bit map of C++ types to julia types (experimental)
 #
 # This control the generation of map_type() code that maps memory of 

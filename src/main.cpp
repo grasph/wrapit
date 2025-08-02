@@ -120,7 +120,10 @@ int main(int argc, char* argv[]){
      "already exist and there is no code changed, then the file including "
      "its time stamp is preserved. The time stamp can then be used to "
      "recompile modified files only during wrapper development of "
-     "large projects.")
+     "large projects."),
+    ("ignore-parsing-errors", "Force generation of code in presence of error in the "
+     "C++ code interpretation. For debug purpose as the generated code will likely "
+     "be invalid is such case.\n"),
     ("V,version", "Display the software version")
     ;
 
@@ -249,6 +252,8 @@ int main(int argc, char* argv[]){
 
     auto mapped_types = read_vstring("mapped_types");
 
+    auto cxx2cxxtypes = read_vstring("cxx2cxx_type_map");
+    
     auto class_order_contraints = read_vstring("class_order_constraints");
     
     auto veto_list = toml_config["veto_list"].value_or(""sv);
@@ -268,6 +273,8 @@ int main(int argc, char* argv[]){
     auto fields_and_variables = toml_config["fields_and_variables"].value_or(true);
 
     auto verbosity = options["verbosity"].as<int>();
+
+
     //toml_config["verbosity"].value_or(0);
 
     if(propagation_mode != "types"
@@ -370,18 +377,19 @@ int main(int argc, char* argv[]){
 
     if(in_err) return -1;
 
-
-
     verbose = verbosity;
 
     CodeTree tree;
 
     tree.set_force_mode(options.count("force") > 0);
 
+    tree.set_ignore_parsing_errors(options.count("ignore-parsing-errors") > 0);
+    
     tree.set_cxxwrap_version(cxxwrap_version);
 
     tree.set_julia_names(julia_names);
     tree.set_mapped_types(mapped_types);
+    tree.set_cxx2cxx_typemap(cxx2cxxtypes);
     tree.set_class_order_constraints(class_order_contraints);
     
     tree.add_std_option(cxx_std);
@@ -450,7 +458,7 @@ int main(int argc, char* argv[]){
     }
 
     for(const auto& s: extra_headers){
-      tree.add_forced_header(s);
+      tree.add_extra_headers(s);
     }
 
     if(veto_list.size() > 0){
@@ -465,7 +473,7 @@ int main(int argc, char* argv[]){
       tree.add_export_veto_word(k);
     }
 
-    tree.parse();
+    if(!tree.parse()) return -1;
     tree.preprocess();
     tree.generate_cxx();
     tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);

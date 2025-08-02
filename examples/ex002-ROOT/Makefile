@@ -20,7 +20,9 @@ else
 CXXWRAP_PREFIX=$(shell mkdir -p $(BUILD_DIR); julia --project=$(BUILD_DIR) -e "import Pkg; Pkg.add(name=\"CxxWrap\", version=\"$(CXXWRAP_VERSION)\"); Pkg.resolve(); import CxxWrap; print(CxxWrap.prefix_path())")
 endif
 
-CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++20
+#WRAPIT_OPT+=-v4
+
+CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -I . --std=c++17
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
 CXX_IS_CLANG=$(shell $(CXX) -dM -E - < /dev/null | grep -c __clang__)

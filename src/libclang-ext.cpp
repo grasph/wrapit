@@ -142,7 +142,22 @@ std::string fully_qualified_name(CXType t){
         if(arg_type.kind != CXType_Invalid){
           buf << fully_qualified_name(arg_type);
           ++nprocessed_args;
-        }
+          //FIXME:
+          //if Integral type, we should retrieve the argument spelling and copy it
+          //I didn't find a function in libclang to retrieve the spelling,
+          //we can parse the specialization declaration and it ourselves.
+          //} else if(CXTemplateArgumentKind_Integral = clang_Cursor_getTemplateArgumentKind(clang_getTypeDeclaration(base), iarg)){
+          //        }
+          //    }
+        } /*else{
+          std::cerr << "==> Type found in parameters of templated class "
+                    << t << ", "
+                    << arg_type
+                    << " is invalid.";
+          std::cerr << "==> " << clang_Cursor_getTemplateArgumentType(clang_getTypeDeclaration(base), iarg)
+                    << ", " << clang_Cursor_getTemplateArgumentKind(clang_getTypeDeclaration(base), iarg)
+                    << "\n";
+                    }*/
       }
       buf << ">";
       tmpl_args = buf.str();
@@ -266,4 +281,43 @@ bool same_type(CXType t1, CXType t2){
   //But fails to recognize same types in LLVM17.
   //Falling back to name comparison:
   return (fully_qualified_name(t1) == fully_qualified_name(t2));
+}
+
+bool is_method_deleted(CXTranslationUnit unit, CXCursor cursor){
+  //     declaration or definition
+  auto range = clang_getCursorExtent(cursor);
+
+  CXToken* toks = nullptr;
+  unsigned nToks = 0;
+  bool deleted = false;
+  bool expecting_operator = false;
+  int in_paren = 0;
+  if(!clang_Range_isNull(range)){
+    clang_tokenize(unit, range, &toks, &nToks);
+    bool equal = false;
+    for(unsigned i =0; i < nToks; ++i){
+      const auto& s = str(clang_getTokenSpelling(unit, toks[i]));
+
+      if(s == "("){ ++in_paren; continue; }
+      if(s == ")"){ --in_paren; continue; }
+
+      if(equal){
+        if(s == "delete") deleted = true;
+        break;
+      }
+      if(s == "=" && !expecting_operator && !in_paren) equal = true;
+
+      if(s== "{"){ //body start
+        break;
+      }
+
+      if(s == "operator") expecting_operator = true;
+      else expecting_operator = false;
+    }
+    clang_disposeTokens(unit, toks, nToks);
+  } else{
+    if(verbose > 1) std::cerr << __FUNCTION__ << " cursor extend not found!\n";
+  }
+
+  return deleted;
 }

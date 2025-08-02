@@ -6,7 +6,8 @@
 #include <string>
 #include <tuple>
 #include <map>
-#include <iostream> //TOREMOVE
+#include <vector>
+
 class TypeMapper{
 public:
   struct Spec{
@@ -23,52 +24,43 @@ public:
                   const std::string& arg_to,
                   const std::string& return_to){
     map_[from] = Spec(arg_to, return_to);
+    //map_.push_back(std::make_pair(from, Spec(arg_to, return_to)));
     return *this;
   }
 
   std::string mapped_type(const std::string& from, bool as_return = false,
-                          bool* mapped = nullptr) const{
-    auto it = map_.find(from);
-
-    if(it==map_.end()){
-      if(mapped) *mapped  = false;
-      return from;
-    } else{
-      const std::string& to = as_return ? it->second.as_return : it->second.as_arg;
-      if(mapped) *mapped = (to != from);
-      return to;
-    }
-  }
+                          bool* mapped = nullptr) const;
 
   std::string mapped_typename(CXType from, bool as_return = false,
                               bool* mapped = nullptr) const;
 
-  bool mutate(std::string& to_change, bool as_return = false){
-    auto it = map_.find(to_change);
-    if(it == map_.end()){
-      return false;
-    } else{
-      std::string& new_type = as_return ? it->second.as_return :  it->second.as_arg;
-      if(to_change != new_type){
-        to_change = new_type;
-        return true;
-      } else{
-        return false;
-      }
-    }
-  }
+  void mapped_type_impl(const std::string& from, bool as_return,
+                        bool* mapped, std::string* to) const;
 
-  bool is_mapped(const std::string& from, bool as_return = false) const{
-    auto it =  map_.find(from);
-    if(it == map_.end()) return false;
-    auto to = as_return ? it->second.as_return : it->second.as_arg;
-    return to != from;
-  }
 
+  bool mutate(std::string& to_change, bool as_return = false);
+
+  bool is_mapped(const std::string& from, bool as_return = false) const;
   bool is_mapped(CXType type, bool as_return = false) const;
 
 private:
+  //it is important that this is ordered according to string comparison
+  //operator, such that the string are stored in increasing length.
   std::map<std::string, Spec> map_;
+  //std::vector<std::pair<std::string, Spec>> map_;
+
+//  enum TokenType {
+//    TOKEN,
+//    DELIM
+//  };
+//
+//  struct Token {
+//    TokenType type;  // Enum to represent token type
+//    std::string value; // The actual token or delimiter
+//  };
+
+  //  static std::vector<Token> tokenize(const std::string& str);
+
 };
 
 #endif //TYPEMAPPER_H not defined

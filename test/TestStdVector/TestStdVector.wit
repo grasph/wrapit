@@ -16,5 +16,5 @@ fields_and_variables = false
 
 # not working with CxxWrap 0.16 on MacOS and with 0.15 on both Linux and MacOS
 # forcing version to 0.14
-cxxwrap_version = "0.14"
+#cxxwrap_version = "0.14"
 

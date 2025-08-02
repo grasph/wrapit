@@ -24,6 +24,7 @@ struct TypeRcd {
   int id;
   static int nRecords;
   bool default_ctor;
+  bool copy_op_deleted;
   bool finalize;
   TypeRcd(const CXCursor& cursor, const std::string& type_name = std::string());
   TypeRcd(): cursor(clang_getNullCursor()){}

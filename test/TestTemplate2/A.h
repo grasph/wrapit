@@ -1,3 +1,5 @@
+#include <string>
+
 template<typename S>
 class A {
 public:

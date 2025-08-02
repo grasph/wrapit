@@ -1,4 +1,9 @@
+#include <string>
 #include <fstream>
+
+template class std::char_traits<char>;
+template class std::char_traits<wchar_t>;
+
 
 template class std::basic_ofstream<char>;
 template class std::basic_ifstream<char>;

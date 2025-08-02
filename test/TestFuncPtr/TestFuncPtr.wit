@@ -1,0 +1,17 @@
+module_name = "TestFuncPtr"
+uuid = "37b027ae-4a8b-4cd3-bc34-efd2495d7add"
+
+input = [ "funcptr.cxx" ]
+		  
+include_dirs = [ "." ]
+
+cxx-std = "c++17"
+
+auto_veto = true
+
+export = "all"
+
+# all generated code in a single file:
+n_classes_per_file = 0
+
+cxxwrap_version = "0.17"

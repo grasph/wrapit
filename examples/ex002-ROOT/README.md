@@ -2,15 +2,19 @@
 
 ## Introduction
 
-This directory contains an advanced usage example of WrapIt!. You will also find examples, that write and read TTree, in [TTree_examples](TTree_examples).
+This directory contains an advanced usage example of WrapIt!. It is similar to the registered [ROOT.jl](https://github.com/JuliaHEP/ROOT.jl) package, that is built with WrapIt!, but supporting a subset of the `ROOT` classes supported by `ROOT.jl`.
 
 The [ROOT](https://root.cern.ch/) software is a central software framework in High energy physics research developed in C++ at [CERN](http://www.cern.ch). The framework has some similarities with Julia although it is not a programming language: its provide a REPL with a C++ interpreter based on [LLVM](http://llvm.org); like Julia it can also be used from Jupyter notebooks. It has a Python interface, [PyROOT](https://root.cern.ch/manual/python/) which is very popular among the physicist. The [ROOT.jl](https://github.com/JuliaHEP/ROOT.jl) provides an interface for old Julia versions (<=1.3.0) using the [Cxx.jl](https://github.com/JuliaInterop/Cxx.jl) interface. 
+
+The [ROOT.jl](https://github.com/JuliaHEP/ROOT.jl)w package provides a Julia interface to this framework built with WrapIt!. The example contained in this directory is a similar, but limited to a subset of ROOT classed covered by ROOT.jl. It is faster to compile
 
 In this example, we will use ROOT library functionalities from Julia via an interface generated with WrapIt!.
 
 We will create a histogram, fill it with random numbers drawn according to a normal distribution, fit the histogram, plot the result --shown in the image below--, display it on screen and save the result  in a ROOT-format file. All of these actions will be done using the ROOT library.
 
 ![Plot produced with the ROOT C++ framework accessed form Julia](demo_ROOT-ref.png)
+
+You will also find examples, that write and read TTree, in [TTree_examples](TTree_examples).
 
 ## Prerequisite
 

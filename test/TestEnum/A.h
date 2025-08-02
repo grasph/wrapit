@@ -1,3 +1,5 @@
+#include <iostream>
+
 enum class A {
    C = 1,
    D = 2
@@ -21,3 +23,6 @@ enum ForwardDecl : int {
     X = 1,
     Y = 2
 };
+
+//void f(int) { std::cout << __FUNCTION__ << "\n"; }
+A f(A a) { return a; }

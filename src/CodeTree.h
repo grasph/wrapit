@@ -51,6 +51,7 @@ namespace codetree{
   public:
     CodeTree(): module_name_("Module"),
                 out_open_mode_(std::ios_base::app),
+                ignore_parsing_errors_(false),
                 out_cxx_dir_("src"),
                 auto_veto_(true), update_mode_(true), include_depth_(1),
                 mainFileOnly_(true), override_base_(false),
@@ -67,9 +68,7 @@ namespace codetree{
     {
       opts_.push_back("-x");
       opts_.push_back("c++-header");
-      type_map_.add("std::string_view", "const char *", "std::string");
-      type_map_.add("const std::string_view &", "const char *", "std::string");
-      type_map_.add("const char *", "const char *", "std::string");
+      reset_type_map();
       set_clang_resource_dir(CLANG_RESOURCE_DIR);
     }
     CodeTree(CodeTree&&) = default;
@@ -89,7 +88,12 @@ namespace codetree{
     int include_depth_;
     std::vector<std::string> files_to_wrap_;
     std::vector<std::string> files_to_wrap_fullpaths_;
+
+    //the two following vector must be kept in sync
+    //use reset_wrappped_methods() and add_wrapped_methods()
+    //to update them.
     std::vector<std::string> wrapped_methods_;
+    std::vector<std::string> wrapped_methods_after_map_;
 
     int n_classes_per_file_;
     std::string out_cxx_dir_;
@@ -198,9 +202,9 @@ namespace codetree{
     //before its children
     void preprocess();
 
-    void add_forced_header(const std::string& header){ forced_headers_.push_back(header);}
+    void add_extra_headers(const std::string& header){ extra_headerss_.push_back(header);}
 
-    const std::vector<std::string>& forced_headers() { return forced_headers_; }
+    const std::vector<std::string>& extra_headerss() { return extra_headerss_; }
 
     bool parse();
 
@@ -283,11 +287,16 @@ namespace codetree{
 
     void set_force_mode(bool forced){ out_open_mode_ = forced ? std::ios_base::out : std::ios_base::app; }
 
+    void set_ignore_parsing_errors(bool val){ ignore_parsing_errors_ = val; }
+
     void set_julia_names(const std::vector<std::string>& name_map);
 
     void set_class_order_constraints(const std::vector<std::string>& class_order_constraints);
     
     void set_mapped_types(const std::vector<std::string>& name_map);
+
+    // Set map type for substitution in the C++ method prototypes declare to CxxWrap
+    void set_cxx2cxx_typemap(const std::vector<std::string>& name_map);
 
   protected:
 
@@ -405,7 +414,7 @@ namespace codetree{
     std::set<std::string> builtin_types_;
     std::set<CXCursor> auto_vetoed_methods_;
 
-    std::vector<std::string> forced_headers_;
+    std::vector<std::string> extra_headerss_;
 
     std::vector<std::string> opts_;
 
@@ -423,7 +432,7 @@ namespace codetree{
 
     void disable_owner_mirror(CXCursor cursor);
 
-    std::tuple<std::vector<CXType>, int>
+    std::tuple<std::vector<CXType>, int, bool>
     visit_function_arg_and_return_types(CXCursor cursor);
 
     std::string fundamental_type(std::string type);
@@ -477,7 +486,30 @@ namespace codetree{
     bool is_natively_supported(const std::string& type_fqn,
                                int* nparams = nullptr) const;
 
+    void reset_type_map(){
+      type_map_ = TypeMapper();
+      type_map_.add("const std::string_view &", "const char *", "std::string");
+      type_map_.add("std::string_view", "const char *", "std::string");
+      type_map_.add("const char *", "const char *", "std::string");
+    }
 
+    void reset_wrapped_methods();
+
+    //add a method to the lists of wrapped method,
+    //return false if the method cannot be wrapped because of
+    //overlap. if found_signature is not null it is filled with the
+    //signature of the method that would be overwritten
+    bool add_wrapped_method(const std::string signature_before_type_map,
+                            const std::string signature_after_type_map,
+                            std::string* found_signature = nullptr);
+
+
+    //Return true if the parsing succeeding.
+    //If not, diagnostic message are show and the function returns false
+    static bool isASTvalid(CXTranslationUnit translationUnit);
+
+    std::vector<std::pair<std::string, std::string>> overlap_skipped_methods_;
+    
   private:
     std::string clang_resource_dir_;
 
@@ -498,6 +530,8 @@ namespace codetree{
     std::string module_name_;
 
     std::ios_base::openmode out_open_mode_;
+
+    bool ignore_parsing_errors_;
 
     bool mainFileOnly_;
 

@@ -34,4 +34,7 @@ bool get_namespace_and_type_from_decl(CXCursor cursor,
                                       std::string& clazz);
 
 bool same_type(CXType t1, CXType t2);
+
+bool is_method_deleted(CXTranslationUnit unit, CXCursor cursor);
+
 #endif //LIBCLANG_EXT_H not defined
