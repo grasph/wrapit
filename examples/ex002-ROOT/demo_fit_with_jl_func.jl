@@ -1,3 +1,8 @@
+include("setup.jl")
+
+#Import the module.
+# The iROOT module is required for interactive graphic display
+# Loading the package trigger a loop that process ROOT graphic events.
 using CxxWrap
 using ROOT
 using iROOT

@@ -337,7 +337,7 @@ namespace codetree{
 
     //Built list of methods to wrap for a class including for
     //the emulated multi-inheritance
-    std::vector<MethodRcd> get_methods_to_wrap(const TypeRcd& type_rcd) const;
+    std::vector<MethodRcd> get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet=false) const;
 
     bool check_resource_dir(bool verbose) const;
 
@@ -520,6 +520,9 @@ namespace codetree{
 
     std::vector<std::pair<std::string, std::string>> overlap_skipped_methods_;
 
+    std::vector<MethodRcd>
+    deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet=false) const;
+    
   private:
     std::string clang_resource_dir_;
 

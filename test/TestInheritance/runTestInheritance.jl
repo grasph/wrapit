@@ -20,7 +20,7 @@ function runtest()
         @test virtual_func(b) == "B::virtual_func()"
         #A non-virtual function: the method of the cast type must be called
         @test real_func(b) == "A1::real_func()"
-    
+
         s = TestInheritance.String("Hello")
         s_with_underscore = f(s)
         @test s_with_underscore == s * "_"
@@ -35,27 +35,33 @@ function runtest()
         # D: defined in the class
         # S: inheritance mapped to supertype
         # I: inheritance mapped with method duplication
-        # |      | A1 | A2 |  B | B2 |  D |  E |  F |
-        # |------|----|----|----|----|----|----|----|
-        # |  f1  |  D |    |  S |  S |    |    |  I |
-        # |  f2  |    | D  |  I |  I |    |    |    |
-        # |  f3  |    |    |  D |    |    |    |    |
-        # |  f5  |    |    |    |    |  D |  S |    |
-        # |  f6  |    |    |    |    |    |  D |    |
-        # |  f7  |    |    |    |  D |    |    |  D |
+        # |       | A1 | A2 | A2bis |  B | B2 |  D |  E |  F | G1 | G2 |
+        # |-------|----|----|-------|----|----|----|----|----|----|----|
+        # |  f1   |  D |    |       |  S |  S |    |    |  I |    |    |
+        # |f2()   |    | D  |       |  I |  I |    |    |    | S  |    |
+        # |f2(int)|    |    |   D   |    |    |    |    |    |    |    |
+        # |  f3   |    |    |       |  D |    |    |    |    |    |    |
+        # |  f5   |    |    |       |    |    |  D |  S |    |    |    |
+        # |  f6   |    |    |       |    |    |    |  D |    |    |    |
+        # |  f7   |    |    |       |    |  D |    |    |  D |    |    |
+        # |  hd   | D  |    |       | S¹ |    |    |    |    |    |    |
+        #
+        # hd: hidden_method()
+        # ¹ due to Julia inheritance, inconsistancy with C++ behaviour
 
         @test let
-            funcs = [f1, f2, f3, f5, f6, f7]
-            types = [TestInheritance.A1, TestInheritance.A2, TestInheritance.B, TestInheritance.B2,
-                     TestInheritance.D, TestInheritance.E, TestInheritance.F]
-            #                            A1 A2  B B2  D  E  F
-            expected_nmethods = [ #=f1=# 1  0  1  1  0  0  1
-                                  #=f2=# 0  1  1  1  0  0  0
-                                  #=f3=# 0  0  1  0  0  0  0
-                                  #=f5=# 0  0  0  0  1  1  0
-                                  #=f6=# 0  0  0  0  0  1  0
-                                  #=f7=# 0  0  0  1  0  0  1 ]
-            
+            funcs = [f1, f2, f3, f5, f6, f7, hidden_method]
+            types = map(x->[x], [A1, A2, A2bis, B, B2,
+                     D, E, F, G1, G2])
+            #                                 A1 A2 A2bis B B2  D  E  F G1 G2 
+            expected_nmethods = [ #=f1=#      1  0    0   1  1  0  0  1  0  1
+                                  #=f2=#      0  1    0   1  1  0  0  0  1  0  
+                                  #=f3=#      0  0    0   1  0  0  0  0  0  0  
+                                  #=f5=#      0  0    0   0  0  1  1  0  0  0  
+                                  #=f6=#      0  0    0   0  0  0  1  0  0  0  
+                                  #=f7=#      0  0    0   0  1  0  0  1  0  0  
+                                  #=hd=#      1  0    0   1  0  0  0  0  0  1 ]
+
             #note: nmethods(f, t) = length(methods(f, [t])) to get number of methods
             #      of `f` taking an argument of type `t` does not work. E.g.,
             #      methods(f1, [A2]) returns a method although f1(::A2) is not
@@ -63,17 +69,22 @@ function runtest()
             #      Therefore we test the existence of the method with `which`.
             function nmethods(f, t)
                 try
-                    which(f, (t,))
+                    which(f, t)
                     1
                 catch
                     0
                 end
             end
-            
+
             actual_nmethods = nmethods.(funcs, permutedims(types)) # (funcs[i], types[j]) in row i, column j
 
+            f2bis_test = (nmethods(f2, [A2bis, Int32]) == 1
+                          && nmethods(f2, [G1, Int32]) == 0
+                          && nmethods(f2, [G2, Int32]) == 0)
+            
             # the test:
-            expected_nmethods == actual_nmethods
+            expected_nmethods == actual_nmethods && f2bis_test
+            
         end
     end
 end

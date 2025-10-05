@@ -2815,7 +2815,7 @@ void CodeTree::preprocess(){
   //add a fake_type to hold global functions and variables
   if(functions_.size() > 0 || vars_.size() > 0){
     types_.emplace_back();
-    types_.back().methods = functions_;
+    types_.back().methods = deduplicate_methods(functions_);
     types_.back().fields = vars_;
     types_.back().to_wrap = true;
     types_sorted_indices_.push_back(types_.size() - 1);
@@ -3358,67 +3358,250 @@ void CodeTree::set_cxx2cxx_typemap(const std::vector<std::string>& name_map){
 }
 
 std::vector<MethodRcd>
-CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd) const{
+CodeTree::deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet) const{
+  struct rcd{
+    bool iscont;
+    std::string nomapsig;
+    int ircd;
+  };
+  std::map<std::string, rcd> sigs;
+  std::vector<MethodRcd> res;
+  for(const auto& m: methods){
+    FunctionWrapper wrapper(cxx_to_julia_, m, nullptr, type_map_, cxxwrap_version_);
+    std::string pref = clang_CXXMethod_isStatic(m.cursor) ? "static " : "";
+    std::string mapped_sig    = pref + wrapper.signature(/*cv=*/false, /*map=*/true);
+    std::string notmapped_sig = pref + wrapper.signature(/*cv=*/false, /*map=*/false);
+    bool isconst = clang_CXXMethod_isConst(m.cursor);
+    
+    auto it = sigs.find(mapped_sig);
+    if(it != sigs.end()){ //already in
+      std::string hidden_nomapsig = notmapped_sig;
+      std::string exposed_nomapsig = it->second.nomapsig;
 
+      //give precedence to the form that the type map not changed by type mapping
+      //TODO: choose the option with less differences when for both type mapping
+      //       introduces a change (e.g., counting the numbers of changed tokens).
+      if(mapped_sig == notmapped_sig
+         && it->second.nomapsig != it->first){
+        auto ires = it->second.ircd;
+        res[ires] = m;
+        sigs.erase(it);
+        sigs[mapped_sig] = {isconst, notmapped_sig, ires};
+        std::swap(hidden_nomapsig, exposed_nomapsig);
+      }
+      
+      if(hidden_nomapsig != exposed_nomapsig){
+        if(!quiet && verbose > 1){
+          std::cerr << "Warning: method " << hidden_nomapsig
+                    << " was not wrapped because it conflicts with "
+                    << exposed_nomapsig << ". Both turn into "
+                    << mapped_sig << " after the cxx2cxx type mapping.\n";
+        }
+      }
+    } else{
+      sigs[mapped_sig] = {isconst, notmapped_sig, (int)res.size()};
+      res.push_back(m);
+    }
+  }
+  return res;
+}
+
+std::vector<MethodRcd>
+CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
+  
+  //method signature with the child class as prefix
+  auto methodsig = [&](const MethodRcd& methodrcd){
+    FunctionWrapper wrapper(cxx_to_julia_, methodrcd, &type_rcd, type_map_, cxxwrap_version_);
+    std::string pref = clang_CXXMethod_isStatic(methodrcd.cursor) ? "static " : "";
+    return pref + wrapper.signature(/*cv=*/false, /*map=*/true);
+  };
+  
   std::vector<MethodRcd> towrap;
-  for(const auto& m: type_rcd.methods) towrap.push_back(m);
-
+  std::set<std::string> sigs;
+  const std::vector<MethodRcd>& own_methods = deduplicate_methods(type_rcd.methods, quiet);
+  
+  for(const auto& m: own_methods){
+    towrap.push_back(m);
+  }
+  
   if(!multipleInheritance_) return towrap;
+
+  auto [mapped_base, extra_direct_parents ] = getParentClassesForWrapper(type_rcd.cursor);
+  auto it_base_rcd = std::find_if(types_.begin(), types_.end(),
+                                  [&](auto a){ return clang_equalCursors(a.cursor, mapped_base);});
+
+  std::vector<MethodRcd> base_methods;
+  if(it_base_rcd != types_.end() && !clang_Cursor_isNull(it_base_rcd->cursor)){
+    base_methods = get_methods_to_wrap(*it_base_rcd, /*quiet=*/true);
+  }
+  
+  //check if the method x has the same function name of one of the methods
+  //listed in v:
+  const auto& definedby = [&](const MethodRcd& x, const std::vector<MethodRcd>& v){
+    const auto& s1 = str(clang_getCursorSpelling(x.cursor));
+    return v.end() != std::find_if(v.begin(), v.end(),
+                                   [&](const auto& x2){
+                                     return s1 == str(clang_getCursorSpelling(x2.cursor));
+                                   });
+  };
   
   //We will walk through the extra-inheritance tree of type_rcd.cursor
 
-  //pile of cursors to parse the parents of
-  std::vector<CXCursor> pile;
-  CXCursor c = type_rcd.cursor;
+  //methods hidden by a definition with same function name in the child:
+  std::vector<std::set<std::string>> hidden_method_stack;
+  //parents to process organised by generation:
+  std::vector<std::vector<CXCursor>> parent_stack;
 
-  auto add_parents_of = [this](std::vector<CXCursor>& pile, const CXCursor& c){
+  //add parents of c to the stacks
+  auto add_parents_of = [this](std::vector<std::vector<CXCursor>>& parent_stack,
+                               std::vector<std::set<std::string>>& hidden_method_stack,
+                               const CXCursor& c,
+                               const std::set<std::string>& hidden_methods){
     auto [base, extra_parents] = getParentClassesForWrapper(c);
-    for(const auto& e: extra_parents){
-      pile.push_back(e);
-    }
+    parent_stack.push_back(extra_parents);
+    hidden_method_stack.push_back(hidden_methods);
   };
 
-  add_parents_of(pile, c);
+  auto ishidden = [](const std::vector<std::set<std::string>>& hidden_method_stack,
+                     std::string& funcname){
+    for(auto fnames: hidden_method_stack){
+      if(fnames.end() != fnames.find(funcname)){
+        return true;
+      }
+    }
+    return false;
+  };
 
-  while(!pile.empty()){
-    
+  auto funcnamesofclass = [](const TypeRcd& typercd){
+    std::set<std::string> r;
+    for(const auto& m: typercd.methods){
+      r.insert(str(clang_getCursorSpelling(m.cursor)));
+    }
+    return r;
+  };
+  add_parents_of(parent_stack, hidden_method_stack, type_rcd.cursor, funcnamesofclass(type_rcd));
+
+  //list of candidates for method declarations:
+  //use the function name as key.
+  //if several children provide methods with the same function name, then these
+  //methods should be ignore as it raises an ambiguity in C++, that used solely
+  //the function name to resolve the class that provides the methods with the
+  //same function name.
+  std::map<std::string, std::vector<std::pair<TypeRcd, MethodRcd>>> extra_defs;
+
+  //storage of the names of the functions of the class declared
+  //by current cursor within the next for-loop
+  std::set<std::string> funcnames;
+  for(;;){
     //Draw a cursor from the pile and replace it by its parents:
-    const auto c = pile.back();
-    pile.pop_back();
-    add_parents_of(pile, c);
+    while(parent_stack.back().empty()){
+      parent_stack.pop_back();
+      hidden_method_stack.pop_back();
+      if(parent_stack.empty()) break;
+    }
+    if(parent_stack.empty()) break;
+      
+    auto c = parent_stack.back().back();
+    parent_stack.back().pop_back();
 
-    //retrieves the type defined by c
-    const auto& t = clang_getCursorType(c);
-    const auto& itRcd = std::find_if(types_.begin(), types_.end(),
-                                     [&t](const auto& x){
-                                       return same_type(t, clang_getCursorType(x.cursor));
-                                     });
+    auto itTypeRcd = types_.end();
+    
+    if(!clang_Cursor_isNull(c)){
+      const auto& t = clang_getCursorType(c);
+      itTypeRcd = std::find_if(types_.begin(), types_.end(),
+                               [&t](const auto& x){
+                                 return same_type(t, clang_getCursorType(x.cursor));
+                               });
+    }
 
-    //if the type was found, add its methods to the list
-    //of methods to wrap
-    if(itRcd != types_.end()){
-      for(const auto& m: itRcd->methods){
+    funcnames.clear();
+    //if the class was found, pass through its methods
+    if(itTypeRcd != types_.end()){
+      for(const auto& m: deduplicate_methods(itTypeRcd->methods, /*quiet=*/true)){
         auto kind = clang_getCursorKind(m.cursor);
         auto is_static = clang_CXXMethod_isStatic(m.cursor);
         if(kind != CXCursor_Constructor
            && kind != CXCursor_Destructor
-           && !is_static){
-          towrap.push_back(m);
+           && !is_static
+           && !clang_CXXConstructor_isCopyConstructor(m.cursor)
+           && !clang_CXXConstructor_isConvertingConstructor(m.cursor)
+           && !clang_CXXConstructor_isMoveConstructor(m.cursor)
+           && !clang_CXXMethod_isCopyAssignmentOperator(m.cursor)
+           && !clang_CXXMethod_isDeleted(m.cursor)
+           && !clang_CXXMethod_isMoveAssignmentOperator(m.cursor)
+           && !clang_CXXMethod_isPureVirtual(m.cursor)
+           ){
+
+          auto funcname = str(clang_getCursorSpelling(m.cursor));
+          funcnames.insert(funcname);
+
+          if(ishidden(hidden_method_stack, funcname)){
+            //skip hidden methods
+            //} else if(definedby(m, own_methods)){ //should never happend
+            //if(verbose > 2){
+            //  std::cerr << "Method " << methodsig(m)
+            //            << " takes precedence over the same method of ancestor class "
+            //            << c << "\n";
+            //}
+          } else if(definedby(m, base_methods)){
+            //FIXME we miss to exlude functions defined by an ancestor of base.
+            //A strategy to do so could be, to include the base class branch in our
+            //walk and mark the definition coming from this branch as such
+            //(in extra_defs) and exclude the functions in the loop on extra_defs.
+            if(verbose > 0){
+              std::cerr << "Warning: method " << methodsig(m)
+                        << " is inherited in Julia by " << type_rcd.type_name
+                        << " from the " << mapped_base
+                        << ", while it is not in C++ because of an overriding "
+                "ambiguity with the class " << itTypeRcd->type_name << ".\n";
+            }
+          } else{
+            auto fname = str(clang_getCursorSpelling(m.cursor));
+            extra_defs[fname].push_back(std::make_pair(*itTypeRcd, m));
+          }
         }
-      }
+      } //next m
     } else if(verbose > 0){
       std::cerr << "No record found for the class " << c
                 << ", ancestor of class " << type_rcd.type_name
                 << ". The methods will not be inherited.\n";
     }
-  } //  while(!pile.empty())
+    
+    add_parents_of(parent_stack, hidden_method_stack, c, funcnames);
+  } //for(;;)
+
+  for(const auto& m: extra_defs){
+    if(m.second.size() == 1){
+      bool vetoed = false;
+      //check veto both with the name of this class and of the ancestor
+      //that declared the method
+      for(const auto& t: {type_rcd, m.second[0].first}){
+        FunctionWrapper wrapper(cxx_to_julia_, m.second[0].second,
+                                &t, type_map_,
+                                cxxwrap_version_);
+        vetoed |= (std::find(veto_list_.begin(), veto_list_.end(),
+                             wrapper.signature()) != veto_list_.end());
+      }
+      if(!vetoed) towrap.push_back(m.second[0].second);
+    } else{
+      if(verbose > 0){
+        std::cerr << "Warning: function "
+                  <<  m.first
+                  << " not wrapped for type " << type_rcd.type_name
+                  << ", because of an overriding ambiguity in C++. Function "
+          "provided by the ancestor classes";
+        for(const auto& cl: m.second) std::cerr << ", " << cl.first.type_name << "\n";
+        std::cerr << ".\n";
+      }
+    }
+  }
   
-  // std::cerr << "Method to wrap for " << type_rcd.type_name << ": ";
-  // std::string sep;
-  // for(const auto& m: towrap){
-  //   std::cerr << sep << m.cursor;
-  //   sep = ", ";
-  // }
-  // std::cerr << "\n";
+//   std::cerr << "Method to wrap for " << type_rcd.type_name << ": ";
+//   std::string sep;
+//   for(const auto& m: towrap){
+//     std::cerr << sep << m.cursor;
+//     sep = ", ";
+//   }
+//   std::cerr << "\n";
   return towrap;
 }

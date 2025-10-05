@@ -13,6 +13,6 @@ wrapper_module = "ROOT"
 #Generate the wrapper code and compile:
 run(`make -j $ncores`)
 
-#Install the wrapport module:
+#Install the wrapper module:
 Pkg.develop(path="$build_location/$wrapper_module")
 

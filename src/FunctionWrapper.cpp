@@ -98,12 +98,6 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
   auto target_pointee = clang_getPointeeType(target_type);
   auto pointer_target =  target_pointee.kind != CXType_Invalid;
 
-//  std::cerr << "===> " << signature() << " -> kind: " << target_type.kind
-//            << ", kind of pointee: " << target_pointee.kind
-//            << ", spelling: " <<  target_type
-//            << ", spelling of decl: " << clang_getTypeDeclaration (target_type)
-//            << "\n";
-
   if(target_pointee.kind == CXType_FunctionProto){
     //a function pointer
     if(verbose > 0){
@@ -797,8 +791,8 @@ std::string FunctionWrapper::signature(bool withcv, bool aftermap) const{
   buf << ((withcv && is_static_) ? "static " : "")
       << (is_ctor_ ? "" : (fully_qualified_name(return_type_) + " "))
       << genuine_classname_prefix << name_cxx
-      << "(" <<  (aftermap ? short_arg_list_cxx : short_arg_list_signature) << ")"
-      << (withcv ? cv : "");
+      << "(" <<  (aftermap ? short_arg_list_cxx : short_arg_list_signature) << ")";
+  if(withcv) buf << " " <<  cv;
   return buf.str();
 }
 

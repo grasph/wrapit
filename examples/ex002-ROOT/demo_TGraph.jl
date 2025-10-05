@@ -1,3 +1,5 @@
+include("setup.jl")
+
 using ROOT, iROOT
 x = collect(1.:10.)
 y = x.^2

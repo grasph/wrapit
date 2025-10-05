@@ -6,7 +6,6 @@
 #include <string>
 #include <tuple>
 #include <map>
-#include <vector>
 
 class TypeMapper{
 public:
@@ -47,20 +46,6 @@ private:
   //it is important that this is ordered according to string comparison
   //operator, such that the string are stored in increasing length.
   std::map<std::string, Spec> map_;
-  //std::vector<std::pair<std::string, Spec>> map_;
-
-//  enum TokenType {
-//    TOKEN,
-//    DELIM
-//  };
-//
-//  struct Token {
-//    TokenType type;  // Enum to represent token type
-//    std::string value; // The actual token or delimiter
-//  };
-
-  //  static std::vector<Token> tokenize(const std::string& str);
-
 };
 
 #endif //TYPEMAPPER_H not defined

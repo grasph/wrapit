@@ -40,3 +40,6 @@ TBranch * TTree::Branch(const char *, Longptr_t, const char *, Int_t);
 ///.*TObject::.*/;
 
 /.*ROOT::Internal::.*/;
+
+//Prevents the ROOT.jl module precompilation with the error "ERROR: Method overwriting is not permitted during Module precompilation. Use `__precompile__(false)` to opt-out of precompilation". see https://github.com/JuliaInterop/CxxWrap.jl/issues/485
+void ROOT::EnableImplicitMT(ROOT::EIMTConfig);
