@@ -57,6 +57,7 @@ namespace codetree{
                 mainFileOnly_(true), override_base_(false),
                 propagation_mode_(propagation_mode_t::types),
                 export_mode_(export_mode_t::member_functions),
+                multipleInheritance_(true),
                 unit_(nullptr), index_(nullptr), n_classes_per_file_(-1),
                 build_cmd_("echo Build command not defined."),
                 test_build_(false), ibuild_(0), build_nskips_(0),
@@ -251,6 +252,8 @@ namespace codetree{
 
     void inheritances(const std::vector<std::string>& val);
 
+    void multipleInheritance(bool val){ multipleInheritance_ = val; };
+    
     void vetoed_finalizer_classes(const std::vector<std::string>& val){
       finalizers_to_veto_ = val;
     }
@@ -292,7 +295,7 @@ namespace codetree{
     void set_julia_names(const std::vector<std::string>& name_map);
 
     void set_class_order_constraints(const std::vector<std::string>& class_order_constraints);
-    
+
     void set_mapped_types(const std::vector<std::string>& name_map);
 
     // Set map type for substitution in the C++ method prototypes declare to CxxWrap
@@ -331,6 +334,11 @@ namespace codetree{
 
     bool add_type_specialization(TypeRcd* pTypeRcd, const CXType& type);
 
+
+    //Built list of methods to wrap for a class including for
+    //the emulated multi-inheritance
+    std::vector<MethodRcd> get_methods_to_wrap(const TypeRcd& type_rcd) const;
+
     bool check_resource_dir(bool verbose) const;
 
     //Finds the definition of a type or the underlying type in case
@@ -357,7 +365,7 @@ namespace codetree{
 
     static CXChildVisitResult visit(CXCursor cursor, CXCursor parent, CXClientData client_data);
 
-    CXCursor getParentClassForWrapper(CXCursor cursor) const;
+    std::tuple<CXCursor, std::vector<CXCursor>> getParentClassesForWrapper(CXCursor cursor) const;
 
     std::ostream&
     generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
@@ -420,13 +428,15 @@ namespace codetree{
 
     std::vector<std::string> get_enum_constants(CXCursor cursor) const;
 
-    std::ostream& method_cxx_decl(std::ostream& o, const MethodRcd& method,
+    std::ostream& method_cxx_decl(std::ostream& o, const TypeRcd& typeRcd,
+                                  const MethodRcd& method,
                                   std::string varname = "",
                                   std::string classname = "",
                                   int nindents = 1,
                                   bool templated = false);
 
-    std::ostream& generate_method_cxx(std::ostream& o, const MethodRcd& method);
+    std::ostream& generate_method_cxx(std::ostream& o, const TypeRcd& typeRcd,
+                                      const MethodRcd& method);
 
     std::string get_prefix(const std::string& type_name) const;
 
@@ -509,7 +519,7 @@ namespace codetree{
     static bool isASTvalid(CXTranslationUnit translationUnit);
 
     std::vector<std::pair<std::string, std::string>> overlap_skipped_methods_;
-    
+
   private:
     std::string clang_resource_dir_;
 
@@ -554,9 +564,12 @@ namespace codetree{
 
     //Current top-level visited cursor
     CXCursor visited_cursor_;
-    
+
     //Map of child->mother class inheritance preference
     std::map<std::string, std::string> inheritance_;
+
+    //multiple inheritance support switch
+    bool multipleInheritance_;
 
     //List of classes whose finalizer must be disabled
     std::vector<std::string> finalizers_to_veto_;
@@ -582,7 +595,7 @@ namespace codetree{
     Graph type_dependencies_;
 
     std::vector<std::pair<std::string, std::string>> class_order_constraints_;
-    
+
     std::vector<std::string> towrap_type_filenames_;
     std::set<std::string> towrap_type_filenames_set_;
 
@@ -599,7 +612,7 @@ namespace codetree{
       unsigned global_var_setters = 0;
       unsigned global_funcs = 0;
     } nwraps_;
-    
+
   };
 }
 #endif //CODETREE_H not defined

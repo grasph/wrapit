@@ -80,8 +80,8 @@ namespace codetree{
   }
 }
 
-CXCursor
-CodeTree::getParentClassForWrapper(CXCursor cursor) const{
+std::tuple<CXCursor, std::vector<CXCursor>>
+CodeTree::getParentClassesForWrapper(CXCursor cursor) const{
   if(verbose > 5) std::cerr << "Calling getParentClassForWrapper("
                             << cursor << ")\n";
 
@@ -91,17 +91,17 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
   struct data_t{
     const CodeTree* tree;
     std::string clazz;
-    CXCursor c;
+    CXCursor main_parent;
+    std::vector<CXCursor> extra_parents;
+    bool inheritance_preference;
     std::string preferred_parent;
-    CXCursor first_parent;
-  } data = { this, clazz, null_cursor, std::string(), null_cursor};
+  } data = { this, clazz, null_cursor, std::vector<CXCursor>(), false, "" };
 
   //FIXME: handling of namespace?
-  bool inheritance_preference =  false;
   auto it = inheritance_.find(clazz);
   if(it != inheritance_.end()){
     data.preferred_parent = it->second;
-    inheritance_preference = true;
+    data.inheritance_preference = true;
   }
 
   const auto & visitor = [](CXCursor cursor, CXCursor parent, CXClientData p_data){
@@ -114,17 +114,6 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
       const auto& inheritance_access = clang_getCXXAccessSpecifier(cursor);
       const auto& t1 = clang_getCursorType(cursor);
       if(inheritance_access == CX_CXXPublic){
-        if(!clang_Cursor_isNull(data.c)){
-          if(verbose > 0){
-            std::cerr << "Warning C++ class " << data.clazz
-                      << " inherits from several classes. "
-                      << "Only the inheritance from "
-                      << clang_getCursorType(data.c)
-                      << " will be mapped in the Julia binding.\n";
-          }
-          return CXChildVisit_Break;
-        }
-
         bool isBaseWrapped = false;
         for(const auto& c: tree.types_){
           //FIXME: support for templates
@@ -140,42 +129,44 @@ CodeTree::getParentClassForWrapper(CXCursor cursor) const{
         }
 
         if(isBaseWrapped){
-          if(clang_Cursor_isNull(data.first_parent)){
-            data.first_parent = cursor;
-          }
           //FIXME: handling of parent namespace?
-          if(data.preferred_parent.size() == 0
-             || str(clang_getTypeSpelling(clang_getCursorType(cursor)))
-             == data.preferred_parent){
-            data.c = cursor;
+          if(clang_Cursor_isNull(data.main_parent)
+             && (!data.inheritance_preference
+                 || (str(clang_getTypeSpelling(clang_getCursorType(cursor)))
+                     == data.preferred_parent))){
+            data.main_parent = cursor; // clang_getCursorDefinition(cursor);
+          } else{
+            data.extra_parents.push_back(cursor); //clang_getCursorDefinition(cursor));
           }
         }
       }
     }
     return CXChildVisit_Continue;
   };
-
-  if(!inheritance_preference || data.preferred_parent.size() != 0){
-    if(verbose > 1){
-      std::cerr << "Calling clang_visitChildren(" << cursor
-                << ", visitor, &data) from " << __FUNCTION__ << "\n";
-    }
-
-    clang_visitChildren(cursor, visitor, &data);
-
-    if(clang_Cursor_isNull(data.c) && !clang_Cursor_isNull(data.first_parent)){
-      std::cerr << "Inheritance preference " << clazz << ":" << data.preferred_parent
-                << " cannot be fulfilled as there is no such inheritance. "
-                << "Super type of " << clazz << " will be "
-                << clang_getCursorType(data.first_parent) << " in Julia.\n";
-      data.c = data.first_parent;
-    }
+  
+  clang_visitChildren(cursor, visitor, &data);
+  
+  if(clang_Cursor_isNull(data.main_parent) && data.inheritance_preference
+     && data.preferred_parent.size() > 0){
+    std::cerr << "Inheritance preference " << clazz << ":" << data.preferred_parent
+              << " cannot be fulfilled because no such inheritance has been found.\n";
   }
 
-  data.c = clang_getCursorDefinition(data.c);
+  data.main_parent = clang_getCursorDefinition(data.main_parent);
 
-  //FIXME
-  return data.c;
+  if(!clang_Cursor_isNull(data.main_parent) && get_template_parameters(data.main_parent).size() > 0){
+    if(verbose > 2){
+      std::cerr << "Warning: inheritance " << clazz << " <: "
+                << data.main_parent << " will not be mapped as super type because it is not "
+        "yet supported for template classes. Method inherited in C++ will be "
+        "explicitly defined in the Julia wrapper.\n";
+    }
+
+    data.extra_parents.insert(data.extra_parents.begin(), data.main_parent);
+    data.main_parent = clang_getNullCursor();
+  }
+
+    return std::make_tuple(data.main_parent, data.extra_parents);
 }
 
 std::string CodeTree::wrapper_classsname(const std::string& classname) const{
@@ -372,32 +363,30 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
       }
     }
 
-    //generate inheritance mapping
-    //FIXME: retrieve also parent classes which are not mapped to a super type
-    //       and generate wrapper for the inherited public mehod.
-    //       The whole parent tree must be parsed.
-    CXCursor base = getParentClassForWrapper(t.cursor);
+    auto [base, extra_parents] = getParentClassesForWrapper(t.cursor);
     if(verbose > 4){
       std::cerr << "Debug: parent of " << t.cursor << ": "
                 << (clang_Cursor_isNull(base) ?
-                    "none"
+                      "none"
                     : str(clang_getCursorSpelling(base)))
                 << "\n";
     }
     if(!clang_Cursor_isNull(base)){
       if(t.template_parameters.size() > 0){
         if(verbose > 0){
-          std::cerr << "Warning: inheritance " << t.type_name << " <: "
-                    << base << " will not be mapped because it is not yet "
-            " supported for template classes.";
+          //getParentClassesForWrapper is expected to put template class inheritances
+          //exclusivelt in extra_parents
+          std::cerr << "Bug found. Methods inherited from " << base << " by " << t.type_name
+                    << "won't be wrapped due to a bug in " << __FUNCTION__
+                    << ", " << __FILE__ << ":" << __LINE__ << "].\n";
         }
       } else{
-        o << "template<> struct SuperType<"
-          << t.type_name
-          << "> { typedef " << fully_qualified_name(base) << " type; };\n";
+        indent(o, 1) << "template<> struct SuperType<"
+                     << t.type_name
+                     << "> { typedef " << fully_qualified_name(base) << " type; };\n";
       }
     }
-    o << "}\n\n";
+      o << "}\n\n";
   }
 
   std::string wrapper = wrapper_classsname(t.type_name);
@@ -460,8 +449,8 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
     if(notype || clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
 
       //Generate wrappers for the class methods
-      for(const auto& m: t.methods){
-        generate_method_cxx(o, m);
+      for(const auto& m: get_methods_to_wrap(t)){
+        generate_method_cxx(o, t, m);
       }
 
       if(override_base_){
@@ -545,13 +534,7 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
                << "jlModule.add_type<" << add_type_param
                << ">(\"" << typename_jl << "\"";
 
-
-  //  auto it = std::find(types_missing_def_.begin(), types_missing_def_.end(), typename_cxx);
-  //  if(it!=types_missing_def_.end()){
-  //    types_missing_def_.erase(it);
-  //  }
-
-  const auto& base = getParentClassForWrapper(cursor);
+  auto [ base, extra_parents]  = getParentClassesForWrapper(cursor);
 
   if(!clang_Cursor_isNull(base)){
     const auto& base_type = clang_getCursorType(base);
@@ -601,10 +584,6 @@ CodeTree::generate_cxx(){
 
   o << "#include \"jl" << module_name_ << ".h\"\n\n"
     "#include <regex>\n\n";
-
-  //  for(const auto& include: extra_headerss_){
-  //    o << "#include \"" << include << "\"\n";
-  //  }
 
   //FIXME
   //  for(const auto& t: types_missing_def_){
@@ -915,8 +894,8 @@ CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
 
 
 std::ostream&
-CodeTree::generate_method_cxx(std::ostream& o, const MethodRcd& method){
-  return method_cxx_decl(o, method, "", "", 2);
+CodeTree::generate_method_cxx(std::ostream& o, const TypeRcd& typeRcd, const MethodRcd& method){
+  return method_cxx_decl(o, typeRcd, method, "", "", 2);
 }
 
 void CodeTree::set_type_rcd_ctor_info(TypeRcd& rcd){
@@ -993,14 +972,17 @@ CodeTree::test_build(std::ostream& o){
 }
 
 std::ostream&
-CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
-                          std::string varname, std::string classname, int nindents,
+CodeTree::method_cxx_decl(std::ostream& o, const TypeRcd& typeRcd,
+                          const MethodRcd& method,
+                          std::string varname, std::string classname,
+                          int nindents,
                           bool templated){
 
 
   TypeRcd* pTypeRcd = find_class_of_method(method.cursor);
 
-  FunctionWrapper wrapper(cxx_to_julia_, method, pTypeRcd, type_map_, cxxwrap_version_, varname,
+  FunctionWrapper wrapper(cxx_to_julia_, method, &typeRcd, type_map_,
+                          cxxwrap_version_, varname,
                           classname, nindents, templated);
 
   //FIXME: check that code below is needed. Should now be vetoed upstream
@@ -1098,6 +1080,8 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   buf << "t" << t.id << "_decl_methods";
   std::string decl_methods = buf.str();
 
+  auto methods = get_methods_to_wrap(t);
+
   auto nparams = t.template_parameters.size();
   std::vector<std::string> param_list;
   for(decltype(nparams) i = 0; i < nparams; ++i){
@@ -1113,7 +1097,7 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   // auto module_ = this->modules_;
   indent(o, 3) << "auto module_ = this->module_;\n";
   //        typedef A<T1, T2> T;
-  if(t.methods.size() > 0){
+  if(methods.size() > 0){
     indent(o, 3) << "typedef " <<  t.type_name << "<" << param_list2 << "> WrappedType;\n";
   }
 
@@ -1126,8 +1110,8 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
 
   //        wrapped.method("get_first", [](const T& a) -> T1 { return a.get_first(); });
   //        wrapped.method("get_second", [](T& a, const T2& b) { a.set_second(b); });
-  for(const auto& m: t.methods){
-    method_cxx_decl(o, m, "wrapped", "WrappedType", 3, /*templated=*/true);
+  for(const auto& m: methods){
+    method_cxx_decl(o, t, m, "wrapped", "WrappedType", 3, /*templated=*/true);
   }
 
   if(override_base_){
@@ -2705,7 +2689,8 @@ void CodeTree::preprocess(){
 
   //Add child -> parent class dependencies
   for(unsigned iChild = 0; iChild < types_.size(); ++iChild){
-    CXCursor parent = getParentClassForWrapper(types_[iChild].cursor);
+    auto [ parent, extra_parents ] = getParentClassesForWrapper(types_[iChild].cursor);
+    //dependency is relevant for the main parent only, ignore the extra parents.
     if(!clang_Cursor_isNull(parent)){
       for(unsigned iParent = 0;  iParent < types_.size(); ++iParent){
         if(clang_equalCursors(parent, types_[iParent].cursor)){
@@ -3370,4 +3355,70 @@ void CodeTree::set_cxx2cxx_typemap(const std::vector<std::string>& name_map){
                 << " of mapped_types configuration parameter.\n";
     }
   }
+}
+
+std::vector<MethodRcd>
+CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd) const{
+
+  std::vector<MethodRcd> towrap;
+  for(const auto& m: type_rcd.methods) towrap.push_back(m);
+
+  if(!multipleInheritance_) return towrap;
+  
+  //We will walk through the extra-inheritance tree of type_rcd.cursor
+
+  //pile of cursors to parse the parents of
+  std::vector<CXCursor> pile;
+  CXCursor c = type_rcd.cursor;
+
+  auto add_parents_of = [this](std::vector<CXCursor>& pile, const CXCursor& c){
+    auto [base, extra_parents] = getParentClassesForWrapper(c);
+    for(const auto& e: extra_parents){
+      pile.push_back(e);
+    }
+  };
+
+  add_parents_of(pile, c);
+
+  while(!pile.empty()){
+    
+    //Draw a cursor from the pile and replace it by its parents:
+    const auto c = pile.back();
+    pile.pop_back();
+    add_parents_of(pile, c);
+
+    //retrieves the type defined by c
+    const auto& t = clang_getCursorType(c);
+    const auto& itRcd = std::find_if(types_.begin(), types_.end(),
+                                     [&t](const auto& x){
+                                       return same_type(t, clang_getCursorType(x.cursor));
+                                     });
+
+    //if the type was found, add its methods to the list
+    //of methods to wrap
+    if(itRcd != types_.end()){
+      for(const auto& m: itRcd->methods){
+        auto kind = clang_getCursorKind(m.cursor);
+        auto is_static = clang_CXXMethod_isStatic(m.cursor);
+        if(kind != CXCursor_Constructor
+           && kind != CXCursor_Destructor
+           && !is_static){
+          towrap.push_back(m);
+        }
+      }
+    } else if(verbose > 0){
+      std::cerr << "No record found for the class " << c
+                << ", ancestor of class " << type_rcd.type_name
+                << ". The methods will not be inherited.\n";
+    }
+  } //  while(!pile.empty())
+  
+  // std::cerr << "Method to wrap for " << type_rcd.type_name << ": ";
+  // std::string sep;
+  // for(const auto& m: towrap){
+  //   std::cerr << sep << m.cursor;
+  //   sep = ", ";
+  // }
+  // std::cerr << "\n";
+  return towrap;
 }

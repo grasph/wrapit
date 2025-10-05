@@ -3,8 +3,10 @@ using Serialization
 
 import Pkg
 Pkg.activate("$(@__DIR__)/build")
-Pkg.develop(path="$(@__DIR__)/build/TestInheritance")
-using TestInheritance
+Pkg.develop(path="$(@__DIR__)/build/TestMultipleInheritanceOff")
+using TestMultipleInheritanceOff
+
+const TestInheritance = TestMultipleInheritanceOff
 
 function runtest()
     @testset "Inheritance test" begin
@@ -48,9 +50,9 @@ function runtest()
             funcs = [f1, f2, f3, f5, f6, f7]
             types = [TestInheritance.A1, TestInheritance.A2, TestInheritance.B, TestInheritance.B2,
                      TestInheritance.D, TestInheritance.E, TestInheritance.F]
-            #                            A1 A2  B B2  D  E  F
-            expected_nmethods = [ #=f1=# 1  0  1  1  0  0  1
-                                  #=f2=# 0  1  1  1  0  0  0
+            #                            A1 A2 B B2  D  E  F
+            expected_nmethods = [ #=f1=# 1  0  1  0  0  0  0
+                                  #=f2=# 0  1  0  1  0  0  0
                                   #=f3=# 0  0  1  0  0  0  0
                                   #=f5=# 0  0  0  0  1  1  0
                                   #=f6=# 0  0  0  0  0  1  0

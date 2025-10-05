@@ -1,0 +1,1 @@
+../TestInheritance/MyString.h

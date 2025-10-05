@@ -22,6 +22,7 @@ struct B: public A1, A2, C {
   std::string real_func(){ return std::string("B::real_func()"); }
 };
 
+//note: .wit file configuration asks for B <: A2 in Julia
 struct B2: public A1, A2, C {
   int f7(){ return 7; }
 };
@@ -34,6 +35,7 @@ A1* new_B(){
   return new B();
 };
 
+//note: supertype in Julia forced to Any by .wit configuration
 struct F: public A1{
   int f7(){ return 7;}
 };

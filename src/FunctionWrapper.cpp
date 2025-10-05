@@ -647,7 +647,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   return_type_ = clang_getResultType(method_type);
   inaccessible_type = !isAccessible(return_type_);
 
-  if(pTypeRcd){
+  if(pTypeRcd && !clang_Cursor_isNull(pTypeRcd->cursor)){
     name_cxx = str(clang_getCursorSpelling(cursor));
   } else{
     //cursor name of global functions are not fully qualified.

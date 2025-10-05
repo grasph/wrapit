@@ -1,5 +1,5 @@
-module_name         = "TestInheritance"
-uuid                = "e64be293-bed8-4ae4-84f8-1bc3a2c4f291"
+module_name         = "TestMultipleInheritanceOff"
+uuid                = "9825dcc2-a1c8-11f0-a926-6349c4b15754"
 
 include_dirs        = [ "." ]
 
@@ -15,3 +15,6 @@ inheritances = [ "B2:A2", "F:" ]
 
 # Export all symbols
 export = "all"
+
+# Disable multiple inheritance
+multiple_inheritance = false

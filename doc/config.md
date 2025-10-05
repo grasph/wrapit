@@ -98,7 +98,7 @@ propagation_mode    = "types"
 fields_and_variables = true
 
 # List of class inheritance mapping specification, to be used for classes
-# with multinheritance to specify the inheritance to be mapped to Julia,
+# with multiple inheritance to specify the inheritance to be mapped to Julia,
 # as only single inheritance is supported.
 #
 # When not specified, the first class of the parent list given in
@@ -110,7 +110,23 @@ fields_and_variables = true
 # The second form disable the inheritance mapping for the 
 # given class.
 #
+# NOTE: since release 1.7.0, all public methods inherited in C++ are exposed to Julia
+# independently of the inheritance mapping, and providing multiple_inheritance parameter
+# is not set to false.
 inheritances        = [ "" ]
+
+# Multiple inheritance support.
+# When enabled (the default), Julia wrappers are explicitly defined for inherited methods,
+# when the method is not inherited in Julia, such that all public methods inherited in C++
+# are also available in the Julia version.
+#
+# When disabled, only methods that are also inherited in Julia (see the inheritances parameter)
+# are available.
+#
+# This parameter is introduced to allow reproducing the behaviour of WrapIt! versions < 1.7.0 for a smooth
+# transition and might be dropped (i.e. always true) in future. Please, inform the developers if you need
+# to set this parameter to false in your projet for long term.
+multiple_inheritance = true
 
 # Explicit constraints on the class wrapper declaration order.
 # A constraint is a string with format class_name_1 < class_name_2. It results
