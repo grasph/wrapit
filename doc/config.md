@@ -173,7 +173,9 @@ julia_names         = [ ]
 # apart from the const specifier. In presence of const specifier, it will be
 # added to the type of substitution. To map also pointers and reference of
 # a type, the pointer and reference type should be explicitly included in the
-# table.
+# table. Currently (release v1.7.0) the substitution is not applied for pointers,
+# while it is used for signature comparison when removing duplicates due to
+# two types that get resolved into the same type after typedef application.
 #
 # Following default mapping are always defined, although the default can change 
 # in future wrapit release:

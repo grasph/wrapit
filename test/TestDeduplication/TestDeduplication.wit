@@ -1,0 +1,17 @@
+module_name="TestDeduplication"
+uuid                = "68e5aff2-27ba-4614-8412-37a57b7bbfca"
+
+input = [ "A.h" ]
+		  
+include_dirs = [ "." ]
+
+cxx-std = "c++17"
+
+auto_veto = false
+
+export = "all"
+
+# all generated code in a single file:
+n_classes_per_file = 0
+
+cxx2cxx_type_map = [ "int -> int64_t" ]
