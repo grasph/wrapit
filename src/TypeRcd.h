@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+class TypeMapper;
+
 struct TypeRcd {
   CXCursor cursor;
   std::string type_name;
@@ -32,6 +34,9 @@ struct TypeRcd {
   std::string name(int combi) const;
   std::vector<std::string> names() const;
   std::ostream& specialization_list(std::ostream& o) const;
+
+  void setStrictNumberTypeFlags(const TypeMapper& typeMap);
+
 };
 
 #endif //TYPERCD_H not defined

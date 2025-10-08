@@ -429,6 +429,22 @@ FunctionWrapper::gen_func_with_cast(std::ostream& o){
 
 std::ostream&
 FunctionWrapper::gen_arg_list(std::ostream& o, int nargs, std::string sep, bool argtype_only) const{
+  if(nargs > 0){
+    if(method.strict_number_type.size() == 0){
+      if(verbose > 1) {
+        std::cerr << "Warning : needs for strict typed number arguments for "
+                  << signature() << " was not checked.\n";
+      }
+    } else if(method.strict_number_type.size() < nargs){
+      if(verbose > 0){
+        std::cerr << "Warning : needs for strict typed number arguments for "
+                  << signature() << " was not checked properly. Inconsistency "
+          "in the number of arguments (" << method.strict_number_type.size()
+                  << " flags for " << clang_getNumArgTypes(method_type)
+                  <<" arguments).\n";
+      }
+    }
+  }
   for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
     o << sep << arg_decl(iarg, argtype_only);
     sep = ", ";
@@ -553,16 +569,27 @@ std::ostream& FunctionWrapper::gen_call_args(std::ostream& o, int nargs) const{
   for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
     cast_op.str("");
     const auto& argtype = clang_getArgType(method_type, iarg);
-    if(type_map_.is_mapped(argtype)){
+    if(type_map_.is_mapped(argtype)
+       && argtype.kind != CXType_Pointer){ //do not cast pointers.
       auto fqn = fully_qualified_name(argtype);
-          //change arrays to pointers for the cast:
+      //change arrays to pointers for the cast:
       std::smatch sm;
       if(std::regex_match(fqn, sm, re_arr)){
         fqn = sm[1].str() + "*";
-          }
+      }
       cast_op << "(" << fqn << ")";
     }
     o << sep << cast_op.str() << "arg" << iarg;
+    
+    if(iarg < method.strict_number_type.size()
+       && method.strict_number_type[iarg]){
+      if(argtype.kind == CXType_Pointer){ //should never be this case?
+        o << "->";
+      } else{
+        o << ".";
+      }
+      o << "value";
+    }
     sep = ", ";
   }
   return o;
@@ -571,9 +598,25 @@ std::ostream& FunctionWrapper::gen_call_args(std::ostream& o, int nargs) const{
 std::string
 FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
   const auto& argtype = clang_getArgType(method_type, iarg);
+  
   //  const auto argtypename = fully_qualified_name(argtype); //str(clang_getTypeSpelling(argtype));
-  const auto argtypename = fix_template_type(type_map_.mapped_typename(argtype));
 
+  //maps only non-pointers type to prevent pointer cast considered
+  //as permissive by g++
+  //FIXME: should ne done in TypeMapper.
+  std::string argtypename;
+  if(argtype.kind != CXType_Pointer){
+    argtypename = type_map_.mapped_typename(argtype);
+  } else{
+    argtypename = fully_qualified_name(argtype);
+  }
+  argtypename = fix_template_type(argtypename);
+
+  if(iarg < method.strict_number_type.size()
+     &&method.strict_number_type.at(iarg)){
+    argtypename = std::string("jlcxx::StrictlyTypedNumber<") + argtypename + ">";
+  }
+  
   if(argtypes_only) return argtypename;
 
   //type pattern of function pointer or function pointer array
@@ -784,17 +827,36 @@ FunctionWrapper::validate(){
   return true;
 }
 
+//Deprecated. Use instead the version with witcv and withstatic.
+std::string FunctionWrapper::signature(bool withconstandstatic, bool aftermap) const{
+  return signature(withconstandstatic, withconstandstatic, aftermap);
+}
 
-std::string FunctionWrapper::signature(bool withcv, bool aftermap) const{
+std::string FunctionWrapper::signature(bool withconst, bool withstatic,
+                                       bool aftermap) const{
   std::stringstream buf;
   std::string genuine_classname_prefix = pTypeRcd ? (pTypeRcd->type_name + "::") : "";
-  buf << ((withcv && is_static_) ? "static " : "")
+  buf << ((withstatic && is_static_) ? "static " : "")
       << (is_ctor_ ? "" : (fully_qualified_name(return_type_) + " "))
       << genuine_classname_prefix << name_cxx
       << "(" <<  (aftermap ? short_arg_list_cxx : short_arg_list_signature) << ")";
-  if(withcv) buf << " " <<  cv;
+  if(withconst) buf << " " <<  cv;
   return buf.str();
 }
+
+std::string FunctionWrapper::signature(CXCursor clazz, CXCursor method,
+                                       bool withconst, bool withstatic,
+                                       const TypeMapper& typeMapper){
+  
+  TypeRcd typeRcd = clang_Cursor_isNull(clazz) ? TypeRcd() : TypeRcd(clazz);
+  const TypeRcd* pTypeRcd = clang_Cursor_isNull(clazz) ? nullptr : &typeRcd;
+  MethodRcd methodRcd(method);
+  FunctionWrapper helper(std::map<std::string, std::string>(),
+                         methodRcd, pTypeRcd, typeMapper, 0);
+  
+  return helper.signature(withconst, withstatic, true);
+}
+
 
 std::ostream&
 FunctionWrapper::generate(std::ostream& o,

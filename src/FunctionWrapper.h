@@ -12,8 +12,7 @@
 #include <iostream>
 #include <set>
 #include <map>
-
-class TypeMapper;
+#include "TypeMapper.h"
 
 // Helper class to generate CxxWrap.jl wrapper
 // code for a global or class function.
@@ -44,7 +43,15 @@ public:
   /// When aftermap is true, the argument and return types are transformed
   /// according with the type_mapper. This is used to check duplicate
   /// declaration for the wrapping.
-  std::string signature(bool withcv=false, bool aftermap=false) const;
+  std::string signature(bool withconst, bool withstatic, bool aftermap) const;
+  std::string signature(bool withconstandstatic=false, bool aftermap=false) const;
+  
+  /// static version. The name of the class clazz is used as prefix
+  /// independently of the class defining method. This allows building the
+  /// signature of an inherited methods.
+  static std::string signature(CXCursor clazz, CXCursor method,
+                               bool withconst, bool withstatic,
+                               const TypeMapper& typeMapper = TypeMapper());
 
   /// Generates the c++ code for the wrapper.
   /// @param [in,out] get_index_register register used to keep tracks

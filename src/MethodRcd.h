@@ -7,10 +7,12 @@
 #define METHODRCD_H
 
 #include <clang-c/Index.h>
+#include <vector>
 
 struct MethodRcd{
   CXCursor cursor;
   int min_args;
+  std::vector<bool> strict_number_type;
   MethodRcd(CXCursor cursor, int min_args = -1): cursor(cursor), min_args(min_args){}
 };
 

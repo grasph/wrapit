@@ -143,9 +143,9 @@ CodeTree::getParentClassesForWrapper(CXCursor cursor) const{
     }
     return CXChildVisit_Continue;
   };
-  
+
   clang_visitChildren(cursor, visitor, &data);
-  
+
   if(clang_Cursor_isNull(data.main_parent) && data.inheritance_preference
      && data.preferred_parent.size() > 0){
     std::cerr << "Inheritance preference " << clazz << ":" << data.preferred_parent
@@ -610,6 +610,8 @@ CodeTree::generate_cxx(){
     auto& c = types_[i];
     if(!c.to_wrap) continue;
     ++i_towrap_type;
+
+    c.setStrictNumberTypeFlags(type_map_);
 
     if(towrap_type_filenames_.size() > 0
        && towrap_type_filenames_[i_towrap_type] != type_out_fname){
@@ -3372,7 +3374,7 @@ CodeTree::deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet)
     std::string mapped_sig    = pref + wrapper.signature(/*cv=*/false, /*map=*/true);
     std::string notmapped_sig = pref + wrapper.signature(/*cv=*/false, /*map=*/false);
     bool isconst = clang_CXXMethod_isConst(m.cursor);
-    
+
     auto it = sigs.find(mapped_sig);
     if(it != sigs.end()){ //already in
       std::string hidden_nomapsig = notmapped_sig;
@@ -3389,7 +3391,7 @@ CodeTree::deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet)
         sigs[mapped_sig] = {isconst, notmapped_sig, ires};
         std::swap(hidden_nomapsig, exposed_nomapsig);
       }
-      
+
       if(hidden_nomapsig != exposed_nomapsig){
         if(!quiet && verbose > 1){
           std::cerr << "Warning: method " << hidden_nomapsig
@@ -3408,22 +3410,22 @@ CodeTree::deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet)
 
 std::vector<MethodRcd>
 CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
-  
+
   //method signature with the child class as prefix
   auto methodsig = [&](const MethodRcd& methodrcd){
     FunctionWrapper wrapper(cxx_to_julia_, methodrcd, &type_rcd, type_map_, cxxwrap_version_);
     std::string pref = clang_CXXMethod_isStatic(methodrcd.cursor) ? "static " : "";
     return pref + wrapper.signature(/*cv=*/false, /*map=*/true);
   };
-  
+
   std::vector<MethodRcd> towrap;
   std::set<std::string> sigs;
   const std::vector<MethodRcd>& own_methods = deduplicate_methods(type_rcd.methods, quiet);
-  
+
   for(const auto& m: own_methods){
     towrap.push_back(m);
   }
-  
+
   if(!multipleInheritance_) return towrap;
 
   auto [mapped_base, extra_direct_parents ] = getParentClassesForWrapper(type_rcd.cursor);
@@ -3434,7 +3436,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
   if(it_base_rcd != types_.end() && !clang_Cursor_isNull(it_base_rcd->cursor)){
     base_methods = get_methods_to_wrap(*it_base_rcd, /*quiet=*/true);
   }
-  
+
   //check if the method x has the same function name of one of the methods
   //listed in v:
   const auto& definedby = [&](const MethodRcd& x, const std::vector<MethodRcd>& v){
@@ -3444,7 +3446,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
                                      return s1 == str(clang_getCursorSpelling(x2.cursor));
                                    });
   };
-  
+
   //We will walk through the extra-inheritance tree of type_rcd.cursor
 
   //methods hidden by a definition with same function name in the child:
@@ -3500,12 +3502,12 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
       if(parent_stack.empty()) break;
     }
     if(parent_stack.empty()) break;
-      
+
     auto c = parent_stack.back().back();
     parent_stack.back().pop_back();
 
     auto itTypeRcd = types_.end();
-    
+
     if(!clang_Cursor_isNull(c)){
       const auto& t = clang_getCursorType(c);
       itTypeRcd = std::find_if(types_.begin(), types_.end(),
@@ -3566,7 +3568,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
                 << ", ancestor of class " << type_rcd.type_name
                 << ". The methods will not be inherited.\n";
     }
-    
+
     add_parents_of(parent_stack, hidden_method_stack, c, funcnames);
   } //for(;;)
 
@@ -3595,7 +3597,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
       }
     }
   }
-  
+
 //   std::cerr << "Method to wrap for " << type_rcd.type_name << ": ";
 //   std::string sep;
 //   for(const auto& m: towrap){

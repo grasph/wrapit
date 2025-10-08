@@ -53,7 +53,7 @@ namespace codetree{
                 out_open_mode_(std::ios_base::app),
                 ignore_parsing_errors_(false),
                 out_cxx_dir_("src"),
-                auto_veto_(true), update_mode_(true), include_depth_(1),
+                auto_veto_(true), update_mode_(false), include_depth_(1),
                 mainFileOnly_(true), override_base_(false),
                 propagation_mode_(propagation_mode_t::types),
                 export_mode_(export_mode_t::member_functions),
