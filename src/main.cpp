@@ -120,10 +120,10 @@ int main(int argc, char* argv[]){
      "already exist and there is no code changed, then the file including "
      "its time stamp is preserved. The time stamp can then be used to "
      "recompile modified files only during wrapper development of "
-     "large projects."),
+     "large projects.")
     ("ignore-parsing-errors", "Force generation of code in presence of error in the "
      "C++ code interpretation. For debug purpose as the generated code will likely "
-     "be invalid is such case.\n"),
+     "be invalid is such case.\n")
     ("V,version", "Display the software version")
     ;
 
