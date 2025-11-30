@@ -634,7 +634,14 @@ CodeTree::generate_cxx(){
 
     const auto& t = clang_getCursorType(c.cursor);
 
-    if(is_type_vetoed(c.type_name)) continue;
+    if(is_type_vetoed(c.type_name)){
+      if(verbose > 1){
+        std::cerr << "Info: " << "type " << c.type_name << " vetoed\n";
+      }
+      vetoed_types_.insert(c.type_name);
+      continue;
+    }
+
 
     if(c.type_name.size() == 0 //holder of global functions and variables
        || t.kind == CXType_Record || c.template_parameter_combinations.size() > 0){
@@ -941,6 +948,9 @@ void CodeTree::set_type_rcd_ctor_info(TypeRcd& rcd){
   if(it != finalizers_to_veto_.end()){
     finalize_vetoed = true;
     vetoed_finalizers_.insert(rcd.type_name);
+    if(verbose>1){
+      std::cerr << "Info. Finalizer of " << rcd.type_name << " vetoed.\n";
+    }
   }
 
   rcd.default_ctor = !clang_CXXRecord_isAbstract(rcd.cursor)
@@ -1233,8 +1243,15 @@ CodeTree::visit_class(CXCursor cursor){
 
   types_[index].template_parameters = get_template_parameters(cursor);
 
-  if(is_to_visit(cursor) && !is_type_vetoed(types_[index].type_name)){
-    types_[index].to_wrap = true;
+  if(is_to_visit(cursor)){
+    if(!is_type_vetoed(types_[index].type_name)){
+      types_[index].to_wrap = true;
+    } else{
+      if(verbose > 1){
+        std::cerr << "Info: " << "type " << types_[index].type_name << " vetoed\n";
+      }
+      vetoed_types_.insert(types_[index].type_name);
+    }
   }
 
   if(verbose > 3) std::cerr << "Calling clang_visitChildren(" << cursor
@@ -1253,24 +1270,38 @@ CodeTree::in_veto_list(const std::string signature) const{
   bool r = false;
   for(const auto& v: veto_list_){
     if(v.size() == 0) continue;
-    if(v[0] == '/'){ //regex
+    decltype(veto_list_)::size_type ifirst = 0;
+
+    bool effect = true;
+    if(v[ifirst] == '+'){ //unveto
+      //+ prefix allows to undo a veto (e.g. from a regex)
+      //the last directive line has the last word.
+      effect = false;
+      ++ifirst;
+    } else if(v[ifirst] == '-'){//veto, the default
+      ++ifirst;
+    }
+
+    if(v.size() <= ifirst) continue;
+
+    if(v[ifirst] == '/'){ //regex
       if(v[v.size()-1] != '/'){
         std::cerr << "ERROR: syntax error in the veto file: missing an ending"
           "slash on a line starting with a slash (/).\n";
         exit(1);
       }
-      auto re_ = v.substr(1, v.size() - 2);
+      auto re_ = v.substr(ifirst + 1, v.size() - 2 - ifirst);
       if(verbose > 5) std::cerr << "Debug: Comparing " << signature
                                 << " with grep-like regular expression "
                                 << re_ << "\n";
       std::regex re(re_, std::regex_constants::basic);
       if(std::regex_match(signature, re)){
-        r = true;
+        r = effect;
         break;
       }
     } else{
-      if(v == signature){
-        r = true;
+      if(v.substr(ifirst) == signature){
+        r = effect;
         break;
       }
     }
@@ -1317,10 +1348,10 @@ CodeTree::visit_global_function(CXCursor cursor){
 
   FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), nullptr, type_map_, cxxwrap_version_);
   if(in_veto_list(wrapper.signature())){
-    //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
-    if(verbose > 0){
+    if(verbose > 1){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
     }
+    vetoed_globfuncs_.insert(wrapper.signature());
     return ;
   }
 
@@ -1613,9 +1644,10 @@ CodeTree::register_type(const CXType& type, int* pItype, int* pIenum){
     }
 
     if(in_veto_list(type0_name)){
-      if(verbose > 2) std::cerr << "Type " << type0_name << " is vetoed. ("
+      if(verbose > 1) std::cerr << "Type " << type0_name << " is vetoed. ("
                                 << __FUNCTION__ << "() "
                                 << __FILE__ << ":" << __LINE__ << ")\n";
+      vetoed_types_.insert(type0_name);
       return false;
     }
 
@@ -1629,9 +1661,10 @@ CodeTree::register_type(const CXType& type, int* pItype, int* pIenum){
         continue;
       }
       if(in_veto_list(type0_name_base)){
-        if(verbose > 2) std::cerr << "Type " << type0_name_base << " is vetoed. ("
+        if(verbose > 1) std::cerr << "Type " << type0_name_base << " is vetoed. ("
                                   << __FUNCTION__ << "() "
                                   << __FILE__ << ":" << __LINE__ << ")\n";
+        vetoed_types_.insert(type0_name_base);
         return false;
       }
     }
@@ -1727,8 +1760,11 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
       if(verbose > 3) std::cerr << return_type << " is mapped to an alternative type.\n";
     } else{
       //we call in_veto_list instead of is_type_vetoed to not exclude std::vector
-      bool rc = !in_veto_list(fully_qualified_name(return_type)) && register_type(return_type);
-      if(!rc) missing_types.push_back(base_type(return_type));
+      if(!in_veto_list(fully_qualified_name(return_type))){
+        vetoed_types_.insert(fully_qualified_name(return_type));
+        bool rc = register_type(return_type);
+        if(!rc) missing_types.push_back(base_type(return_type));
+      }
     }
   }
 
@@ -1746,8 +1782,16 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
         if(verbose > 3) std::cerr << argtype << " is mapped to an alternative type.\n";
       } else{
         //we call in_veto_list instead of is_type_vetoed to not exclude std::vector
-        bool rc = !in_veto_list(fully_qualified_name(base_type(argtype))) && register_type(argtype);
-        if(!rc) missing_types.push_back(argtype);
+        if(!in_veto_list(fully_qualified_name(base_type(argtype)))){
+          bool rc = register_type(argtype);
+          if(!rc) missing_types.push_back(argtype);
+        } else{
+          if(verbose > 1){
+            std::cerr << "Info. " << fully_qualified_name(base_type(argtype)) 
+                      << " vetoed.\n";
+          }
+          vetoed_types_.insert(fully_qualified_name(base_type(argtype)));
+        }
       }
     }
   }
@@ -1822,7 +1866,7 @@ CodeTree::visit_member_function(CXCursor cursor){
   if(verbose > 3) std::cerr << __FUNCTION__ << "(" << cursor << ")\n";
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
-
+  
   FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_, cxxwrap_version_);
 
   //FIXME: handle the case where the method is defined in the parent class
@@ -1845,6 +1889,7 @@ CodeTree::visit_member_function(CXCursor cursor){
 
   if(in_veto_list(wrapper.signature())){
     //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
+    vetoed_methods_.insert(wrapper.signature());
     if(verbose > 0){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
     }
@@ -1856,6 +1901,7 @@ CodeTree::visit_member_function(CXCursor cursor){
   bool funcptr_returntype;
   std::tie(missing_types, min_args, funcptr_returntype) = visit_function_arg_and_return_types(cursor);
 
+  //FIXME: check if we cannot use already defined pTypeRcd
   auto p = find_class_of_method(cursor);
 
   if(!p){
@@ -2023,6 +2069,7 @@ CodeTree::visit_class_constructor(CXCursor cursor){
                           cxxwrap_version_);
 
   if(in_veto_list(wrapper.signature())){
+    vetoed_methods_.insert(wrapper.signature());
     //if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
@@ -2222,8 +2269,9 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
                                    combi)){
     if(vetoed){
       if(verbose > 0){
-        std::cerr << "Specialization vetoed "
-                  << pTypeRcd->type_name << "<";
+        vetoed_specializations_.insert(pTypeRcd->name(combi));
+        std::cerr << "Info: specialization "
+                  << pTypeRcd->name(combi) << " not wrapped ";
         const char* s = "";
         for(const auto& t: combi){
           std::cerr << s << t;
@@ -2234,16 +2282,9 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
     } else{
       if(verbose > 2){
         std::cerr << __FUNCTION__ << ". Add specialization "
-                << pTypeRcd->type_name << "<";
-        const char* s = "";
-        for(const auto& t: combi){
-          std::cerr << s << t;
-        s = ",";
-        }
-        std::cerr << ">\n";
+                  << pTypeRcd->name(combi) << "\n";
       }
       combi_list.push_back(combi);
-      //if(pTypeRcd->type_name == "ROOT::VecOps::RVec") abort();
     }
   }
   pTypeRcd->template_parameter_types = param_types;
@@ -2544,6 +2585,33 @@ CodeTree::~CodeTree(){
 
 }
 
+template<typename T>
+std::ostream& CodeTree::list_for_report(std::ostream& o,
+                                        const std::string& title,
+                                        const T& list,
+                                        const std::string& preample){
+
+  o << "\n" << title << ":\n";
+
+  for(unsigned i = 0; i < title.size() - 1; ++i) o << "-";
+
+  o << "\n\n";
+  
+  if(preample.size() > 0){
+    o << preample << "\n\n";
+  }
+
+  for(const auto& e: list){
+    o << e << "\n";
+  }
+
+  if(list.begin() == list.end()){//empty list
+    o << "(none)\n";
+  }
+  
+  return o;
+}
+
 std::ostream& CodeTree::report(std::ostream& o){
   o << "Dependency cycles:  ";
   if(type_dependencies_.isCyclic()){
@@ -2652,7 +2720,7 @@ std::ostream& CodeTree::report(std::ostream& o){
     }
   }
 
-  o << "\n\nList of wrapped methods:\n\n:";
+  o << "\n\nList of wrapped methods:\n\n";
   for(const auto& m: wrapped_methods_){
     o << m << "\n";
   }
@@ -2662,7 +2730,21 @@ std::ostream& CodeTree::report(std::ostream& o){
   for(const auto& p: overlap_skipped_methods_){
     o << p.first << "\n\t" << p.second << "\n";
   }
-
+  
+  list_for_report(o, "List of vetoed types", vetoed_types_);
+  list_for_report(o, "List of vetoed enums", vetoed_enums_);
+  list_for_report(o, "List of vetoed methods", vetoed_methods_);
+  list_for_report(o, "List of vetoed global funcs", vetoed_globfuncs_);
+  list_for_report(o, "List of vetoed specializations",
+                  vetoed_specializations_);
+  list_for_report(o, "List of vetoed field accessors "
+                  "(both getter and setter)", vetoed_field_accessors_);
+  list_for_report(o, "List of vetoed field setters", vetoed_field_setters_);
+  list_for_report(o, "List of vetoed global variable accessors "
+                  "(both getter and setter)", vetoed_globvar_accessors_);
+  list_for_report(o, "List of vetoed global variable setters",
+                  vetoed_globvar_setters_);
+  
   return o;
 }
 
@@ -2899,9 +2981,11 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
   type_name = str(clang_getTypeSpelling(type));
 
-
-  if(std::find(veto_list_.begin(), veto_list_.end(), type_name)!= veto_list_.end()){
-    std::cerr << "Info: enum " << type_name << " vetoed\n";
+  if(in_veto_list(type_name)){
+    if(verbose > 0){
+      std::cerr << "Info: enum " << type_name << " vetoed\n";
+    }
+    vetoed_enums_.insert(type_name);
     return o;
   }
 
@@ -2913,10 +2997,11 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
   if(prefix_cxx.size() > 2){
     const auto& clazz = prefix_cxx.substr(0, prefix_cxx.size() - 2);
-    if(std::find(veto_list_.begin(), veto_list_.end(), clazz) != veto_list_.end()){
+    if(in_veto_list(clazz)){
       if(verbose > 0){
         std::cerr << "Info: enum " << type_name << " vetoed\n";
       }
+      vetoed_enums_.insert(type_name);
       return o;
     }
   }
@@ -3044,20 +3129,30 @@ void CodeTree::inheritances(const std::vector<std::string>& val){
 
 
 CodeTree::accessor_mode_t
-CodeTree::check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_var) const{
+CodeTree::check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_var){
   std::string entity = global_var ? "global variable" : "field";
 
   auto field_name  = fully_qualified_name(cursor);
   //  if(std::find(veto_list_.begin(), veto_list_.end(), field_name) != veto_list_.end()){
   if(in_veto_list(field_name)){
+    if(global_var){
+      vetoed_globvar_accessors_.insert(field_name);
+    } else{
+      vetoed_field_accessors_.insert(field_name);
+    }
     if(verbose > 0){
       std::cerr << "Info: " << entity << " " << field_name << " accessors vetoed\n";
     }
     return accessor_mode_t::none;
     //  } else if(std::find(veto_list_.begin(), veto_list_.end(), field_name + "!") != veto_list_.end()){
   } else if(in_veto_list(field_name + "!")){
+    if(global_var){
+      vetoed_globvar_setters_.insert(field_name);
+    } else{
+      vetoed_field_setters_.insert(field_name);
+    }
     if(verbose > 0){
-      std::cerr << "Info: " << entity << " " << field_name << " getter vetoed\n";
+      std::cerr << "Info: " << entity << " " << field_name << " setter vetoed\n";
     }
     return accessor_mode_t::getter;
   } else{
@@ -3574,7 +3669,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
             //            << c << "\n";
             //}
           } else if(definedby(m, base_methods)){
-            //FIXME we miss to exlude functions defined by an ancestor of base.
+            //FIXME we miss to exclude functions defined by an ancestor of base.
             //A strategy to do so could be, to include the base class branch in our
             //walk and mark the definition coming from this branch as such
             //(in extra_defs) and exclude the functions in the loop on extra_defs.

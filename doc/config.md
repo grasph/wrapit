@@ -144,6 +144,10 @@ class_order_constraints = [ "" ]
 # request to name `Get_` the Julia bindings to the `Get` methods of C++ classes
 # `TDirectoryFile` and `TDirectory`.
 #
+# Base override: if the mapped type starts with Base., then the corresponding
+# Base module method will be overriden. This feature is supported only for
+# the Base module.
+#
 # This feature is useful to customize a julia binding: changing the name
 # of a function, for instance by appending an underscore as in the above
 # example, allows the implementation in Julia of a wrapper with the original

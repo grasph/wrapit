@@ -215,7 +215,7 @@ namespace codetree{
                               std::ostream& export_o,
                               const std::string& module_name,
                               const std::string& shared_lib_name) const;
-
+    
     std::ostream& report(std::ostream& o);
 
     void add_std_option(const std::string x){
@@ -317,9 +317,10 @@ namespace codetree{
     bool in_veto_list(const std::string signature) const;
 
     //Check is a field or variable is veto status for accessor generation
-    // acccessor_mode_t::none -> both accessors vetoed
+    //acccessor_mode_t::none -> both accessors vetoed
+    //In case of a veto, the veto is recorded to be listed in the report
     accessor_mode_t
-    check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_var) const;
+    check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_var);
 
     //Look for a file in the include dirs and returns the path
     std::string resolve_include_path(const std::string& fname);
@@ -524,6 +525,13 @@ namespace codetree{
     deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet=false) const;
     
   private:
+
+    template<typename T>
+    std::ostream& list_for_report(std::ostream& o,
+                                  const std::string& title,
+                                  const T& list,
+                                  const std::string& preample = "");
+    
     std::string clang_resource_dir_;
 
     bool auto_veto_;
@@ -602,6 +610,16 @@ namespace codetree{
     std::vector<std::string> towrap_type_filenames_;
     std::set<std::string> towrap_type_filenames_set_;
 
+    std::set<std::string> vetoed_types_;
+    std::set<std::string> vetoed_enums_;
+    std::set<std::string> vetoed_methods_;
+    std::set<std::string> vetoed_globfuncs_;
+    std::set<std::string> vetoed_specializations_;
+    std::set<std::string> vetoed_field_accessors_;
+    std::set<std::string> vetoed_globvar_accessors_;
+    std::set<std::string> vetoed_field_setters_;
+    std::set<std::string> vetoed_globvar_setters_;
+    
     TypeMapper type_map_;
 
     struct {
@@ -618,4 +636,5 @@ namespace codetree{
 
   };
 }
+
 #endif //CODETREE_H not defined

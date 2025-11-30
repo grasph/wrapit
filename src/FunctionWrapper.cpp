@@ -719,6 +719,14 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
     if(verbose > 0){
       std::cerr << "Info name mapping: " << full_name << " mapped to " << name_jl_suffix << "\n";
     }
+
+    const std::string base_prefix("Base.");
+    //FIXME: replace by starts_with when we will move to C++ >= 20
+    if(name_jl_suffix.find(base_prefix) == 0){
+      override_base_ = true;
+      name_jl_suffix.erase(0, base_prefix.size());
+    }
+    
   } else{// automatic name mapping
     if(verbose > 4){
       std::cerr << "Info name mapping: no name customization for " << full_name

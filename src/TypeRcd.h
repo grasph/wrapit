@@ -31,10 +31,11 @@ struct TypeRcd {
   TypeRcd(const CXCursor& cursor, const std::string& type_name = std::string());
   TypeRcd(): cursor(clang_getNullCursor()){}
 
+  std::string name(const std::vector<std::string>& params) const;
   std::string name(int combi) const;
   std::vector<std::string> names() const;
   std::ostream& specialization_list(std::ostream& o) const;
-
+  
   void setStrictNumberTypeFlags(const TypeMapper& typeMap);
 
 };
