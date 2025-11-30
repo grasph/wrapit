@@ -2194,10 +2194,14 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
 
   std::vector<std::string> combi;
   std::vector<std::string> param_types;
+  double vetoed = false;
   for(decltype(nparams) i = 0; i < nparams; ++i){
     const auto& param = clang_Type_getTemplateArgumentAsType(type, i);
     if (param.kind != CXType_Invalid) {
       combi.push_back(str(clang_getTypeSpelling(param)));
+      if(in_veto_list(combi.back())){
+        vetoed = true;
+      }
       param_types.push_back("typename");
     } else {
       auto TA = get_IntegralTemplateArgument(cursor, i);
@@ -2216,7 +2220,31 @@ bool CodeTree::add_type_specialization(TypeRcd* pTypeRcd, const CXType& type){
   auto& combi_list = pTypeRcd->template_parameter_combinations;
   if(combi_list.end() == std::find(combi_list.begin(), combi_list. end(),
                                    combi)){
-    combi_list.push_back(combi);
+    if(vetoed){
+      if(verbose > 0){
+        std::cerr << "Specialization vetoed "
+                  << pTypeRcd->type_name << "<";
+        const char* s = "";
+        for(const auto& t: combi){
+          std::cerr << s << t;
+          s = ",";
+        }
+        std::cerr << "> because one of its parameter is vetoed\n";
+      }
+    } else{
+      if(verbose > 2){
+        std::cerr << __FUNCTION__ << ". Add specialization "
+                << pTypeRcd->type_name << "<";
+        const char* s = "";
+        for(const auto& t: combi){
+          std::cerr << s << t;
+        s = ",";
+        }
+        std::cerr << ">\n";
+      }
+      combi_list.push_back(combi);
+      //if(pTypeRcd->type_name == "ROOT::VecOps::RVec") abort();
+    }
   }
   pTypeRcd->template_parameter_types = param_types;
 

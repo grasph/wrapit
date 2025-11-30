@@ -10,6 +10,7 @@
 #include "libclang-ext.h"
 #include "FunctionWrapper.h"
 #include "TypeMapper.h"
+#include "Graph.h"
 
 int TypeRcd::nRecords = 0;
 
@@ -54,21 +55,56 @@ std::vector<std::string> TypeRcd::names() const{
 }
 
 std::ostream& TypeRcd::specialization_list(std::ostream& o) const{
-  const char* sep1 = "";
-  for(int i = template_parameter_combinations.size() - 1; i >= 0; --i){
-    const auto& combi = template_parameter_combinations[i];
+  //We need to order the list of template parameter combbinations such
+  //that a specialization that uses a second specialization of this type as parameter
+  //appears after the latter.
+  //
+  //e.g. if T is our templated type and it specialized for double and for T<double>,
+  //the combination <double> is moved before the combination <T<double>>
+
+  //build the list of types that the specializations will defined
+  std::vector<std::string> defined_types;
+  for(const auto& combi: template_parameter_combinations){
+    std::stringstream buf;
+
     //TemplateType<
-    o << sep1 << type_name << "<";
-    sep1 = ", ";
+    buf << type_name << "<";
 
     //P1, P2
-    const char* sep2 ="";
+    const char* sep ="";
     for(const auto& arg_typename: combi){
-      o << sep2 << arg_typename;
-      sep2 = ", ";
+      buf << sep << arg_typename;
+      sep = ", ";
     }
-    o << ">";
+
+    //>
+    buf << ">";
+    defined_types.push_back(buf.str());
   }
+
+  Graph dependencies;
+  //build dependencies by looking for parameters defined by the specializaions
+  for(decltype(template_parameter_combinations)::size_type icombi = 0;
+      icombi < template_parameter_combinations.size();
+      ++icombi){
+    const auto& combi = template_parameter_combinations[icombi];
+    for(const auto& param: combi){
+      auto it = std::find(defined_types.begin(), defined_types.end(), param);
+      if(it!=defined_types.end()){
+        unsigned jcombi = it - defined_types.begin();
+        dependencies.preceeds(jcombi, icombi);
+      }
+    }
+  }
+
+  dependencies.extend(defined_types.size());
+
+  const char* sep = "";
+  for(auto i: dependencies.sortedIndices()){
+    o << sep << defined_types[i];
+    sep = ", ";
+  }
+
   return o;
 }
 
@@ -84,7 +120,7 @@ void TypeRcd::setStrictNumberTypeFlags(const TypeMapper& typeMapper){
     if(clang_getCursorKind(m1.cursor) == CXCursor_Constructor){
       continue;
     }
-    
+
     auto m1type = clang_getCursorType(m1.cursor);
     std::set<int> strict_type_args;
     for(decltype(nmethods) im2 = im1 + 1; im2 < nmethods; ++im2){
@@ -130,7 +166,7 @@ void TypeRcd::setStrictNumberTypeFlags(const TypeMapper& typeMapper){
         }
       }
     } //next m2
-    
+
     m1.strict_number_type = std::vector(clang_getNumArgTypes(m1type), false);
 
     bool atleastone=false;

@@ -91,7 +91,7 @@ int main(int argc, char* argv[]){
 
   cxxopts::Options option_list("wrapit",
                                "Generates wrappers from a c++ header file for Cxx.jl.\n");
-  
+
   // clang-format off
   option_list.add_options()
     ("h,help", "Display this help and exit")
@@ -185,7 +185,7 @@ int main(int argc, char* argv[]){
         std::cerr << "Failed to set parameter specified by --add-cfg, '"
                   << p << "': " << err.what() << "\n";
         exit(1);
-        } 
+        }
       }
     }
 
@@ -206,7 +206,7 @@ int main(int argc, char* argv[]){
       std::cerr << mess;
       exit(1);
     }
-    
+
     auto include_dirs = read_vpath("include_dirs", { fs::path(".")} );
     //auto to_parse = read_vpath_include("input", include_dirs);
     auto to_parse = read_vstring("input");
@@ -217,7 +217,7 @@ int main(int argc, char* argv[]){
     auto vetoed_copy_ctor_classes  = read_vstring("vetoed_copy_ctor_classes");
 
     auto multiple_inheritance = toml_config["multiple_inheritance"].value_or(true);
-    
+
     auto module_name = toml_config["module_name"].value_or(std::string("CxxLib"));
     auto out_export_jl_fname = toml_config["export_jl_fname"].value_or(std::string());
     auto out_jl_fname = toml_config["module_jl_fname"].value_or(std::string());
@@ -255,9 +255,9 @@ int main(int argc, char* argv[]){
     auto mapped_types = read_vstring("mapped_types");
 
     auto cxx2cxxtypes = read_vstring("cxx2cxx_type_map");
-    
+
     auto class_order_contraints = read_vstring("class_order_constraints");
-    
+
     auto veto_list = toml_config["veto_list"].value_or(""sv);
 
     auto auto_veto = toml_config["auto_veto"].value_or(true);
@@ -332,14 +332,14 @@ int main(int argc, char* argv[]){
         "empty string to generate a new uuid, which will be displayed to the "
         "output (stderr).\n";
         return 1;
-    }    
+    }
 
     bool in_err = false;
     auto open_mode = std::ofstream::out;
     if(options.count("force") == 0){
       open_mode |= std::ofstream::app;
     }
-    
+
     auto open_file = [&](const std::string& fname){
       std::ofstream f(fname, open_mode);
       if(f.tellp()!=0){
@@ -386,14 +386,14 @@ int main(int argc, char* argv[]){
     tree.set_force_mode(options.count("force") > 0);
 
     tree.set_ignore_parsing_errors(options.count("ignore-parsing-errors") > 0);
-    
+
     tree.set_cxxwrap_version(cxxwrap_version);
 
     tree.set_julia_names(julia_names);
     tree.set_mapped_types(mapped_types);
     tree.set_cxx2cxx_typemap(cxx2cxxtypes);
     tree.set_class_order_constraints(class_order_contraints);
-    
+
     tree.add_std_option(cxx_std);
 
     tree.auto_veto(auto_veto);
