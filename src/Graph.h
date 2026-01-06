@@ -47,6 +47,7 @@ private:
   std::vector<std::list<unsigned>> edges_;
 
   std::vector<bool> visited_;
+  std::vector<bool> inserted_; //not needed by algo, for debug
   std::vector<bool> cyclicmarks_;
   std::vector<unsigned> sortednodes_;
   bool cyclic_;

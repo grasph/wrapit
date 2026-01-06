@@ -248,6 +248,8 @@ int main(int argc, char* argv[]){
       out_cmake_fpath = resolve_out_dir("wrapit.cmake");
     }
 
+    auto custom_type_wrappers = read_vstring("custom_type_wrappers");
+    
     auto n_classes_per_file = toml_config["n_classes_per_file"].value_or(-1);
 
     auto julia_names = read_vstring("julia_names");
@@ -383,6 +385,8 @@ int main(int argc, char* argv[]){
 
     CodeTree tree;
 
+    tree.set_custom_wrapper_list(custom_type_wrappers);
+    
     tree.set_force_mode(options.count("force") > 0);
 
     tree.set_ignore_parsing_errors(options.count("ignore-parsing-errors") > 0);

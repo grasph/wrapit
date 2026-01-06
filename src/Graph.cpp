@@ -1,4 +1,9 @@
 #include "Graph.h"
+
+#include<iostream>
+
+static constexpr const bool verbose_sorting = false;
+
 void Graph::extend(unsigned n){
   if(n > edges_.size()){
     edges_.resize(n);
@@ -38,6 +43,9 @@ void Graph::initScan(){
   cyclicmarks_.resize(edges_.size());
   fill(cyclicmarks_.begin(), cyclicmarks_.end(), false);
 
+  inserted_.resize(edges_.size());
+  fill(inserted_.begin(), inserted_.end(), false);
+  
   cyclic_ = false;
 }
 
@@ -53,17 +61,23 @@ void Graph::localSort(unsigned vertex){
 
   /*check for all indices preceeding vertex*/
   for (const auto& node: edges_[vertex]){
-    //    std::cerr<< node << " (" << cyclicmarks_[node]
-    //             << ", " << cyclicmarks_[node] << ") "
-    //             << " ≺ "
-    //             << vertex << " (" << visited_[vertex]
-    //             << ", " << cyclicmarks_[vertex] << ") "
-    //             << "\n";
+    if(verbose_sorting){
+        std::cerr<< node << " (" << cyclicmarks_[node]
+                 << ", " << cyclicmarks_[node]
+                 << ", " << (inserted_[node] ? "in" : "")
+                 << ") "
+                 << " ≺ "
+                 << vertex << " (" << visited_[vertex]
+                 << ", " << cyclicmarks_[vertex]
+                 << ", " << (inserted_[vertex] ? "in" : "")
+                 << ") "
+                 << "\n";
+    }
     if (!visited_[node]){
       localSort(node);
     }
     cyclic_ |= cyclicmarks_[node];
-    //    std::cerr << "cyclic_: " << cyclic_ << "\n";
+    //std::cerr << "cyclic_: " << cyclic_ << "\n";
   }
 
   //remove the cycling detection mark:
@@ -71,7 +85,9 @@ void Graph::localSort(unsigned vertex){
 
   //The node vertex has no not-yet-visited preceeding
   //node, add it to the sorted list:
+  if(verbose_sorting) std::cerr << "add " << vertex << "\n";
   sortednodes_.push_back(vertex);
+  inserted_[vertex] = true;
 }
 
 void Graph::sort(){
@@ -81,6 +97,17 @@ void Graph::sort(){
     if (visited_[i] == false){ //<-- can be removed...
       localSort(i);
     }
+  }
+
+  if(verbose_sorting){
+    std::cerr << "Sorted nodes: ";
+    const char* sep = "";
+    for(const auto & i: sortednodes_){
+    std::cerr << sep << i;
+    sep = " ≺ ";
+    }
+    std::cerr << "\n";
+    std::cerr << "cyclic: " << (cyclic_ ? "yes" : "no") << "\n";
   }
   sorted_ = true;
 }

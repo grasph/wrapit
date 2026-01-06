@@ -11,6 +11,7 @@ class TypeMapper;
 
 struct TypeRcd {
   CXCursor cursor;
+  std::vector<CXCursor> extra_cursors; //for templated class we get multiple definitions
   std::string type_name;
   std::vector<MethodRcd> methods;
   std::vector<CXCursor> fields;

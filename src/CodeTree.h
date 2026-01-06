@@ -301,8 +301,17 @@ namespace codetree{
     // Set map type for substitution in the C++ method prototypes declare to CxxWrap
     void set_cxx2cxx_typemap(const std::vector<std::string>& name_map);
 
+    void set_custom_wrapper_list(const std::vector<std::string>& l){
+      custom_type_wrappers_ = l;
+    }    
+    
   protected:
 
+    bool is_custom_type_wrapper(const std::string type_name){
+      return std::find(custom_type_wrappers_.begin(), custom_type_wrappers_.end(),
+                       type_name) != custom_type_wrappers_.end();
+    }
+    
     enum class accessor_mode_t {none, getter, both };
 
     // Adds a type to the list of types/classes to wrap.
@@ -636,6 +645,8 @@ namespace codetree{
       unsigned global_funcs = 0;
     } nwraps_;
 
+
+    std::vector<std::string> custom_type_wrappers_;
   };
 }
 

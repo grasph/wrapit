@@ -9,7 +9,7 @@ In this file we keep a list of tasks to be done to improve WrapIt.
    - [ ] Allow specifying by configuration the preferred Julia type name in case a C++ type has several names defined with typedef or using statements
    - [ ] Add an option to add in the generated code, Julia aliases to map the C/C++ typedefs/using. Some thought on how to deal with types involving pointers or references needed.
    - [ ] Add a feature to generate automatically the veto list exploiting the test_build feature.
-   - [ ] Enhance multiple inheritance support: add Julia binding to methods of the extra parents, that are not mapped to Julia supertypes.
+   - [X] Enhance multiple inheritance support: add Julia binding to methods of the extra parents, that are not mapped to Julia supertypes.
    - [ ] Accessors: generate julia code to map getproperty and setproperty to the accessors
 ```julia
   function getproperty(a ::x!y, symbol ::Symbol)
@@ -28,4 +28,4 @@ In this file we keep a list of tasks to be done to improve WrapIt.
    - [ ] Review the return type of the generated accessors, currently return by value for POD and by reference for objects. Should we return by value in both cases? Should it be configurable?
    - [ ] 🚧 Generate and maintain a project database, in the form of an editable toml file, with the list of entity to wrap. The database should allow enabling/disabling the wrapping for each type, function and variables (accessors). It will replace and extend the veto file. This should ease both customization and upgrade to a new wrapit release, that support more cases and generate wrappers for type or functions previously auto vetoed.
    - [ ] Add support to generate Julia docstring from the doxygen documentation found in the code. Support of documentation written in the source files instead of parsed headers (ROOT is in this case).
-   - [ ] Include paramater names in the functions using the CxxWrap v0.15 new feature.
+   - [X] Include paramater names in the functions using the CxxWrap v0.15 new feature.

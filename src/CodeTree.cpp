@@ -315,6 +315,15 @@ std::ostream&
 CodeTree::generate_cxx_for_type(std::ostream& o,
                                 const TypeRcd& t){
 
+  //wrapper implemeted by the user
+  if(is_custom_type_wrapper(t.type_name)){
+    if(verbose > 1){
+      std::cerr << "Info. Wrapper for type " << t.type_name
+                << " is configured as custom. Wrapper code generation skipped.\n";
+    }
+    return o;
+  }
+
   //if true, fake type used to hold global functions
   bool notype = t.type_name.size() == 0;
 
@@ -375,9 +384,9 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
       if(t.template_parameters.size() > 0){
         if(verbose > 0){
           //getParentClassesForWrapper is expected to put template class inheritances
-          //exclusivelt in extra_parents
+          //exclusively in extra_parents
           std::cerr << "Bug found. Methods inherited from " << base << " by " << t.type_name
-                    << "won't be wrapped due to a bug in " << __FUNCTION__
+                    << " won't be wrapped due to a bug in " << __FUNCTION__
                     << ", " << __FILE__ << ":" << __LINE__ << "].\n";
         }
       } else{
@@ -595,6 +604,9 @@ CodeTree::generate_cxx(){
   o << "#include \"dbg_msg.h\"\n";
   o << "#include \"Wrapper.h\"\n";
 
+  o << "\nvoid end_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
+    "\nvoid end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak));\n";
+
   std::vector<std::string> wrappers;
 
   //File stream to write type wrapper,
@@ -696,9 +708,13 @@ CodeTree::generate_cxx(){
     sep = ",\n";
   }
   o << "\n";
-  indent(o, 1) << "};\n";
+  indent(o, 1) << "};\n\n";
 
-  indent(o, 1) << "for(const auto& w: wrappers) w->add_methods();\n";
+  indent(o, 1) << "if(end_add_type_hook) end_add_type_hook(jlModule);\n\n";
+
+  indent(o, 1) << "for(const auto& w: wrappers) w->add_methods();\n\n";
+
+  indent(o, 1) << "if(end_hook) end_hook(jlModule);\n";
 
   o << "\n}\n";
   o.close();
@@ -1790,7 +1806,7 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
           if(!rc) missing_types.push_back(argtype);
         } else{
           if(verbose > 1){
-            std::cerr << "Info. " << fully_qualified_name(base_type(argtype)) 
+            std::cerr << "Info. " << fully_qualified_name(base_type(argtype))
                       << " vetoed.\n";
           }
           vetoed_types_.insert(fully_qualified_name(base_type(argtype)));
@@ -1869,7 +1885,7 @@ CodeTree::visit_member_function(CXCursor cursor){
   if(verbose > 3) std::cerr << __FUNCTION__ << "(" << cursor << ")\n";
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
-  
+
   FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_, cxxwrap_version_);
 
   //FIXME: handle the case where the method is defined in the parent class
@@ -2228,7 +2244,7 @@ CodeTree::visit_class_template_specialization(CXCursor cursor){
   if(!pTypeRcd){
     std::cerr << "Warning: specialization found at " << clang_getCursorLocation(cursor)
               << " for class/struct " << cursor << " before its definition.\n";
-    add_type(specialized_cursor, /*check = */false);
+    add_type(specialized_cursor, /*check = */true);
     pTypeRcd = & types_.back();
   }
   add_type_specialization(pTypeRcd, type);
@@ -2487,10 +2503,10 @@ CodeTree::parse(){
   }
 
   auto macro = fname2macro(header_file_name);
-  
+
   header_file << "#ifndef " << macro << "\n"
     "#define " << macro << "\n";
-  
+
   for(const auto& fname: extra_headerss_){
     header_file << "#include \"" << fname << "\"\n";
   }
@@ -2606,7 +2622,7 @@ std::ostream& CodeTree::list_for_report(std::ostream& o,
   for(unsigned i = 0; i < title.size() - 1; ++i) o << "-";
 
   o << "\n\n";
-  
+
   if(preample.size() > 0){
     o << preample << "\n\n";
   }
@@ -2618,7 +2634,7 @@ std::ostream& CodeTree::list_for_report(std::ostream& o,
   if(list.begin() == list.end()){//empty list
     o << "(none)\n";
   }
-  
+
   return o;
 }
 
@@ -2740,7 +2756,7 @@ std::ostream& CodeTree::report(std::ostream& o){
   for(const auto& p: overlap_skipped_methods_){
     o << p.first << "\n\t" << p.second << "\n";
   }
-  
+
   list_for_report(o, "List of vetoed types", vetoed_types_);
   list_for_report(o, "List of vetoed enums", vetoed_enums_);
   list_for_report(o, "List of vetoed methods", vetoed_methods_);
@@ -2754,7 +2770,7 @@ std::ostream& CodeTree::report(std::ostream& o){
                   "(both getter and setter)", vetoed_globvar_accessors_);
   list_for_report(o, "List of vetoed global variable setters",
                   vetoed_globvar_setters_);
-  
+
   return o;
 }
 
@@ -2854,30 +2870,6 @@ void CodeTree::preprocess(){
       }//next paramType
     }//next iCombi
 
-
-    //Add user defined dependencies
-    for(const auto& dep: class_order_constraints_){
-      auto it1 = std::find_if(types_.begin(), types_.end(),
-                              [dep](const auto& x){ return x.type_name == dep.first;});
-      auto it2 = std::find_if(types_.begin(), types_.end(),
-                              [dep](const auto& x){ return x.type_name == dep.second;});
-
-      if(it1 != types_.end() && it2 != types_.end()){
-        type_dependencies_.preceeds(it1 - types_.begin(), it2 - types_.begin());
-        if(verbose > 1) std::cerr << "Dependency \"" << dep.second << " requires " << dep.first
-                                << "\" added.\n";
-      } else{
-        if(verbose>0){
-          std::cerr << "Warning: class dependency "
-                    << dep.first << " < " << dep.second
-                    << " not used.";
-          if(it1 == types_.end()) std::cerr << " No " << dep.first << " class.";
-          if(it2 == types_.end()) std::cerr << " No " << dep.second << " class.";
-          std::cerr << "\n";
-        }
-      }
-    }
-
 #ifdef DEFINE_TEMPLATE_METHODS_IN_CTOR
     //Add dependencies of templated classes to the type of their methods
     //argument and return value.
@@ -2914,10 +2906,37 @@ void CodeTree::preprocess(){
   } //next iChild
 #endif
 
+  //Add user defined dependencies
+  for(const auto& dep: class_order_constraints_){
+    auto it1 = std::find_if(types_.begin(), types_.end(),
+                            [dep](const auto& x){ return x.type_name == dep.first;});
+    auto it2 = std::find_if(types_.begin(), types_.end(),
+                            [dep](const auto& x){ return x.type_name == dep.second;});
+
+    if(it1 != types_.end() && it2 != types_.end()){
+      type_dependencies_.preceeds(it1 - types_.begin(), it2 - types_.begin());
+      if(verbose > 1) std::cerr << "Dependency \"" << dep.second
+                                << "( node " <<  (it2 - types_.begin()) << ")"
+                                << " requires " << dep.first
+                                << "( node " <<  (it1 - types_.begin()) << ")"
+                                << "\" added.\n";
+    } else{
+      if(verbose>0){
+          std::cerr << "Warning: class dependency "
+                    << dep.first << " < " << dep.second
+                    << " not used.";
+          if(it1 == types_.end()) std::cerr << " No " << dep.first << " class.";
+          if(it2 == types_.end()) std::cerr << " No " << dep.second << " class.";
+          std::cerr << "\n";
+      }
+    }
+  }
+
   if(verbose > 2){
-    std::cerr << "\nType list at end of preprocess:\n";
+    std::cerr << "\nType list at end of preprocess before reordering:\n";
+    size_t j = 0;
     for(const auto& t: types_){
-      std::cerr << t.type_name << "\n";
+      std::cerr << std::setw(4) << ++j << ". " << t.type_name << "\n";
     }
     std::cerr << "\n";
   }
@@ -2928,8 +2947,10 @@ void CodeTree::preprocess(){
 
   if(verbose > 2){
     std::cerr << "\nType list at end of preprocess after reordering:\n";
+    size_t j = 0;
     for(const auto i: types_sorted_indices_){
-      std::cerr << types_[i].type_name << "\n";
+      std::cerr << std::setw(4) << ++j << ". " << types_[i].type_name
+                << " (" << (i + 1) << ")\n";
     }
     std::cerr << "\n";
   }
@@ -3170,24 +3191,80 @@ CodeTree::check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_v
   }
 }
 
+
+//FIXME: duplicate for template class
+//strategy to adopt. add an extra_cursors vector to TypeRcd to keep tracks
+//of duplicate and select the cursor with the largest number of visited elements.
+//as main cursor.
 int
 CodeTree::add_type(const CXCursor& cursor, bool check){
   const int not_found =  -1;
   int index = not_found;
+  bool spelling_duplicate = false;
+  TypeRcd* pSameSpellType = nullptr;
   if(check){
     int i = 0;
-    for(const auto& t: types_){
+    for(auto& t: types_){
       if(clang_equalCursors(t.cursor, cursor)){
         index = i;
+        break;
+      }
+      //if(str(clang_getCursorSpelling(t.cursor)) == str(clang_getCursorSpelling(cursor))){
+      if(t.type_name == fully_qualified_name(cursor)){
+        pSameSpellType = &t;
         break;
       }
       ++i;
     }
   }
-  if(index == not_found){
-    index = types_.size();
-    types_.emplace_back(cursor);
-    set_type_rcd_ctor_info(types_.back());
+
+  if(index == not_found){ //type not yet in the list
+    if(pSameSpellType){
+      //a type already in the list has the same spelling but a different cursor
+      //This happens for templates
+      
+      //std::cerr << "Duplicate definition of "
+      //          << "first location: " << clang_getCursorLocation(pSameSpellType->cursor)
+      //          << "\n\tcursor kind: " << clang_getCursorKind(pSameSpellType->cursor) << "\n"
+      //          << "\n\tdeclaration: " << (clang_isDeclaration(pSameSpellType->cursor.kind) ? "yes" : "no") << "\n"
+      //          << "\n\tFQN: " << fully_qualified_name(pSameSpellType->cursor) << "\n"
+      //          << "\nsecond location: " << clang_getCursorLocation(cursor)
+      //          << "\n\tcursor kind: " << clang_getCursorKind(cursor) << "\n"
+      //          << "\n\tdeclaration: " << (clang_isDeclaration(cursor.kind) ? "yes" : "no") << "\n"
+      //          << "\n\tFQN: " << fully_qualified_name(cursor) << "\n"
+      //          << "\n";
+
+      //We will select the cursor with the largest contents
+      int dup_cursor_length = 0;
+      clang_visitChildren(pSameSpellType->cursor, [](CXCursor cursor, CXCursor, CXClientData data){
+        //std::cerr << cursor << "(" << clang_getCursorKind(cursor) << ")\n";
+        int dup_cursor_length = *(int*) data;
+        ++dup_cursor_length;
+        return CXChildVisit_Recurse;
+      }, &dup_cursor_length);
+
+      int cursor_length = 0;
+      clang_visitChildren(cursor, [](CXCursor cursor, CXCursor, CXClientData data){
+        int cursor_length = *(int*) data;
+        ++cursor_length;
+        return CXChildVisit_Recurse;
+      }, &cursor_length);
+
+      pSameSpellType->extra_cursors.emplace_back(cursor);
+
+      if(cursor_length > dup_cursor_length){
+        //we select the cursor with more elements, which likely containts the class
+        //definition, as main cursor:
+        std::swap(pSameSpellType->extra_cursors.back(), pSameSpellType->cursor);
+      }
+
+      index = pSameSpellType - types_.data();
+
+    } else{
+      index = types_.size();
+      types_.emplace_back(cursor);
+      set_type_rcd_ctor_info(types_.back());
+    }
   }
 
   //  auto name = str(clang_getTypeSpelling(clang_getCursorType(cursor)));
@@ -3725,7 +3802,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
                   << " not wrapped for type " << type_rcd.type_name
                   << ", because of an overriding ambiguity in C++. Function "
           "provided by the ancestor classes";
-        for(const auto& cl: m.second) std::cerr << ", " << cl.first.type_name << "\n";
+        for(const auto& cl: m.second) std::cerr << ", " << cl.first.type_name;
         std::cerr << ".\n";
       }
     }
@@ -3755,4 +3832,3 @@ std::string CodeTree::fname2macro(std::string& fname){
   }
   return r;
 }
-
