@@ -721,14 +721,17 @@ CodeTree::generate_cxx(){
   fname = join_paths(out_cxx_dir_, "Wrapper.h");
   timerestore = FileTimeRestorer(fname);
   o2 = checked_open(fname);
-  o2 << "#include \"jlcxx/jlcxx.hpp\"\n\n"
+  o2 << "#ifndef WRAPPER_H\n"
+    "#define WRAPPER_H\n"
+    "#include \"jlcxx/jlcxx.hpp\"\n\n"
     "struct Wrapper{\n";
   indent(o2, 1) << "Wrapper(jlcxx::Module& module): module_(module) {};\n";
   indent(o2, 1) << "virtual ~Wrapper() {};\n";
   indent(o2, 1) << "virtual void add_methods() const = 0;\n";
   o2 << "\nprotected:\n";
   indent(o2, 1) << "jlcxx::Module& module_;\n";
-  o2 << "};\n";
+  o2 << "};\n"
+    "#endif //WRAPPER_H not defined\n";
   o2.close();
   timerestore.settimestamp();
 
@@ -2471,7 +2474,8 @@ CodeTree::parse(){
     return false;
   }
 
-  header_file_path_ = join_paths(out_cxx_dir_,  std::string("jl") + module_name_ + ".h");
+  auto header_file_name = std::string("jl") + module_name_ + ".h";
+  header_file_path_ = join_paths(out_cxx_dir_,  header_file_name);
   FileTimeRestorer timerestore(header_file_path_);
 
   std::ofstream header_file(header_file_path_, out_open_mode_);
@@ -2482,6 +2486,11 @@ CodeTree::parse(){
     return false;
   }
 
+  auto macro = fname2macro(header_file_name);
+  
+  header_file << "#ifndef " << macro << "\n"
+    "#define " << macro << "\n";
+  
   for(const auto& fname: extra_headerss_){
     header_file << "#include \"" << fname << "\"\n";
   }
@@ -2495,6 +2504,7 @@ CodeTree::parse(){
     header_file << "#include \"" << fname << "\"\n";
   }
 
+  header_file << "#endif //" << macro << " not defined\n";
   header_file.close();
   timerestore.settimestamp();
 
@@ -3730,3 +3740,19 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
 //   std::cerr << "\n";
   return towrap;
 }
+
+std::string CodeTree::fname2macro(std::string& fname){
+  std::string r;
+  r.reserve(fname.size());
+  for (const char& c : fname) {
+    // Replace . with _
+    if (c == '.') {
+      r.append(1, '_');
+    } else{
+      // Convert lowercase characters to uppercase
+      r.append(1, std::toupper(c));
+    }
+  }
+  return r;
+}
+

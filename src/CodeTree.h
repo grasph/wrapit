@@ -531,6 +531,8 @@ namespace codetree{
                                   const std::string& title,
                                   const T& list,
                                   const std::string& preample = "");
+
+    static std::string fname2macro(std::string& fname);
     
     std::string clang_resource_dir_;
 
