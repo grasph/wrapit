@@ -458,9 +458,9 @@ FunctionWrapper::gen_argname_list(std::ostream& o, int nargs, std::string sep) c
   //argname list supported starting from CxxWrap v0.15.x
   if(cxxwrap_version_ < cxxwrap_v0_15) return o;
 
-  if(!is_static_){ //for a non-static class method, first arg is the class instance
-    //by calling the first parameter 'this', which is forbidded in C++, we ensure the
-    //name is not used by another argument of the c++ function.
+  if(!is_static_ && !is_ctor_){ //for a non-static class method, first arg is the class instance
+    //calling the first parameter 'this', which is a reserved word in C++ guarantees that
+    //none of the function argument is already called with this name.
     o << sep << "jlcxx::arg(\"this\")";
     sep = ", ";
   }
