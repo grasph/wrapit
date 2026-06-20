@@ -264,6 +264,8 @@ int main(int argc, char* argv[]){
 
     auto auto_veto = toml_config["auto_veto"].value_or(true);
 
+    auto index_offset = toml_config["index_offset"].value_or(false);
+
     auto propagation_mode  = toml_config["propagation_mode"].value_or("types"sv);
 
     auto build_cmd  = toml_config["build_cmd"].value_or("echo No build command defined"sv);
@@ -401,6 +403,7 @@ int main(int argc, char* argv[]){
     tree.add_std_option(cxx_std);
 
     tree.auto_veto(auto_veto);
+    tree.index_offset(index_offset);
     tree.cmake(out_cmake_fpath);
     tree.enableTestBuild(test_build);
     tree.build_nskips(build_nskips);

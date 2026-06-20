@@ -29,6 +29,7 @@ public:
                   const MethodRcd& method,
                   const TypeRcd* pTypeRcd,
                   const TypeMapper& type_mapper,
+                  bool index_offset,
                   long cxxwrap_version,
                   std::string varname = std::string(),
                   std::string classname = std::string(),
@@ -45,7 +46,7 @@ public:
   /// declaration for the wrapping.
   std::string signature(bool withconst, bool withstatic, bool aftermap) const;
   std::string signature(bool withconstandstatic=false, bool aftermap=false) const;
-  
+
   /// static version. The name of the class clazz is used as prefix
   /// independently of the class defining method. This allows building the
   /// signature of an inherited methods.
@@ -72,7 +73,7 @@ public:
            const std::string& arg_list,
            const std::string& argname_list,
            long cxxwrap_version);
-  
+
   /// Tells if the Base module must be overriden.
   /// This is the case for operators.
   bool override_base(){ return override_base_;}
@@ -103,7 +104,7 @@ protected:
   std::ostream& gen_argname_list(std::ostream& o, int nargs, std::string sep) const;
 
   std::ostream& gen_call_args(std::ostream&  o, int nargs) const;
-  
+
   std::ostream&
   gen_func_with_default_values(std::ostream& o);
 
@@ -153,7 +154,7 @@ protected:
 
   std::string get_name_jl_suffix(const std::string& cxx_name,
                                  int noperands) const;
-  
+
 
 private:
   long cxxwrap_version_;
@@ -192,6 +193,7 @@ private:
   std::string cv;
 
   std::string short_arg_list_signature;
+
   std::string short_arg_list_cxx;
   std::string long_arg_list_cxx;
   std::string short_arg_list_jl;
@@ -199,6 +201,7 @@ private:
   bool templated_;
 
   const TypeMapper& type_map_;
+  bool index_offset_;
 };
 
 #endif //FUNCTIONWRAPPER_H not defined

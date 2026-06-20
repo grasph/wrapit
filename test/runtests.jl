@@ -3,7 +3,7 @@
 using Test
 using Serialization
 tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance", "TestMultipleInheritanceOff",
-          "TestPropagation",  "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
+          "TestPropagation",  "TestIndexOffset", "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
 	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace",
           "TestOrder", "TestAutoAdd", "TestAbstractClass", "TestAnonymousStruct", "TestFuncPtr", "TestDeduplication"
           ]

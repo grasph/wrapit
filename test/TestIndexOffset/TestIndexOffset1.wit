@@ -1,0 +1,15 @@
+module_name = "TestIndexOffset1"
+uuid        = "20091a0a-3d9a-4e03-9cf7-d57ab0284b22"
+
+index_offset = false
+
+input = [ "A.h" ]
+
+include_dirs = [ "." ]
+
+cxx-std = "c++17"
+
+export = "all"
+
+# all generated code in a single file:
+n_classes_per_file = 0

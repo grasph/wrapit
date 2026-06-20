@@ -880,7 +880,7 @@ CodeTree::generate_accessor_cxx(std::ostream& o, const TypeRcd* type_rcd,
 
 
   FunctionWrapper helper(cxx_to_julia_, MethodRcd(cursor), type_rcd, type_map_,
-                         cxxwrap_version_,  "", "", nindents);
+                         index_offset_, cxxwrap_version_,  "", "", nindents);
 
   int ngens = 0;
   helper.gen_accessors(o, getter_only, &ngens);
@@ -1013,7 +1013,7 @@ CodeTree::method_cxx_decl(std::ostream& o, const TypeRcd& typeRcd,
   TypeRcd* pTypeRcd = find_class_of_method(method.cursor);
 
   FunctionWrapper wrapper(cxx_to_julia_, method, &typeRcd, type_map_,
-                          cxxwrap_version_, varname,
+                          index_offset_, cxxwrap_version_, varname,
                           classname, nindents, templated);
 
   //FIXME: check that code below is needed. Should now be vetoed upstream
@@ -1365,7 +1365,8 @@ CodeTree::visit_global_function(CXCursor cursor){
   }
 
 
-  FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), nullptr, type_map_, cxxwrap_version_);
+  FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), nullptr, type_map_,
+                          index_offset_, cxxwrap_version_);
   if(in_veto_list(wrapper.signature())){
     if(verbose > 1){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
@@ -1886,7 +1887,8 @@ CodeTree::visit_member_function(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
-  FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_, cxxwrap_version_);
+  FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_,
+                          index_offset_, cxxwrap_version_);
 
   //FIXME: handle the case where the method is defined in the parent class
   // => would need to define a Julia method that will throw an exception
@@ -2024,7 +2026,8 @@ CodeTree::inform_missing_types(std::vector<CXType> missing_types,
 
   if(verbose > 0){
     std::string funcname =  FunctionWrapper(cxx_to_julia_, methodRcd, classRcd,
-                                            type_map_, cxxwrap_version_).signature();
+                                            type_map_, index_offset_,
+                                            cxxwrap_version_).signature();
     std::cerr << "Warning: missing definition of type "
               << (missing_types.size() > 1 ? "s" : "")
               << " "
@@ -2085,7 +2088,7 @@ CodeTree::visit_class_constructor(CXCursor cursor){
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
   FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_,
-                          cxxwrap_version_);
+                          index_offset_, cxxwrap_version_);
 
   if(in_veto_list(wrapper.signature())){
     vetoed_methods_.insert(wrapper.signature());
@@ -2681,7 +2684,7 @@ std::ostream& CodeTree::report(std::ostream& o){
   for(const auto& cursor: auto_vetoed_methods_){
     auto sig = FunctionWrapper(cxx_to_julia_, MethodRcd(cursor),
                                find_class_of_method(cursor),
-                               type_map_,
+                               type_map_, index_offset_,
                                cxxwrap_version_).signature();
     o << sig << "\n";
   }
@@ -3222,7 +3225,7 @@ CodeTree::add_type(const CXCursor& cursor, bool check){
     if(pSameSpellType){
       //a type already in the list has the same spelling but a different cursor
       //This happens for templates
-      
+
       //std::cerr << "Duplicate definition of "
       //          << "first location: " << clang_getCursorLocation(pSameSpellType->cursor)
       //          << "\n\tcursor kind: " << clang_getCursorKind(pSameSpellType->cursor) << "\n"
@@ -3579,7 +3582,8 @@ CodeTree::deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet)
   std::map<std::string, rcd> sigs;
   std::vector<MethodRcd> res;
   for(const auto& m: methods){
-    FunctionWrapper wrapper(cxx_to_julia_, m, nullptr, type_map_, cxxwrap_version_);
+    FunctionWrapper wrapper(cxx_to_julia_, m, nullptr, type_map_, index_offset_,
+                            cxxwrap_version_);
     std::string pref = clang_CXXMethod_isStatic(m.cursor) ? "static " : "";
     std::string mapped_sig    = pref + wrapper.signature(/*cv=*/false, /*map=*/true);
     std::string notmapped_sig = pref + wrapper.signature(/*cv=*/false, /*map=*/false);
@@ -3623,7 +3627,8 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
 
   //method signature with the child class as prefix
   auto methodsig = [&](const MethodRcd& methodrcd){
-    FunctionWrapper wrapper(cxx_to_julia_, methodrcd, &type_rcd, type_map_, cxxwrap_version_);
+    FunctionWrapper wrapper(cxx_to_julia_, methodrcd, &type_rcd, type_map_,
+                            index_offset_, cxxwrap_version_);
     std::string pref = clang_CXXMethod_isStatic(methodrcd.cursor) ? "static " : "";
     return pref + wrapper.signature(/*cv=*/false, /*map=*/true);
   };
@@ -3789,7 +3794,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
       //that declared the method
       for(const auto& t: {type_rcd, m.second[0].first}){
         FunctionWrapper wrapper(cxx_to_julia_, m.second[0].second,
-                                &t, type_map_,
+                                &t, type_map_, index_offset_,
                                 cxxwrap_version_);
         vetoed |= (std::find(veto_list_.begin(), veto_list_.end(),
                              wrapper.signature()) != veto_list_.end());

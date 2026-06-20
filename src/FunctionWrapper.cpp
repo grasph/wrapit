@@ -312,7 +312,11 @@ FunctionWrapper::gen_setindex(std::ostream& o) const{
                         << "& a, " << short_arg_list_cxx << " i, "
                         << std::regex_replace(fix_template_type(fully_qualified_name(return_type_)), std::regex("\\s*&\\s*$"), " const &")
                         << " val" << "){\n";
-  indent(o, nindents+1) << "return a[i] = val;\n";
+  if(index_offset_){
+    indent(o, nindents+1) << "return a[i-1] = val;\n";
+  } else{
+    indent(o, nindents+1) << "return a[i] = val;\n";
+  }
   indent(o, nindents) << "}";
   if(cxxwrap_version_ >= cxxwrap_v0_15){
     if(!is_static_) o << ", jlcxx::arg(\"this\")";
@@ -342,7 +346,11 @@ FunctionWrapper::gen_getindex(std::ostream& o,
   indent(o, nindents) <<  varname_ << ".method(\"getindex\",\n";
   indent(o, nindents + 1) << "[](" << classname
                           << "& a, " << short_arg_list_cxx << " i){\n";
-  indent(o, nindents + 1) << "return a[i];\n";
+  if(index_offset_){
+    indent(o, nindents + 1) << "return a[i-1];\n";
+  } else{
+    indent(o, nindents + 1) << "return a[i];\n";
+  }
   indent(o, nindents) << "}";
   if(cxxwrap_version_ >= cxxwrap_v0_15){
     if(!is_static_) o << ", jlcxx::arg(\"this\")";
@@ -645,6 +653,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
                                  const MethodRcd& method,
                                  const TypeRcd* pTypeRcd,
                                  const TypeMapper& type_map,
+                                 bool index_offset,
                                  long cxxwrap_version,
                                  std::string varname, std::string classname,
                                  int nindents, bool templated):
@@ -658,7 +667,8 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   pTypeRcd(pTypeRcd),
   rvalueref_arg(false),
   templated_(templated),
-  type_map_(type_map){
+  type_map_(type_map),
+  index_offset_(index_offset){
 
   cursor = method.cursor;
   method_type = clang_getCursorType(cursor);
@@ -860,7 +870,7 @@ std::string FunctionWrapper::signature(CXCursor clazz, CXCursor method,
   const TypeRcd* pTypeRcd = clang_Cursor_isNull(clazz) ? nullptr : &typeRcd;
   MethodRcd methodRcd(method);
   FunctionWrapper helper(std::map<std::string, std::string>(),
-                         methodRcd, pTypeRcd, typeMapper, 0);
+                         methodRcd, pTypeRcd, typeMapper, false, 0);
   
   return helper.signature(withconst, withstatic, true);
 }

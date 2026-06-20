@@ -94,6 +94,10 @@ vetoed_copy_ctor_classes = []
 #              and its member functions 
 propagation_mode    = "types"
 
+# Switch to enable zero-based / one-bassed index conversion
+# in the getindex/setindex code generated for the [] operators.
+index_offset = false
+
 # Switch for the generation of field and variable accessors
 fields_and_variables = true
 

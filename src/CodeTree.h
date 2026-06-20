@@ -53,7 +53,7 @@ namespace codetree{
                 out_open_mode_(std::ios_base::app),
                 ignore_parsing_errors_(false),
                 out_cxx_dir_("src"),
-                auto_veto_(true), update_mode_(false), include_depth_(1),
+                auto_veto_(true), index_offset_(false), update_mode_(false), include_depth_(1),
                 mainFileOnly_(true), override_base_(false),
                 propagation_mode_(propagation_mode_t::types),
                 export_mode_(export_mode_t::member_functions),
@@ -110,6 +110,9 @@ namespace codetree{
 
     void auto_veto(bool val){ auto_veto_ = val; }
     bool auto_veto() { return auto_veto_; }
+
+    void index_offset(bool val){ index_offset_ = val; }
+    bool index_offset() { return index_offset_; }
 
     //if not empty a file with this created to be included
     //in CMake build base configuration files
@@ -215,7 +218,7 @@ namespace codetree{
                               std::ostream& export_o,
                               const std::string& module_name,
                               const std::string& shared_lib_name) const;
-    
+
     std::ostream& report(std::ostream& o);
 
     void add_std_option(const std::string x){
@@ -253,7 +256,7 @@ namespace codetree{
     void inheritances(const std::vector<std::string>& val);
 
     void multipleInheritance(bool val){ multipleInheritance_ = val; };
-    
+
     void vetoed_finalizer_classes(const std::vector<std::string>& val){
       finalizers_to_veto_ = val;
     }
@@ -303,15 +306,15 @@ namespace codetree{
 
     void set_custom_wrapper_list(const std::vector<std::string>& l){
       custom_type_wrappers_ = l;
-    }    
-    
+    }
+
   protected:
 
     bool is_custom_type_wrapper(const std::string type_name){
       return std::find(custom_type_wrappers_.begin(), custom_type_wrappers_.end(),
                        type_name) != custom_type_wrappers_.end();
     }
-    
+
     enum class accessor_mode_t {none, getter, both };
 
     // Adds a type to the list of types/classes to wrap.
@@ -532,7 +535,7 @@ namespace codetree{
 
     std::vector<MethodRcd>
     deduplicate_methods(const std::vector<MethodRcd>& methods, bool quiet=false) const;
-    
+
   private:
 
     template<typename T>
@@ -542,10 +545,12 @@ namespace codetree{
                                   const std::string& preample = "");
 
     static std::string fname2macro(std::string& fname);
-    
+
     std::string clang_resource_dir_;
 
     bool auto_veto_;
+
+    bool index_offset_;
 
     std::string cmake_;
 
@@ -630,7 +635,7 @@ namespace codetree{
     std::set<std::string> vetoed_globvar_accessors_;
     std::set<std::string> vetoed_field_setters_;
     std::set<std::string> vetoed_globvar_setters_;
-    
+
     TypeMapper type_map_;
 
     struct {
