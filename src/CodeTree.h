@@ -546,6 +546,8 @@ namespace codetree{
 
     static std::string fname2macro(std::string& fname);
 
+    std::string to_julia_name(const std::string& cpp_name) const;
+    
     std::string clang_resource_dir_;
 
     bool auto_veto_;

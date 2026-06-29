@@ -73,10 +73,13 @@ namespace{
 }
 
 using namespace codetree;
-namespace codetree{
-  static std::string to_julia_name(const std::string& cpp_name){
-    //Replace all '::' occurences by '!':
-    return std::regex_replace(cpp_name, std::regex("::"), "!");
+std::string
+CodeTree::to_julia_name(const std::string& cpp_name) const{
+  auto it = cxx_to_julia_.find(cpp_name);
+  if(it != cxx_to_julia_.end()){
+    return it->second;
+  } else{
+    return jl_type_name(cpp_name);
   }
 }
 
@@ -249,7 +252,7 @@ CodeTree::generate_template_add_type_cxx(std::ostream& o,
   const auto& cursor = type_rcd.cursor;
   const auto& type = clang_getCursorType(cursor);
   const auto& typename_cxx = type_rcd.type_name;
-  const auto& typename_jl = jl_type_name(typename_cxx);
+  const auto& typename_jl = to_julia_name(typename_cxx);
   int id = type_rcd.id;
 
 
@@ -415,7 +418,7 @@ CodeTree::generate_cxx_for_type(std::ostream& o,
     }
 
     ////  indent(o, 2) << "jlcxx::TypeWrapper t = module.add_type<"
-    ////               << t.type_name << ">(" << jl_type_name(t.type_name) <<");\n";
+    ////               << t.type_name << ">(" << to_julia_name(t.type_name) <<");\n";
     ////  indent(o, 2) << "type_ = std::unique_ptr<jlcxx::TypeWrapper<" << t.type_name << ">>"
     ////               << "(new jlcxx::TypeWrapper<" << t.type_name << ">(module, t));\n";
   }
@@ -530,7 +533,7 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
               << "\n";
   }
 
-  const auto& typename_jl = jl_type_name(type_rcd.type_name);
+  const auto& typename_jl = to_julia_name(type_rcd.type_name);
   if(export_mode_ == export_mode_t::all) to_export_.insert(typename_jl);
 
   ++nwraps_.types;
@@ -1106,7 +1109,7 @@ CodeTree::generate_methods_of_templated_type_cxx(std::ostream& o,
   //});
 
 
-  const auto& typename_jl = jl_type_name(t.type_name);
+  const auto& typename_jl = to_julia_name(t.type_name);
   std::stringstream buf;
   buf << "t" << t.id << "_decl_methods";
   std::string decl_methods = buf.str();
@@ -3027,7 +3030,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
 
   //extract prefix from a string formatted as 'prefix::type_name':
   auto prefix_cxx = get_prefix(type_name);
-  auto prefix_jl = scoped_enum ? jl_type_name(type_name) + "!" : jl_type_name(prefix_cxx);
+  auto prefix_jl = scoped_enum ? to_julia_name(type_name) + "!" : to_julia_name(prefix_cxx);
 
   if(prefix_cxx.size() > 2){
     const auto& clazz = prefix_cxx.substr(0, prefix_cxx.size() - 2);
@@ -3041,7 +3044,7 @@ CodeTree::generate_enum_cxx(std::ostream& o, CXCursor cursor){
   }
 
   if(!anonymous_enum){
-    auto typename_jl = jl_type_name(type);
+    auto typename_jl = to_julia_name(str(clang_getTypeSpelling(type)));
     indent(o << "\n",1) << "DEBUG_MSG(\"Adding wrapper for enum " << type
              << " (\" __HERE__ \")\");\n";
     indent(o, 1) << "// defined in "   << clang_getCursorLocation(cursor) << "\n";

@@ -658,7 +658,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
                                  std::string varname, std::string classname,
                                  int nindents, bool templated):
   method(method),
-  //  name_map_(name_map),
+  //name_map_(name_map),
   varname_(varname),
   classname(classname),
   cxxwrap_version_(cxxwrap_version),
@@ -718,8 +718,6 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   int noperands = clang_getNumArgTypes(method_type);
   if((this->classname.size()) != 0 && !is_static_) noperands += 1;
 
-//--------
-
   auto full_name = class_prefix + name_cxx;
   auto it = name_map.find(full_name);
 
@@ -769,11 +767,18 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
   }
 
   if(is_static_){
-    if(templated_){
-      name_jl_ = jl_type_name(pTypeRcd->type_name + "::") + name_jl_suffix;
+    std::string p1 = templated_ ? pTypeRcd->type_name : this->classname;
+    auto it = name_map.find(p1);
+    std::string jl_classname;
+    if(it != name_map.end()){
+      if(verbose > 2){
+        std::cerr << "Info name mapping: " << p1 << " mapped to " << it->second << "\n";
+      }
+      jl_classname = it->second;
     } else{
-      name_jl_ = jl_type_name(class_prefix) + name_jl_suffix;
+      jl_classname = jl_type_name(p1);
     }
+    name_jl_ = jl_classname + "!" + name_jl_suffix;
   } else{
     //FIXME: Add prefix. The namespace?
     name_jl_ = name_jl_suffix;
