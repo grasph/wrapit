@@ -608,7 +608,7 @@ CodeTree::generate_cxx(){
   o << "#include \"Wrapper.h\"\n";
 
   o << "\n#ifdef __APPLE__\n"
-    "  #define WRAPIT_WEAK __attribute__((weakimport))\n"
+    "  #define WRAPIT_WEAK __attribute__((weak_import))\n"
     "#else\n"
     "  #define WRAPIT_WEAK __attribute__((weak))\n"
     "#endif\n"
