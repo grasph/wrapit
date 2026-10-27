@@ -608,8 +608,8 @@ CodeTree::generate_cxx(){
   o << "#include \"Wrapper.h\"\n";
 
   o << "\n#ifdef __APPLE__\n"
-    "  void end_hook(jlcxx::Module& jlModule) __attribute((weak_import))__;\n"
-    "  void end_add_type_hook(jlcxx::Module& jlModule) __attribute((weak_import))__;\n";
+    "  extern void end_hook(jlcxx::Module& jlModule) __attribute((weak_import))__;\n"
+    "  extern void end_add_type_hook(jlcxx::Module& jlModule) __attribute((weak_import))__;\n";
     "#else\n"
     "  void end_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
     "  void end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak));\n";
@@ -718,11 +718,11 @@ CodeTree::generate_cxx(){
   o << "\n";
   indent(o, 1) << "};\n\n";
 
-  indent(o, 1) << "if(end_add_type_hook) end_add_type_hook(jlModule);\n\n";
+  indent(o, 1) << "if(end_add_type_hook != nullptr) end_add_type_hook(jlModule);\n\n";
 
   indent(o, 1) << "for(const auto& w: wrappers) w->add_methods();\n\n";
 
-  indent(o, 1) << "if(end_hook) end_hook(jlModule);\n";
+  indent(o, 1) << "if(end_hook != nullptr) end_hook(jlModule);\n";
 
   o << "\n}\n";
   o.close();
