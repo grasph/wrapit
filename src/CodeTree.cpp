@@ -607,7 +607,11 @@ CodeTree::generate_cxx(){
   o << "#include \"dbg_msg.h\"\n";
   o << "#include \"Wrapper.h\"\n";
 
-  o << "\n#define WRAPIT_WEAK __attribute__((weak))\n"
+  o << "\n#ifdef __APPLE__\n"
+    "  #define WRAPIT_WEAK __attribute__((weakimport))\n"
+    "#else\n"
+    "  #define WRAPIT_WEAK __attribute__((weak))\n"
+    "#endif\n"
     "\nWRAPIT_WEAK void end_hook(jlcxx::Module& jlModule) {}\n"
     "\nWRAPIT_WEAK void end_add_type_hook(jlcxx::Module& jlModule) {}\n";
 
