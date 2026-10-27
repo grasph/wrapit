@@ -607,8 +607,13 @@ CodeTree::generate_cxx(){
   o << "#include \"dbg_msg.h\"\n";
   o << "#include \"Wrapper.h\"\n";
 
-  o << "\nvoid end_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
-    "\nvoid end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak));\n";
+  o << "\n#ifdef __APPLE__\n"
+    "#define WRAPIT_WEAK __attribute__((weak, weak_import))\n"
+    "#else\n"
+    "#define WRAPIT_WEAK __attribute__((weak))\n"
+    "#endif\n"
+    "\nvoid end_hook(jlcxx::Module& jlModule) WRAPIT_WEAK;\n"
+    "\nvoid end_add_type_hook(jlcxx::Module& jlModule) WRAPIT_WEAK;\n";
 
   std::vector<std::string> wrappers;
 
