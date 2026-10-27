@@ -612,7 +612,7 @@ CodeTree::generate_cxx(){
     "  extern void end_add_type_hook(jlcxx::Module& jlModule) __attribute((weak_import))__;\n";
     "#else\n"
     "  void end_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
-    "  void end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak));\n";
+    "  void end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
     "#endif\n";
 
   std::vector<std::string> wrappers;
