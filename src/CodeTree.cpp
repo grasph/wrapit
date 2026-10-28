@@ -609,7 +609,7 @@ CodeTree::generate_cxx(){
 
   o << "\n#ifdef __APPLE__\n"
     "  extern void end_hook(jlcxx::Module& jlModule) __attribute((weak, weak_import))__;\n"
-    "  extern void end_add_type_hook(jlcxx::Module& jlModule) __attribute((weak, weak_import))__;\n";
+    "  extern void end_add_type_hook(jlcxx::Module& jlModule) __attribute((weak, weak_import))__;\n"
     "#else\n"
     "  void end_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
     "  void end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
