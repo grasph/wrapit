@@ -1,0 +1,16 @@
+module_name         = "TestHooks"
+uuid                = "f693c236-f284-4ac4-a772-026cfdae742c"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ]
+
+cxx-std             = "c++17"
+
+export  = "all"
+
+auto_veto = true
+
+# all generated code in a single file:
+n_classes_per_file = 0
+
