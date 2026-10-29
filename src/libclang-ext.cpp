@@ -146,9 +146,8 @@ std::string fully_qualified_name(CXType t){
           //if Integral type, we should retrieve the argument spelling and copy it
           //I didn't find a function in libclang to retrieve the spelling,
           //we can parse the specialization declaration and it ourselves.
-          //} else if(CXTemplateArgumentKind_Integral = clang_Cursor_getTemplateArgumentKind(clang_getTypeDeclaration(base), iarg)){
-          //        }
-          //    }
+        } else if(CXTemplateArgumentKind_Integral == clang_Cursor_getTemplateArgumentKind(clang_getTypeDeclaration(base), iarg)){
+          std::cerr << "Integral type template argument\n";
         } /*else{
           std::cerr << "==> Type found in parameters of templated class "
                     << t << ", "

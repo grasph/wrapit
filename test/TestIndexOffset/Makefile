@@ -16,7 +16,7 @@ WRAPIT_OPT=--add-cfg cxxwrap_version=\"$(CXXWRAP_VERSION)\"
 
 
 CXXWRAP_CPPFLAGS=-I $(CXXWRAP_PREFIX)/include -std=c++20
-LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia
+LDLIBS +=-L $(CXXWRAP_PREFIX)/lib -lcxxwrap_julia -lcxxwrap_julia_stl
 CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -I.
 
 
