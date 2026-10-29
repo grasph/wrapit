@@ -5,7 +5,7 @@ using Serialization
 tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance", "TestMultipleInheritanceOff",
           "TestPropagation",  "TestIndexOffset", "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
 	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace",
-          "TestOrder", "TestAutoAdd", "TestAbstractClass", "TestAnonymousStruct", "TestFuncPtr", "TestDeduplication"
+          "TestOrder", "TestAutoAdd", "TestAbstractClass", "TestAnonymousStruct", "TestFuncPtr", "TestDeduplication", "TestHooks"
           ]
 
 # Switch to test examples
