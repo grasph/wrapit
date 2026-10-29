@@ -607,8 +607,10 @@ CodeTree::generate_cxx(){
   o << "#include \"dbg_msg.h\"\n";
   o << "#include \"Wrapper.h\"\n";
 
-  o << "\nvoid end_hook(jlcxx::Module&) __attribute__((weak)) {}\n"
-    "void end_add_type_hook(jlcxx::Module&) __attribute__((weak)) {}\n";
+  o << "\nvoid end_hook(jlcxx::Module&) __attribute__((weak));\n"
+    "void end_hook(jlcxx::Module&) {}\n"
+    "void end_add_type_hook(jlcxx::Module&) __attribute__((weak));\n"
+    "void end_add_type_hook(jlcxx::Module&) {}\n";
 
   std::vector<std::string> wrappers;
 
