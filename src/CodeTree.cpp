@@ -608,8 +608,8 @@ CodeTree::generate_cxx(){
   o << "#include \"Wrapper.h\"\n";
 
   o << "\n#ifdef __APPLE__\n"
-    "  extern void end_hook(jlcxx::Module& jlModule) __attribute((weak, weak_import))__;\n"
-    "  extern void end_add_type_hook(jlcxx::Module& jlModule) __attribute((weak, weak_import))__;\n"
+    "  extern void end_hook(jlcxx::Module& jlModule) __attribute__((weak, weak_import));\n"
+    "  extern void end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak, weak_import));\n"
     "#else\n"
     "  void end_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
     "  void end_add_type_hook(jlcxx::Module& jlModule) __attribute__((weak));\n"
