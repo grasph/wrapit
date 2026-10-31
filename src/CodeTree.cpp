@@ -2910,9 +2910,9 @@ void CodeTree::preprocess(){
           }//(argtype.kind == CXType_Record
         }//next iarg
       }//next m
-    } //types_[iChild].template_parameter_combinations.size() > 0
-  } //next iChild
+    } //next iChild
 #endif
+  }
 
   //Add user defined dependencies
   for(const auto& dep: class_order_constraints_){

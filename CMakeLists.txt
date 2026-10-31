@@ -11,13 +11,6 @@ find_package(Git REQUIRED)
 
 find_package(OpenSSL REQUIRED)
 
-# Package to parse command line options
-FetchContent_Declare(
-    cxxopts
-    GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
-    GIT_TAG        v3.0.0
-)
-
 if(BUILD_LLVM) #in this mode llvm and clang codes are downloaded
     FetchContent_Declare(llvm
         SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm
@@ -39,8 +32,6 @@ if(BUILD_LLVM) #in this mode llvm and clang codes are downloaded
         FetchContent_Populate(clang)
     endif()
 endif()
-
-FetchContent_MakeAvailable(cxxopts)
 
 project(MyProject)
 
@@ -205,7 +196,7 @@ if(BUILD_LLVM)
         ${llvm_BINARY_DIR}/include)
 endif()
 
-target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM cxxopts dl
+target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM dl
                       OpenSSL::Crypto
                       #- gcc < 9.0 needs std++fs for the std::filesystem support
                       $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
@@ -217,7 +208,8 @@ set_target_properties(wrapit PROPERTIES
     )
 
 configure_file(src/config.h.in config.h @ONLY)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}) #contains the generated config.h header file
+include_directories(${CMAKE_SOURCE_DIR}/src
+                    ${CMAKE_CURRENT_BINARY_DIR}) #contains the generated config.h header file
 
 target_compile_definitions(wrapit PRIVATE)
 
