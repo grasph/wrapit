@@ -550,7 +550,7 @@ CodeTree::generate_non_template_add_type_cxx(std::ostream& o,
 
   if(!clang_Cursor_isNull(base)){
     const auto& base_type = clang_getCursorType(base);
-    const auto& base_name_cxx = str(clang_getTypeSpelling(base_type));
+    const auto& base_name_cxx = fully_qualified_name(base_type); //str(clang_getTypeSpelling(base_type));
 
     indent(o << ",\n", 3) << "jlcxx::julia_base_type<"
              << base_name_cxx << ">()";
