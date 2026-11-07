@@ -2239,19 +2239,19 @@ CodeTree::visit_class_template_specialization(CXCursor cursor){
   const auto& type = clang_getCursorType(cursor);
 
   TypeRcd* pTypeRcd = nullptr;
-  for(auto& r: types_){
-    if(clang_equalCursors(r.cursor, specialized_cursor)){
-      pTypeRcd =  &r;
-      break;
-    }
-  }
-
-  if(!pTypeRcd){
+  //add_type() function with check argument set to true will check that the type
+  //is already in types_ (as it should) and add it if missing. In the latter
+  //case, the returned index will point to the last element of types_.
+  //
+  //add_type() implementation includes the handling of the case where two
+  //cursors point to the same type, as it has been observed for template.
+  //
+  int index = add_type(specialized_cursor, /*check=*/true);
+  if(index == types_.size() - 1){
     std::cerr << "Warning: specialization found at " << clang_getCursorLocation(cursor)
               << " for class/struct " << cursor << " before its definition.\n";
-    add_type(specialized_cursor, /*check = */true);
-    pTypeRcd = & types_.back();
   }
+  pTypeRcd = &types_.at(index);
   add_type_specialization(pTypeRcd, type);
   pTypeRcd->to_wrap = true;
   pTypeRcd->template_parameters = get_template_parameters(specialized_cursor);
