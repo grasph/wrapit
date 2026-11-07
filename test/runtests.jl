@@ -4,8 +4,9 @@ using Test
 using Serialization
 tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer", "TestInheritance", "TestMultipleInheritanceOff",
           "TestPropagation",  "TestIndexOffset", "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
-	  "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace",
-          "TestOrder", "TestAutoAdd", "TestAbstractClass", "TestAnonymousStruct", "TestFuncPtr", "TestDeduplication", "TestHooks"
+          "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace",
+          "TestOrder", "TestAutoAdd", "TestAbstractClass", "TestAnonymousStruct", "TestFuncPtr", "TestDeduplication", "TestHooks",
+          "TestMacroGenFunc"
           ]
 
 # Switch to test examples
@@ -39,7 +40,7 @@ ENV["LOAD_PATH"] = "@:@stdlib"
                         #cmake based build
                         # Configure and build with CMake
                         run(`rm -rf "$build_dir"`)
-	                run(`cmake -S "$source_dir" -B "$build_dir"`)
+                        run(`cmake -S "$source_dir" -B "$build_dir"`)
                         run(`cmake --build "$build_dir" -t clean`)
                         run(`cmake --build "$build_dir" -j $ncores`)
                     else

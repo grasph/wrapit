@@ -73,12 +73,14 @@ std::ostream& indent(std::ostream& o, int n){
 }
 std::ostream& operator<<(std::ostream& stream, const CXString& str){
   const char* s = clang_getCString(str);
-  // A null C string streamed to a std::ostream sets badbit (libstdc++),
-  // which silently discards all subsequent output. This happens for the
-  // file name of macro-expansion cursors and used to truncate the
-  // generated files while wrapit kept reporting success.
-  stream << (s ? s : "");
-  clang_disposeString(str);
+  //In some ill cases, s can be nullptr, e.g. the CXString returned
+  //by clang_getFileName called with a nullptr CXFile. See the issue reported in
+  //https://github.com/grasph/wrapit/issues/76.
+  //
+  //It indicates a bug in the upstream code. Abort in such case to prevent
+  //unexpected behaviors and allow debugging.
+  assert(s);
+  stream << s;
   return stream;
 }
 
@@ -108,11 +110,17 @@ std::ostream& operator<<(std::ostream& stream, CX_CXXAccessSpecifier x){
 }
 
 std::ostream& operator<<(std::ostream& stream, CXSourceLocation location){
-  unsigned line;
-  unsigned column;
+  unsigned line = 0;
+  unsigned column = 0;
   CXFile file;
-  clang_getSpellingLocation(location, &file, &line, &column, NULL);
-  CXString filepath =  clang_getFileName(file);
+  clang_getExpansionLocation(location, &file, &line, &column, NULL);
+  std::string filepath;
+  if(file){
+     filepath =  str(clang_getFileName(file));
+  } else{
+     if(verbose > 1) std::cerr << "Warning. Failed to retrieve a file location.\n";
+     filepath = "<unknown file>";
+  }
   return stream << filepath << ":" << line << ":" << column;
 }
 
