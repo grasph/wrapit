@@ -155,6 +155,10 @@ protected:
   std::string get_name_jl_suffix(const std::string& cxx_name,
                                  int noperands) const;
 
+  //applies the m.tmpl_map map to argname, to resolve template
+  //parameter names coming from class ancestors
+  std::string resolve_template_param(std::string argname) const;
+
 
 private:
   long cxxwrap_version_;

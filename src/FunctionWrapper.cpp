@@ -107,7 +107,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
     }
     return o;
   }
-  
+
   if(clang_getArraySize(target_type) >=0){
     //a c-array
     if(verbose > 0){
@@ -121,7 +121,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
   bool is_const;
   if(pointer_target) is_const = clang_isConstQualifiedType(target_pointee);
   else is_const = clang_isConstQualifiedType(target_type);
-  
+
   auto const_type = [](CXType type){
     if(clang_isPODType(type)){
       bool not_a_pointer = clang_getPointeeType(type).kind == CXType_Invalid;
@@ -270,7 +270,7 @@ FunctionWrapper::gen_accessors(std::ostream& o, bool getter_only, int* ngens) {
       o << ", jlcxx::arg(\"this\")";
     }
     o << ");\n";
-    
+
     if(gen_setters){
       //types.method("ns!A!x!", [](int val) -> T& { return ns::A::x = val; });
       indent(o, nindents) << varname_ << ".method(\"" << target_name_jl << "!\", []("
@@ -374,9 +374,9 @@ void FunctionWrapper::build_arg_lists(bool& type_mapped){
   for(int i = 0; i < clang_getNumArgTypes(method_type); ++i){
     auto argtype = clang_getArgType(method_type, i);
     bool mutated;
-    auto argtype_fqn = type_map_.mapped_typename(argtype, /*as_return=*/false,
-                                                 &mutated);
-    auto argtype_fqn_nomap = fully_qualified_name(argtype);
+    auto argtype_fqn_nomap = resolve_template_param(fully_qualified_name(argtype));
+    auto argtype_fqn = type_map_.mapped_type(argtype_fqn_nomap, /*as_return=*/false,
+                                        &mutated);
     type_mapped |= mutated;
     inaccessible_type = inaccessible_type || !isAccessible(argtype);
     if(argtype.kind == CXType_RValueReference) rvalueref_arg = true;
@@ -388,6 +388,7 @@ void FunctionWrapper::build_arg_lists(bool& type_mapped){
   short_arg_list_cxx = arg_list_buf_1.str();
   short_arg_list_signature = arg_list_buf_2.str();
   short_arg_list_jl = arg_list_buf_3.str();
+
 }
 
 
@@ -543,9 +544,9 @@ FunctionWrapper::gen_func_with_lambdas(std::ostream& o){
       gen_arg_list(o, nargs, sep);
       bool cast_return;
       std::string mapped_return_type
-        = fix_template_type(type_map_.mapped_typename(return_type_,
-                                                      /*as_return=*/true,
-                                                      &cast_return));
+        = fix_template_type(type_map_.mapped_type(resolve_template_param(fully_qualified_name(return_type_)),
+                                                  /*as_return=*/true,
+                                                  &cast_return));
       o << ")";
       if(!cast_return) o << "->"<< (mapped_return_type);
       o << " { ";
@@ -577,18 +578,18 @@ std::ostream& FunctionWrapper::gen_call_args(std::ostream& o, int nargs) const{
   for(decltype(nargs) iarg = 0; iarg < nargs; ++iarg){
     cast_op.str("");
     const auto& argtype = clang_getArgType(method_type, iarg);
-    if(type_map_.is_mapped(argtype)
+    auto argtypename = resolve_template_param(fully_qualified_name(argtype));
+    if(type_map_.is_mapped(argtypename)
        && argtype.kind != CXType_Pointer){ //do not cast pointers.
-      auto fqn = fully_qualified_name(argtype);
       //change arrays to pointers for the cast:
       std::smatch sm;
-      if(std::regex_match(fqn, sm, re_arr)){
-        fqn = sm[1].str() + "*";
+      if(std::regex_match(argtypename, sm, re_arr)){
+        argtypename = sm[1].str() + "*";
       }
-      cast_op << "(" << fqn << ")";
+      cast_op << "(" << argtypename << ")";
     }
     o << sep << cast_op.str() << "arg" << iarg;
-    
+
     if(iarg < method.strict_number_type.size()
        && method.strict_number_type[iarg]){
       if(argtype.kind == CXType_Pointer){ //should never be this case?
@@ -604,27 +605,36 @@ std::ostream& FunctionWrapper::gen_call_args(std::ostream& o, int nargs) const{
 }
 
 std::string
+FunctionWrapper::resolve_template_param(std::string argname) const{
+  for(auto p: method.tmpl_map){
+    argname = replace_type_name(argname, p.first, p.second);
+  }
+  return argname;
+}
+
+std::string
 FunctionWrapper::arg_decl(int iarg, bool argtypes_only) const{
   const auto& argtype = clang_getArgType(method_type, iarg);
-  
+
   //  const auto argtypename = fully_qualified_name(argtype); //str(clang_getTypeSpelling(argtype));
 
   //maps only non-pointers type to prevent pointer cast considered
   //as permissive by g++
   //FIXME: should ne done in TypeMapper.
-  std::string argtypename;
+  std::string argtypename = fully_qualified_name(argtype);
+  argtypename = resolve_template_param(argtypename);
+
   if(argtype.kind != CXType_Pointer){
-    argtypename = type_map_.mapped_typename(argtype);
-  } else{
-    argtypename = fully_qualified_name(argtype);
+    argtypename = type_map_.mapped_type(argtypename);
   }
+
   argtypename = fix_template_type(argtypename);
 
   if(iarg < method.strict_number_type.size()
      &&method.strict_number_type.at(iarg)){
     argtypename = std::string("jlcxx::StrictlyTypedNumber<") + argtypename + ">";
   }
-  
+
   if(argtypes_only) return argtypename;
 
   //type pattern of function pointer or function pointer array
@@ -734,7 +744,7 @@ FunctionWrapper::FunctionWrapper(const std::map<std::string, std::string>& name_
       override_base_ = true;
       name_jl_suffix.erase(0, base_prefix.size());
     }
-    
+
   } else{// automatic name mapping
     if(verbose > 4){
       std::cerr << "Info name mapping: no name customization for " << full_name
@@ -870,13 +880,13 @@ std::string FunctionWrapper::signature(bool withconst, bool withstatic,
 std::string FunctionWrapper::signature(CXCursor clazz, CXCursor method,
                                        bool withconst, bool withstatic,
                                        const TypeMapper& typeMapper){
-  
+
   TypeRcd typeRcd = clang_Cursor_isNull(clazz) ? TypeRcd() : TypeRcd(clazz);
   const TypeRcd* pTypeRcd = clang_Cursor_isNull(clazz) ? nullptr : &typeRcd;
   MethodRcd methodRcd(method);
   FunctionWrapper helper(std::map<std::string, std::string>(),
                          methodRcd, pTypeRcd, typeMapper, false, 0);
-  
+
   return helper.signature(withconst, withstatic, true);
 }
 
