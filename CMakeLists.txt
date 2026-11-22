@@ -1,6 +1,6 @@
 # Copyright (C) 2021 Philippe Gras CEA/Irfu <philippe.gras@cern.ch>
 
-cmake_minimum_required (VERSION 3.12)
+cmake_minimum_required (VERSION 3.19)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project (CxxWrapGen)
@@ -11,27 +11,6 @@ find_package(Git REQUIRED)
 
 find_package(OpenSSL REQUIRED)
 
-if(BUILD_LLVM) #in this mode llvm and clang codes are downloaded
-    FetchContent_Declare(llvm
-        SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        URL https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.1/llvm-13.0.1.src.tar.xz
-    )
-    FetchContent_GetProperties(llvm)
-    if(NOT llvm_POPULATED)
-        FetchContent_Populate(llvm)
-    endif()
-
-    FetchContent_Declare(clang
-        SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/tools/clang
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        URL https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.1/clang-13.0.1.src.tar.xz
-    )      
-    FetchContent_GetProperties(clang)
-    if(NOT clang_POPULATED)
-        FetchContent_Populate(clang)
-    endif()
-endif()
 
 project(MyProject)
 
@@ -39,35 +18,75 @@ project(MyProject)
 option(BUILD_LLVM "Download and build LLVM/Clang" OFF)
 
 if(BUILD_LLVM)
+  include(ExternalProject)
 
-    function(add_llvm)
-        set(CMAKE_BUILD_TYPE Release) #applies only for LLVM as defined in the function
-        set(LLVM_BUILD_LLVM_DYLIB ON)
-        set(LLVM_BUILD_TOOLS OFF)
+  set(LLVM_PREFIX ${CMAKE_BINARY_DIR}/llvm)
 
-       set(LLVM_TARGETS_TO_BUILD host)
+  ExternalProject_Add(llvm_external
+      URL https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.5/llvm-project-23.1.5.src.tar.xz
+      URL_HASH SHA256=fb50b1eac93ddeb3aa8dab4cfe324dff74f4a9c2bdee6160c9e36188f8d06a6e
+      
+      SOURCE_SUBDIR llvm
+      PREFIX llvm
 
-        # Define a couple of LLVM cache variables of LLVM before adding the subdirectory 
-        # in order to choose the default values.
-        set(LLVM_TARGETS_TO_BUILD ${LLVM_TARGETS_TO_BUILD_} CACHE STRING "Semicolon-separated list of experimental targets to build.")
+      CMAKE_ARGS 
+          -DCMAKE_INSTALL_PREFIX=${LLVM_PREFIX}
+          -DCMAKE_BUILD_TYPE=Release
+          -DLLVM_TARGETS_TO_BUILD=host
+          -DLLVM_ENABLE_PROJECTS=clang
+          
+      # We need only libclang.so and libclang-cpp.so
+      BUILD_COMMAND ${CMAKE_COMMAND} --build . -t libclang clang-cpp
+      INSTALL_COMMAND ${CMAKE_COMMAND} --build . -t install-libclang install-clang-cpp install-clang-resource-headers
 
-        set(CLANG_RESOURCE_DIR ${CMAKE_INSTALL_PREFIX}/lib/clang/13.0.1 CACHE STRING
-            "Clang resource directory as returned by clang -print-resource-dir")
+      DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+      CONFIGURE_HANDLED_BY_BUILD TRUE
+  )
 
-        add_subdirectory(${llvm_SOURCE_DIR} ${llvm_BINARY_DIR})
-    endfunction()
+  ExternalProject_Get_property(llvm_external BINARY_DIR)
+  set(LLVM_BINARY_DIR ${BINARY_DIR})
+  
+  ExternalProject_Get_property(llvm_external SOURCE_DIR)
+  set(LLVM_SOURCE_DIR ${SOURCE_DIR})
 
-    add_llvm()
+  set(CLANG_RESOURCE_DIR ${LLVM_PREFIX}/lib/clang/23)
 
-#    include_directories(${llvm_SOURCE_DIR}/include
-#                        ${clang_SOURCE_DIR}/include
-#                        ${llvm_BINARY_DIR}/tools/clang/include
-#                        ${llvm_BINARY_DIR}/include)
+  install(CODE "
+    execute_process(
+        COMMAND \${CMAKE_COMMAND} -E copy_directory 
+        \"${LLVM_PREFIX}/lib/clang\" 
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/share/lib/clang\"
+	COMMAND \${CMAKE_COMMAND} -E copy_directory 
+        \"${LLVM_PREFIX}/lib\" 
+        \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/share/lib\"
+    )")
+
 
 elseif (NOT CLANG_JLL)
+   set(Supported_Clang_Versions 23.1 22.1 21.1)
+   
+   if(DEFINED Clang_DIR)
+      find_package(Clang PATHS ${Clang_DIR} NO_DEFAULT_PATH)
+   else()
+     foreach(version IN LISTS Supported_Clang_Versions)
+       find_package(Clang ${version} CONFIG QUIET)
+       if(Clang_FOUND)
+         break()
+       endif()
+     endforeach()
+   endif()
+   if(NOT Clang_FOUND)
+      message(FATAL_ERROR "Clang ${Supported_Clang_Versions} not found. Please install one of these Clang version or set CLANG_DIR to the directory containing ClangConfig.cmake. Alternatively, you can set BUILD_LLVM to ON to download LLVM and clang code and build it.")
+   else()
+      message(STATUS "Found Clang: ${Clang_DIR} (found version \"${Clang_VERSION}\")")
+   endif()
 
-   find_package(Clang REQUIRED CONFIG)
-   find_package(LLVM REQUIRED CONFIG)
+   if(NOT "${Clang_VERSION_MAJOR}.${Clang_VERSION_MINOR}" IN_LIST Supported_Clang_Versions)
+        list(JOIN Supported_Clang_Versions ", " Supported_Clang_Versions_Commas)
+        message(WARNING "Clang version ${Clang_VERSION_MAJOR}.${Clang_VERSION_MINOR} not in the supported version list, ${Supported_Clang_Versions_Commas}.")
+   endif()
+
+
    include_directories(${CLANG_INCLUDE_DIRS})
 
    execute_process(COMMAND "${LLVM_TOOLS_BINARY_DIR}/clang" -print-resource-dir
@@ -181,26 +200,38 @@ add_executable(wrapit
 
 add_dependencies(wrapit version)
 
-
 if(BUILD_LLVM)
     if(APPLE)
-       set_target_properties(wrapit PROPERTIES INSTALL_RPATH @loader_path/../lib)
+       set_target_properties(wrapit PROPERTIES INSTALL_RPATH @loader_path/../share/lib)
     else()
-       set_target_properties(wrapit PROPERTIES INSTALL_RPATH $ORIGIN/../lib)
+       set_target_properties(wrapit PROPERTIES INSTALL_RPATH $ORIGIN/../share/lib)
     endif()
 
+    add_dependencies(wrapit llvm_external)
+
     target_include_directories(wrapit PRIVATE
-        ${llvm_SOURCE_DIR}/include
-        ${clang_SOURCE_DIR}/include
-        ${llvm_BINARY_DIR}/tools/clang/include
-        ${llvm_BINARY_DIR}/include)
+            "${LLVM_SOURCE_DIR}/clang/include"
+            "${LLVM_SOURCE_DIR}/llvm/include"
+            "${LLVM_BINARY_DIR}/include"
+	    "${LLVM_BINARY_DIR}/tools/clang/include")
+
+    message("Add include directories:"
+            " ${LLVM_SOURCE_DIR}/clang/include"
+            " ${LLVM_SOURCE_DIR}/llvm/include"
+            " ${LLVM_BINARY_DIR}/include"
+	    " ${LLVM_BINARY_DIR}/tools/clang/include")
+
+    target_link_directories(wrapit PRIVATE ${LLVM_PREFIX}/lib)
+    target_link_libraries(wrapit PRIVATE clang clang-cpp)
+else()
+    target_link_libraries(wrapit PRIVATE clang clang-cpp LLVM)
 endif()
 
-target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM dl
-                      OpenSSL::Crypto
+target_link_libraries(wrapit PRIVATE dl OpenSSL::Crypto
                       #- gcc < 9.0 needs std++fs for the std::filesystem support
                       $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
 )
+
 set_target_properties(wrapit PROPERTIES
     CXX_STANDARD 17
     OUTPUT_NAME wrapit
@@ -208,8 +239,9 @@ set_target_properties(wrapit PROPERTIES
     )
 
 configure_file(src/config.h.in config.h @ONLY)
-include_directories(${CMAKE_SOURCE_DIR}/src
-                    ${CMAKE_CURRENT_BINARY_DIR}) #contains the generated config.h header file
+target_include_directories(wrapit PRIVATE
+                           ${CMAKE_SOURCE_DIR}/src
+                           ${CMAKE_CURRENT_BINARY_DIR}) #contains the generated config.h header file
 
 target_compile_definitions(wrapit PRIVATE)
 

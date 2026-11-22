@@ -40,12 +40,12 @@ An alternative to the installation of the pre-built executable is to build it fr
 #### Dependencies:
 
   * Software to be present on the system before running `cmake`:
-    * libclang (recommanded release: 19): packages `clang-19` and `libclang-19-dev` on Debian.
-    * libclang (recommanded release: 19): packages `llvm19`, `llvm19-devel`, `clang19`, `clang19-devel` on Alma/Rocky/RHEL
+    * libclang (version 21.1, 22.1, or 23.1): packages `clang-22` and `libclang-22-dev` on Debian.
+    * libclang (version 21.1, 22.1, or 23.1): packages `llvm22`, `llvm22-devel`, `clang22`, `clang22-devel` on Alma/Rocky/RHEL
     * On MacOS, you can install `llvm/clang` with brew running the command `brew install llvm` from a terminal
   * Software will be downloaded  by the `cmake` command:
     * [tomlplusplus](https://github.com/marzer/tomlplusplus.git)
-    * [llvm/clang](https://github.com/llvm/llvm-project/releases/) if the experimental option `-DBUILD_LLVM=ON` is used.
+    * [llvm/clang](https://github.com/llvm/llvm-project/releases/) if the option `-DBUILD_LLVM=ON` is used.
 
 #### Build
 

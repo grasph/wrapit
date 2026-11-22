@@ -30,9 +30,9 @@ jobs:
       - name: Install libclang
         run: |
               if [ "$RUNNER_OS" = Linux ]; then
-                sudo apt-get install clang-19 libclang-19-dev
+                sudo apt-get install clang-22 libclang-22-dev
               else #MacOS
-                brew install llvm@19
+                brew install llvm@22
               fi
       - uses: julia-actions/setup-julia@latest
         with:
@@ -48,10 +48,10 @@ jobs:
             rm -f /opt/hostedtoolcache/julia/1.6*/x64/lib/julia/libstdc++.so.6
           fi
           if [ "$RUNNER_OS" = Linux ]; then
-            cmake -DClang_DIR=/usr/lib/llvm-19/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
+            cmake -DClang_DIR=/usr/lib/llvm-22/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
             cmake --build build --verbose -j `nproc`
           else
-            cmake -DClang_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
+            cmake -DClang_DIR=/opt/homebrew/opt/llvm@22/lib/cmake/clang -DCMAKE_INSTALL_PREFIX="$PWD" -B build -S .
             cmake --build build --verbose -j `sysctl -n hw.logicalcpu`
           fi
           cmake --install build
