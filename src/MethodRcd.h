@@ -8,11 +8,14 @@
 
 #include <clang-c/Index.h>
 #include <vector>
+#include <map>
+#include <string>
 
 struct MethodRcd{
   CXCursor cursor;
   int min_args;
   std::vector<bool> strict_number_type;
+  std::map<std::string, std::string> tmpl_map;
   MethodRcd(CXCursor cursor, int min_args = -1): cursor(cursor), min_args(min_args){}
 };
 

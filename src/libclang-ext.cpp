@@ -19,6 +19,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "utils.h"
 
+extern CXPrintingPolicy policy;
+
 int hasDefaultConstructor(CXCursor cursor){
   if(clang_isDeclaration(cursor.kind)){
     auto decl = static_cast<const clang::Decl*>(cursor.data[0]);
@@ -201,7 +203,6 @@ std::string fully_qualified_name(CXType t){
   return fqn;
 }
 
-
 CXType remove_non_builtin_qualifiers(CXType type){
   //FIXME: there are probably more kinds to exclude
   if(type.kind > CXType_LastBuiltin && type.kind != CXType_FunctionProto){
@@ -319,4 +320,73 @@ bool is_method_deleted(CXTranslationUnit unit, CXCursor cursor){
   }
 
   return deleted;
+}
+
+std::string fully_qualified_name2(CXType t){
+  CXString s = clang_getFullyQualifiedName(t, policy, 0);
+  return str(s);
+}
+
+
+std::vector<std::string> extract_template_args_from_spelling(const std::string& text){
+    auto open = text.find('<');
+    if (open == std::string::npos) return {};
+
+    std::vector<std::string> args;
+    int depth = 0;
+    std::size_t start = open + 1;
+
+    for (std::size_t i = start; i < text.size(); ++i) {
+        if (text[i] == '<') {
+            ++depth;
+        } else if (text[i] == '>') {
+            if (depth == 0) {
+                auto arg = text.substr(start, i - start);
+                auto first = arg.find_first_not_of(" \t\n");
+                auto last  = arg.find_last_not_of(" \t\n");
+                if (first != std::string::npos)
+                    args.push_back(arg.substr(first, last - first + 1));
+                return args;
+            }
+            --depth;
+        } else if (text[i] == ',' && depth == 0) {
+            auto arg = text.substr(start, i - start);
+            auto first = arg.find_first_not_of(" \t\n");
+            auto last  = arg.find_last_not_of(" \t\n");
+            if (first != std::string::npos)
+                args.push_back(arg.substr(first, last - first + 1));
+            start = i + 1;
+        }
+    }
+
+    return {}; // unmatched angle brackets
+}
+
+bool is_ident_char(char c) {
+    return (c >= 'A' && c <= 'Z') ||
+           (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9') ||
+           c == '_';
+}
+
+std::string replace_type_name(const std::string& type,
+                              const std::string& from,
+                              const std::string& to) {
+    std::string result;
+    result.reserve(type.size());
+
+    for (std::size_t i = 0; i < type.size();) {
+        if (is_ident_char(type[i])) {
+            const std::size_t start = i++;
+            while (i < type.size() && is_ident_char(type[i]))
+                ++i;
+
+            const auto token = type.substr(start, i - start);
+            result.append(token == from ? to : token);
+        } else {
+            result += type[i++];
+        }
+    }
+
+    return result;
 }

@@ -6,7 +6,7 @@ tests = [ "TestSizet", "TestCtorDefVal", "TestAccessAndDelete", "TestNoFinalizer
           "TestPropagation",  "TestIndexOffset", "TestTemplate1",  "TestTemplate2", "TestVarField", "TestStdString", "TestStringView",
           "TestStdVector", "TestOperators", "TestEnum", "TestPointers", "TestEmptyClass", "TestUsingType", "TestNamespace",
           "TestOrder", "TestAutoAdd", "TestAbstractClass", "TestAnonymousStruct", "TestFuncPtr", "TestDeduplication", "TestHooks",
-          "TestMacroGenFunc"
+          "TestMacroGenFunc", "TestTemplatedParent"
           ]
 
 # Switch to test examples

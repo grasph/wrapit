@@ -32,6 +32,8 @@ extern const char* version;
 
 #include <dlfcn.h>
 
+CXPrintingPolicy policy;
+
 //The general strategy for class wrapper declaration is to first declare all
 //classes (add_type() calls) and in a second step declare the wrapper for
 //the methods of every class (add_method() calls).
@@ -115,13 +117,20 @@ CodeTree::getParentClassesForWrapper(CXCursor cursor) const{
     if(kind == CXCursor_CXXBaseSpecifier){
       std::string parent_name = str(clang_getTypeSpelling(clang_getCursorType(cursor)));
       const auto& inheritance_access = clang_getCXXAccessSpecifier(cursor);
-      const auto& t1 = clang_getCursorType(cursor);
       if(inheritance_access == CX_CXXPublic){
+        CXType t1;
+        t1 = clang_getCursorType(cursor);
+
         bool isBaseWrapped = false;
+        std::string fqn = fully_qualified_name2(t1);
+        size_t full_len = fqn.size();
+        //remove template parameters if t1 is templated:
+        fqn = std::regex_replace(fqn, std::regex("<.*>"), "");
+
+        bool isParentTemplated = (fqn.size() < full_len);
+
         for(const auto& c: tree.types_){
-          //FIXME: support for templates
-          const auto& t2 = clang_getCursorType(c.cursor);
-          if(same_type(t1, t2)){
+          if(c.type_name == fqn){
             isBaseWrapped = true;
             break;
           }
@@ -134,6 +143,7 @@ CodeTree::getParentClassesForWrapper(CXCursor cursor) const{
         if(isBaseWrapped){
           //FIXME: handling of parent namespace?
           if(clang_Cursor_isNull(data.main_parent)
+             && !isParentTemplated
              && (!data.inheritance_preference
                  || (str(clang_getTypeSpelling(clang_getCursorType(cursor)))
                      == data.preferred_parent))){
@@ -1257,12 +1267,11 @@ CodeTree::visit_class(CXCursor cursor){
   visited_classes_.push_back(cursor);
 
   const auto& kind = clang_getCursorKind(cursor);
-  const auto& type = clang_getCursorType(cursor);
 
-  //get_template_parameters(cursor);
   const auto& access= clang_getCXXAccessSpecifier(cursor);
 
-  if(verbose > 4) std::cerr << "Add type " << type << "\n";
+  if(verbose > 4) std::cerr << "Add type " << cursor << "\n";
+
   int index = add_type(cursor);
 
   types_[index].template_parameters = get_template_parameters(cursor);
@@ -1509,12 +1518,14 @@ CodeTree::find_base_type_definition_(const CXType& type0) const{
 
   auto decl = clang_getTypeDeclaration(type0);
 
-  if(clang_isInvalid(clang_getCursorKind(decl))){
+  if(clang_Cursor_isNull(decl) || clang_isInvalid(clang_getCursorKind(decl))){
     if(verbose>1){
       std::cerr << "Warning: failed to find declaration of "
                 << "type " << type0
                 << " of kind "<< type0.kind << "\n";
     }
+    return std::make_tuple(false,
+                           clang_getNullCursor());
   }
 
   CXCursor def = clang_getCursorDefinition(decl);
@@ -1562,15 +1573,9 @@ void CodeTree::check_for_stl(const CXType& type_){
 
   int itype = -1;
   auto rc = register_type(eltype, &itype);
-  ////FIXME: we should register the type as in might be just foward declared.
-  //auto beltype_rcd = std::find_if(types_.begin(), types_.end(),
-  //                                [&](auto a){ return beltype_name == a.type_name; });
 
-  //  if(beltype_rcd == types_.end()){
   if(!rc){
     if(verbose > 0){
-      //      std::cerr << "WARNING: type " << beltype_name << " was not found in "
-      //" the type registry. The type " << type << " might miss a julia mapping.\n";
       std::cerr << "WARNING: definition of type " << beltype_name
                 << " was not found. Julia mapping of  type " << type
                 << " might be missing.\n";
@@ -1757,8 +1762,9 @@ CodeTree::visit_function_arg_and_return_types(CXCursor cursor){
   const auto& method_type = clang_getCursorType(cursor);
   const auto return_type = clang_getResultType(method_type);
 
-  //TODO: find a more robust way than comparing identifier  names.
+  //TODO: find a more robust way than comparing identifier names.
   auto is_class_param = [cursor, this](CXType type){
+    auto k = clang_getCursorKind(cursor);
     TypeRcd* pTypeRcd = find_class_of_method(cursor);
     if(pTypeRcd==nullptr) return false;
     auto type_name = remove_cv(str(clang_getTypeSpelling(base_type_(type))));
@@ -1889,6 +1895,8 @@ CodeTree::visit_member_function(CXCursor cursor){
 
   TypeRcd* pTypeRcd = find_class_of_method(cursor);
 
+  assert(pTypeRcd);
+
   FunctionWrapper wrapper(cxx_to_julia_, MethodRcd(cursor), pTypeRcd, type_map_,
                           index_offset_, cxxwrap_version_);
 
@@ -1911,7 +1919,6 @@ CodeTree::visit_member_function(CXCursor cursor){
   }
 
   if(in_veto_list(wrapper.signature())){
-    //  if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     vetoed_methods_.insert(wrapper.signature());
     if(verbose > 0){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
@@ -1984,9 +1991,16 @@ CodeTree::disable_owner_mirror(CXCursor cursor){
 TypeRcd*
 CodeTree::find_class_of_method(const CXCursor& method){
   const auto& myClass = clang_getCursorSemanticParent(method);
+  auto parent_kind = clang_getCursorKind(myClass);
+
+  if(parent_kind != CXCursor_ClassTemplate
+     && parent_kind != CXCursor_ClassTemplatePartialSpecialization
+     && parent_kind != CXCursor_ClassDecl
+     && parent_kind != CXCursor_StructDecl
+     ) return nullptr;
 
   for(auto& t: types_){
-    if(clang_equalCursors(t.cursor, myClass)){
+    if(fully_qualified_name(t.cursor) == fully_qualified_name(myClass)){
       return &t;
     }
   }
@@ -2002,8 +2016,6 @@ bool CodeTree::has_type(CXCursor cursor) const{
 
 bool CodeTree::has_type(const std::string& t) const{
   for(const auto& x: types_){
-    //    const auto& t2 = clang_getCursorType(x.cursor);
-    //return str(clang_getTypeSpelling(t2)) == t;
     if(x.type_name == t) return true;
   }
   return false;
@@ -2094,7 +2106,6 @@ CodeTree::visit_class_constructor(CXCursor cursor){
 
   if(in_veto_list(wrapper.signature())){
     vetoed_methods_.insert(wrapper.signature());
-    //if(std::find(veto_list_.begin(), veto_list_.end(), wrapper.signature()) != veto_list_.end()){
     if(verbose > 0){
       std::cerr << "Info: " << "func " << wrapper.signature() << " vetoed\n";
     }
@@ -2246,8 +2257,20 @@ CodeTree::visit_class_template_specialization(CXCursor cursor){
   //add_type() implementation includes the handling of the case where two
   //cursors point to the same type, as it has been observed for template.
   //
+  size_t size_before_add_type = types_.size();
   int index = add_type(specialized_cursor, /*check=*/true);
-  if(index == types_.size() - 1){
+
+  auto access = clang_getCXXAccessSpecifier(specialized_cursor);
+  if(access == CX_CXXProtected || access == CX_CXXPrivate){
+    if(verbose > 3){
+      std::cerr << "Information: skip specialization found at "
+                << clang_getCursorLocation(cursor)
+                << " because the class it specializes is not public.\n";
+    }
+    return;
+  }
+
+  if(types_.size() > size_before_add_type){
     std::cerr << "Warning: specialization found at " << clang_getCursorLocation(cursor)
               << " for class/struct " << cursor << " before its definition.\n";
   }
@@ -2399,7 +2422,6 @@ CXChildVisitResult CodeTree::visit(CXCursor cursor, CXCursor parent,
 
   const auto& type_access = clang_getCXXAccessSpecifier(clang_getTypeDeclaration(clang_getCursorType(cursor)));
 
-  //if(kind != CXCursor_Constructor && !tree.is_to_visit(cursor)) return CXChildVisit_Continue;
   if(!tree.is_to_visit(cursor)) return CXChildVisit_Continue;
 
   if(verbose > 1) std::cerr << "visiting " << clang_getCursorLocation(cursor)
@@ -2426,8 +2448,6 @@ CXChildVisitResult CodeTree::visit(CXCursor cursor, CXCursor parent,
     if(clang_Cursor_isNull(special)){
       tree.visit_class(cursor);
     } else{
-      //static std::regex re("<[^>]*>");
-      //auto type_name = std::regex_replace(str(clang_getTypeSpelling(clang_getCursorType(cursor))), re, "");
       tree.visit_class_template_specialization(cursor);
     }
   } else if(kind == CXCursor_ClassTemplate){
@@ -2519,9 +2539,6 @@ CodeTree::parse(){
   files_to_wrap_fullpaths_.clear();
   for(const auto& fname: files_to_wrap_){
     files_to_wrap_fullpaths_.push_back(resolve_include_path(fname));
-    //DEBUG>>
-    std::cerr << "File to wrap: " << files_to_wrap_fullpaths_.back() << "\n";
-//<<DEBUG
     header_file << "#include \"" << fname << "\"\n";
   }
 
@@ -2600,6 +2617,8 @@ CodeTree::parse(){
   }
 
   const auto&  cursor = clang_getTranslationUnitCursor(unit);
+
+  policy = clang_getCursorPrintingPolicy(cursor);
 
   if(verbose > 1) std::cerr << "Calling clang_visitChildren(" << cursor
                             << ", CodeTree::visit, &data) from "
@@ -2691,36 +2710,7 @@ std::ostream& CodeTree::report(std::ostream& o){
     o << sig << "\n";
   }
 
-  //
-  //   std::set<int> used_headers;
-  //   for(const auto& t: types_missing_def_){
-  //     Type* tt = find_type(t);
-  //     if(tt && tt->ifilename() >= 0){
-  //       used_headers.insert(tt->ifilename());
-  //     }
-  //   }
-  //
-  //   s = "\n\nUnused auxiliary file.";
-  //   o << s << "\n";
-  //   for(unsigned i = 0; i < s.size(); ++i) o << "-";
-  //   o << "\n\n";
-  //   o << "File from the auxiliary_file or inputs configurable list which were not used.\n\n";
-  //
-  // //  for(unsigned i = 0; i < filenames_.size(); ++i){
-  // //    if(used_headers.find(i) == used_headers.end()) o << filenames_[i] << "\n";
-  // //  }
-  //
-  //   s = "\n\nUsed file.";
-  //   o << s << "\n";
-  //   for(unsigned i = 0; i < s.size(); ++i) o << "-";
-  //   o << "\n\n";
-  //   o << "File from the auxiliary_files or inputs configurable list which were used.\n\n";
-  //
-  // //  for(unsigned i = 0; i < filenames_.size(); ++i){
-  // //    if(used_headers.find(i) != used_headers.end()) o << filenames_[i] << "\n";
-  // //  }
-
-  s = "\nClass(es) from vetoed_finalizer_classes configuration parameter that were not found:";
+   s = "\nClass(es) from vetoed_finalizer_classes configuration parameter that were not found:";
   o << s << "\n";
   for(unsigned i = 0; i < s.size(); ++i) o << "-";
   o << "\n\n";
@@ -3197,10 +3187,6 @@ CodeTree::check_veto_list_for_var_or_field(const CXCursor& cursor, bool global_v
 }
 
 
-//FIXME: duplicate for template class
-//strategy to adopt. add an extra_cursors vector to TypeRcd to keep tracks
-//of duplicate and select the cursor with the largest number of visited elements.
-//as main cursor.
 int
 CodeTree::add_type(const CXCursor& cursor, bool check){
   const int not_found =  -1;
@@ -3214,7 +3200,6 @@ CodeTree::add_type(const CXCursor& cursor, bool check){
         index = i;
         break;
       }
-      //if(str(clang_getCursorSpelling(t.cursor)) == str(clang_getCursorSpelling(cursor))){
       if(t.type_name == fully_qualified_name(cursor)){
         pSameSpellType = &t;
         break;
@@ -3242,7 +3227,6 @@ CodeTree::add_type(const CXCursor& cursor, bool check){
       //We will select the cursor with the largest contents
       int dup_cursor_length = 0;
       clang_visitChildren(pSameSpellType->cursor, [](CXCursor cursor, CXCursor, CXClientData data){
-        //std::cerr << cursor << "(" << clang_getCursorKind(cursor) << ")\n";
         int dup_cursor_length = *(int*) data;
         ++dup_cursor_length;
         return CXChildVisit_Recurse;
@@ -3706,11 +3690,24 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
   //methods should be ignore as it raises an ambiguity in C++, that used solely
   //the function name to resolve the class that provides the methods with the
   //same function name.
-  std::map<std::string, std::vector<std::pair<TypeRcd, MethodRcd>>> extra_defs;
+  struct extra_def_rec{
+    TypeRcd type_rcd;
+    MethodRcd method_rcd;
+
+    extra_def_rec(const TypeRcd& type_rcd, const MethodRcd& method_rcd):
+      type_rcd(type_rcd), method_rcd(method_rcd){}
+  };
+
+  std::map<std::string, std::vector<extra_def_rec>> extra_defs;
 
   //storage of the names of the functions of the class declared
   //by current cursor within the next for-loop
   std::set<std::string> funcnames;
+
+  //Map of the parent class template parameter names to their values, the
+  //type used in their specialization
+  std::map<std::string, std::string> tmpl_map;
+  std::vector<std::string> tmpl_values;
   for(;;){
     //Draw a cursor from the pile and replace it by its parents:
     while(parent_stack.back().empty()){
@@ -3727,16 +3724,25 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
 
     if(!clang_Cursor_isNull(c)){
       const auto& t = clang_getCursorType(c);
+
+      auto fqn = fully_qualified_name2(t);
+      tmpl_values = extract_template_args_from_spelling(fqn);
+
+      //remove template parameters if the type is a template
+      fqn = std::regex_replace(fqn, std::regex("<.*>"), "");
+
       itTypeRcd = std::find_if(types_.begin(), types_.end(),
-                               [&t](const auto& x){
-                                 return same_type(t, clang_getCursorType(x.cursor));
+                               [&fqn](const auto& x){
+                                 return x.type_name == fqn;
                                });
     }
 
     funcnames.clear();
     //if the class was found, pass through its methods
     if(itTypeRcd != types_.end()){
-      for(const auto& m: deduplicate_methods(itTypeRcd->methods, /*quiet=*/true)){
+      //FIXME account for the template parameter substitution in the deduplication
+      //process.
+      for(auto m: deduplicate_methods(itTypeRcd->methods, /*quiet=*/true)){
         auto kind = clang_getCursorKind(m.cursor);
         auto is_static = clang_CXXMethod_isStatic(m.cursor);
         if(kind != CXCursor_Constructor
@@ -3764,7 +3770,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
             //}
           } else if(definedby(m, base_methods)){
             //FIXME we miss to exclude functions defined by an ancestor of base.
-            //A strategy to do so could be, to include the base class branch in our
+            //A strategy to achieve this could be, to include the base class branch in our
             //walk and mark the definition coming from this branch as such
             //(in extra_defs) and exclude the functions in the loop on extra_defs.
             if(verbose > 0){
@@ -3776,7 +3782,16 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
             }
           } else{
             auto fname = str(clang_getCursorSpelling(m.cursor));
-            extra_defs[fname].push_back(std::make_pair(*itTypeRcd, m));
+            const auto& tmpl_names = itTypeRcd->template_parameters;
+            if(tmpl_values.size() <= tmpl_names.size()){
+              for(unsigned i = 0; i < tmpl_values.size(); ++i){
+                m.tmpl_map[tmpl_names[i]] = tmpl_values[i];
+              }
+            } else{
+              if(verbose > 0) std::cerr << "Warning: inconsistency in number of template parameters of "
+                                        << fname << "\n";
+            }
+            extra_defs[fname].push_back(extra_def_rec(*itTypeRcd, m));
           }
         }
       } //next m
@@ -3794,14 +3809,14 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
       bool vetoed = false;
       //check veto both with the name of this class and of the ancestor
       //that declared the method
-      for(const auto& t: {type_rcd, m.second[0].first}){
-        FunctionWrapper wrapper(cxx_to_julia_, m.second[0].second,
+      for(const auto& t: {type_rcd, m.second[0].type_rcd}){
+        FunctionWrapper wrapper(cxx_to_julia_, m.second[0].method_rcd,
                                 &t, type_map_, index_offset_,
                                 cxxwrap_version_);
         vetoed |= (std::find(veto_list_.begin(), veto_list_.end(),
                              wrapper.signature()) != veto_list_.end());
       }
-      if(!vetoed) towrap.push_back(m.second[0].second);
+      if(!vetoed) towrap.push_back(m.second[0].method_rcd);
     } else{
       if(verbose > 0){
         std::cerr << "Warning: function "
@@ -3809,7 +3824,7 @@ CodeTree::get_methods_to_wrap(const TypeRcd& type_rcd, bool quiet) const{
                   << " not wrapped for type " << type_rcd.type_name
                   << ", because of an overriding ambiguity in C++. Function "
           "provided by the ancestor classes";
-        for(const auto& cl: m.second) std::cerr << ", " << cl.first.type_name;
+        for(const auto& cl: m.second) std::cerr << ", " << cl.type_rcd.type_name;
         std::cerr << ".\n";
       }
     }

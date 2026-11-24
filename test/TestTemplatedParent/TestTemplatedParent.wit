@@ -1,0 +1,14 @@
+module_name         = "TestTemplatedParent"
+uuid                = "7aebfe3f-ed7d-4cbd-93d7-a9425aac89d2"
+
+include_dirs        = [ "." ]
+
+input               = [ "A.h" ]
+
+cxx-std             = "c++17"
+
+# all generated code in a single file:
+n_classes_per_file = 0
+
+# Export all symbols
+export = "all"

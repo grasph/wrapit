@@ -31,7 +31,6 @@ static bool in(const T& x, const std::vector<T> l){
 
 void TypeMapper::mapped_type_impl(const std::string& from, bool as_return,
                                   bool* mapped, std::string* to) const{
-  //auto it = map_.find(from);
   bool isconst = false;
   auto it = std::find_if(map_.begin(), map_.end(),
                          [&isconst, from](const auto& x){
@@ -72,4 +71,3 @@ bool TypeMapper::is_mapped(const std::string& from, bool as_return) const{
   //  std::cerr << "==> " << from << " is " << (result ? "" : "not ") << "mapped\n";
   return result;
 }
-
