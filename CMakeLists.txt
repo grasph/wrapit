@@ -224,7 +224,7 @@ if(BUILD_LLVM)
     target_link_directories(wrapit PRIVATE ${LLVM_PREFIX}/lib)
     target_link_libraries(wrapit PRIVATE clang clang-cpp)
 else()
-    target_link_libraries(wrapit PRIVATE clang clang-cpp LLVM)
+    target_link_libraries(wrapit PRIVATE libclang clang-cpp LLVM)
 endif()
 
 target_link_libraries(wrapit PRIVATE dl OpenSSL::Crypto
